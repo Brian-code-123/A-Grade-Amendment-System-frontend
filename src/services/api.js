@@ -1,46 +1,48 @@
 import axios from 'axios'
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
-// Request interceptor
-apiClient.interceptors.request.use(
-  config => {
-    // You can add authentication token here
-    // const token = localStorage.getItem('token')
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`
-    // }
-    return config
+export default {
+  // Users API
+  getUsers() {
+    return apiClient.get('/users')
   },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-// Response interceptor
-apiClient.interceptors.response.use(
-  response => {
-    return response
+  
+  getUserById(id) {
+    return apiClient.get(`/users/${id}`)
   },
-  error => {
-    // Handle errors
-    if (error.response) {
-      // Server responded with error status
-      console.error('Response error:', error.response.data)
-    } else if (error.request) {
-      // Request made but no response
-      console.error('Request error:', error.request)
-    } else {
-      // Something else happened
-      console.error('Error:', error.message)
-    }
-    return Promise.reject(error)
+  
+  createUser(userData) {
+    return apiClient.post('/users', userData)
+  },
+  
+  updateUser(id, userData) {
+    return apiClient.put(`/users/${id}`, userData)
+  },
+  
+  deleteUser(id) {
+    return apiClient.delete(`/users/${id}`)
+  },
+  
+  // General API
+  get(url) {
+    return apiClient.get(url)
+  },
+  
+  post(url, data) {
+    return apiClient.post(url, data)
+  },
+  
+  put(url, data) {
+    return apiClient.put(url, data)
+  },
+  
+  delete(url) {
+    return apiClient.delete(url)
   }
-)
-
-export default apiClient
+}
