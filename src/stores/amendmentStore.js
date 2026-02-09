@@ -9,6 +9,17 @@ export const useAmendmentStore = defineStore('amendment', () => {
   const error = ref(null)
   const message = ref(null)
   const nextId = ref(1)
+  const currentUser = ref({ role: 'Teacher', name: 'John Doe' }) // 模擬當前用戶
+
+  // Workflow status: draft -> submitted -> validated -> director_review -> admin_confirmed -> completed
+  const workflowStatuses = [
+    { id: 'draft', label: '草稿', color: 'secondary' },
+    { id: 'submitted', label: '已提交', color: 'warning' },
+    { id: 'validated', label: '已驗證', color: 'info' },
+    { id: 'director_review', label: '主任審核中', color: 'primary' },
+    { id: 'admin_confirmed', label: '管理員確認', color: 'success' },
+    { id: 'completed', label: '已完成', color: 'success' }
+  ]
 
   // Getters
   const amendmentCount = computed(() => amendments.value.length)
@@ -23,6 +34,23 @@ export const useAmendmentStore = defineStore('amendment', () => {
   
   const rejectedAmendments = computed(() => 
     amendments.value.filter(a => a.status === 'Rejected')
+  )
+
+  // Workflow status filters
+  const draftAmendments = computed(() =>
+    amendments.value.filter(a => a.workflowStatus === 'draft')
+  )
+
+  const submittedAmendments = computed(() =>
+    amendments.value.filter(a => a.workflowStatus === 'submitted')
+  )
+
+  const directorReviewAmendments = computed(() =>
+    amendments.value.filter(a => a.workflowStatus === 'director_review')
+  )
+
+  const completedAmendments = computed(() =>
+    amendments.value.filter(a => a.workflowStatus === 'completed')
   )
 
   // Actions
@@ -43,12 +71,26 @@ export const useAmendmentStore = defineStore('amendment', () => {
   const addAmendment = async (amendment) => {
     loading.value = true
     error.value = null
+    let newAmendment = null
     try {
       // Add to local state
-      const newAmendment = {
+      newAmendment = {
         id: nextId.value++,
         ...amendment,
-        status: amendment.status || 'Pending'
+        status: amendment.status || 'Pending',
+        workflowStatus: 'draft', // 初始工作流狀態
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: currentUser.value.name,
+        history: [
+          {
+            status: 'draft',
+            timestamp: new Date().toISOString(),
+            user: currentUser.value.name,
+            role: currentUser.value.role,
+            action: '創建記錄'
+          }
+        ]
       }
       amendments.value.push(newAmendment)
       
@@ -59,7 +101,9 @@ export const useAmendmentStore = defineStore('amendment', () => {
     } catch (err) {
       setError('Failed to add amendment: ' + err.message)
       // Remove from local state if API call failed
-      amendments.value = amendments.value.filter(a => a.id !== newAmendment.id)
+      if (newAmendment) {
+        amendments.value = amendments.value.filter(a => a.id !== newAmendment.id)
+      }
       throw err
     } finally {
       loading.value = false
@@ -212,17 +256,93 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
   }
 
+  // Workflow actions
+  const updateWorkflowStatus = (id, newStatus, comment = '') => {
+    const amendment = amendments.value.find(a => a.id === id)
+    if (amendment) {
+      amendment.workflowStatus = newStatus
+      amendment.updatedAt = new Date().toISOString()
+      
+      // Add to history
+      if (!amendment.history) {
+        amendment.history = []
+      }
+      amendment.history.push({
+        status: newStatus,
+        timestamp: new Date().toISOString(),
+        user: currentUser.value.name,
+        role: currentUser.value.role,
+        action: getStatusActionText(newStatus),
+        comment: comment
+      })
+      
+      setMessage(`狀態已更新為: ${getWorkflowStatusLabel(newStatus)}`)
+    }
+  }
+
+  const submitForReview = (id) => {
+    updateWorkflowStatus(id, 'submitted', '提交審核')
+  }
+
+  const validateAmendment = (id, isValid) => {
+    if (isValid) {
+      updateWorkflowStatus(id, 'validated', '驗證通過')
+    } else {
+      updateWorkflowStatus(id, 'draft', '驗證失敗，退回修改')
+    }
+  }
+
+  const directorApprove = (id, comment = '') => {
+    updateWorkflowStatus(id, 'director_review', comment || '課程主任已審核')
+  }
+
+  const adminConfirm = (id, comment = '') => {
+    updateWorkflowStatus(id, 'admin_confirmed', comment || '管理員已確認')
+  }
+
+  const completeAmendment = (id) => {
+    updateWorkflowStatus(id, 'completed', '流程完成')
+  }
+
+  const getWorkflowStatusLabel = (status) => {
+    const found = workflowStatuses.find(s => s.id === status)
+    return found ? found.label : status
+  }
+
+  const getStatusActionText = (status) => {
+    const actions = {
+      draft: '創建草稿',
+      submitted: '提交審核',
+      validated: '驗證通過',
+      director_review: '主任審核',
+      admin_confirmed: '管理員確認',
+      completed: '完成流程'
+    }
+    return actions[status] || '更新狀態'
+  }
+
+  // Change user role (for testing)
+  const setUserRole = (role, name) => {
+    currentUser.value = { role, name }
+  }
+
   return {
     // State
     amendments,
     loading,
     error,
     message,
+    currentUser,
+    workflowStatuses,
     // Getters
     amendmentCount,
     pendingAmendments,
     approvedAmendments,
     rejectedAmendments,
+    draftAmendments,
+    submittedAmendments,
+    directorReviewAmendments,
+    completedAmendments,
     // Actions
     addAmendment,
     updateAmendment,
@@ -230,6 +350,15 @@ export const useAmendmentStore = defineStore('amendment', () => {
     deleteAllAmendments,
     importFromExcel,
     exportToExcel,
-    downloadTemplate
+    downloadTemplate,
+    // Workflow actions
+    updateWorkflowStatus,
+    submitForReview,
+    validateAmendment,
+    directorApprove,
+    adminConfirm,
+    completeAmendment,
+    getWorkflowStatusLabel,
+    setUserRole
   }
 })

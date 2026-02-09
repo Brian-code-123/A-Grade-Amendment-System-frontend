@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '@/views/HomeView.vue'
 import AmendmentsView from '@/views/AmendmentsView.vue'
 
 const router = createRouter({
@@ -6,14 +7,18 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/amendments'
+      name: 'home',
+      component: HomeView,
+      meta: {
+        title: 'Home - Grade Amendment System'
+      }
     },
     {
       path: '/amendments',
       name: 'amendments',
       component: AmendmentsView,
       meta: {
-        title: 'Grade Amendment System'
+        title: 'Amendments - Grade Amendment System'
       }
     }
   ]
