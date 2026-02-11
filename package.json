@@ -10,15 +10,17 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "vue": "^3.4.15",
-    "vue-router": "^4.2.5",
+    "axios": "^1.6.5",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "pinia": "^2.1.7",
-    "axios": "^1.6.5"
+    "vue": "^3.4.15",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.3",
-    "vite": "^5.0.11",
     "eslint": "^8.56.0",
-    "eslint-plugin-vue": "^9.20.1"
+    "eslint-plugin-vue": "^9.20.1",
+    "vite": "^5.0.11"
   }
 }

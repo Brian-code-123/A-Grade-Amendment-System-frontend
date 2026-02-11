@@ -351,6 +351,8 @@ export const useAmendmentStore = defineStore('amendment', () => {
     importFromExcel,
     exportToExcel,
     downloadTemplate,
+    setMessage,
+    setError,
     // Workflow actions
     updateWorkflowStatus,
     submitForReview,

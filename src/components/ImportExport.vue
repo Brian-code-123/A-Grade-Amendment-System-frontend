@@ -27,6 +27,54 @@
             </button>
           </div>
           <small class="text-muted">Supported formats: .xlsx, .xls (max 5MB)</small>
+          
+          <!-- File validation errors -->
+          <div v-if="fileErrors.length > 0" class="alert alert-danger mt-2 p-2 small">
+            <ul class="mb-0">
+              <li v-for="(error, index) in fileErrors" :key="index">{{ error }}</li>
+            </ul>
+          </div>
+          
+          <!-- Preview section -->
+          <div v-if="previewData.length > 0" class="mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong class="text-success">Preview ({{ previewData.length }} records found)</strong>
+              <button class="btn btn-sm btn-outline-secondary" @click="clearPreview">Clear</button>
+            </div>
+            <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+              <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Grade Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in previewData.slice(0, 5)" :key="index">
+                    <td>{{ item.studentId }}</td>
+                    <td>{{ item.studentName }}</td>
+                    <td>{{ item.courseCode }}</td>
+                    <td>{{ item.originalGrade }} → {{ item.amendedGrade }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <small class="text-muted" v-if="previewData.length > 5">
+              Showing first 5 of {{ previewData.length }} records
+            </small>
+            <div class="mt-2">
+              <button 
+                class="btn btn-success btn-sm" 
+                @click="confirmImport"
+                :disabled="amendmentStore.loading"
+              >
+                <span v-if="amendmentStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+                Confirm Import ({{ previewData.length }} records)
+              </button>
+            </div>
+          </div>
         </div>
         
         <div class="col-md-6">
@@ -38,14 +86,16 @@
               @click="handleDownloadTemplate"
             >
               <span v-if="amendmentStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-download me-1"></i>
               Download Template
             </button>
             <button 
               class="btn btn-success"
-              :disabled="amendmentStore.loading"
+              :disabled="amendmentStore.loading || amendmentStore.amendments.length === 0"
               @click="handleExport"
             >
               <span v-if="amendmentStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-file-earmark-excel me-1"></i>
               Export to Excel
             </button>
             <button 
@@ -55,8 +105,25 @@
               @click="handleDeleteAll"
             >
               <span v-if="amendmentStore.loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-trash me-1"></i>
               Delete All
             </button>
+          </div>
+          
+          <!-- Export options -->
+          <div class="mt-3">
+            <small class="text-muted d-block mb-2">Export Options:</small>
+            <div class="form-check">
+              <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="useClientExport"
+                v-model="useClientSideExport"
+              >
+              <label class="form-check-label" for="useClientExport">
+                Use client-side Excel generation (faster, works offline)
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -67,63 +134,123 @@
 <script setup>
 import { ref } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
+import excelService from '@/services/excelService'
 
 const amendmentStore = useAmendmentStore()
 const fileInput = ref(null)
 const selectedFile = ref(null)
+const fileErrors = ref([])
+const previewData = ref([])
+const useClientSideExport = ref(true)
 
-const handleFileSelect = (event) => {
+const handleFileSelect = async (event) => {
   const file = event.target.files[0]
-  if (file) {
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size exceeds 5MB limit')
-      event.target.value = ''
-      selectedFile.value = null
-      return
-    }
-    
-    // Validate file type
-    const ext = file.name.split('.').pop().toLowerCase()
-    if (ext !== 'xlsx' && ext !== 'xls') {
-      alert('Only Excel files (.xlsx, .xls) are allowed')
-      event.target.value = ''
-      selectedFile.value = null
-      return
-    }
-    
-    selectedFile.value = file
+  fileErrors.value = []
+  previewData.value = []
+  
+  if (!file) {
+    selectedFile.value = null
+    return
   }
+  
+  // Validate file
+  const validation = excelService.validateFile(file)
+  if (!validation.valid) {
+    fileErrors.value = validation.errors
+    event.target.value = ''
+    selectedFile.value = null
+    return
+  }
+  
+  selectedFile.value = file
+  
+  // Try to parse and preview the file
+  try {
+    const result = await excelService.parseExcelFile(file)
+    previewData.value = result.amendments
+    
+    if (result.errors && result.errors.length > 0) {
+      fileErrors.value = result.errors
+    }
+  } catch (error) {
+    fileErrors.value = [error.message]
+    console.error('Failed to preview Excel file:', error)
+  }
+}
+
+const clearPreview = () => {
+  previewData.value = []
+  fileErrors.value = []
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+  selectedFile.value = null
 }
 
 const handleImport = async () => {
   if (!selectedFile.value) return
   
-  try {
-    await amendmentStore.importFromExcel(selectedFile.value)
-    // Clear file input
-    if (fileInput.value) {
-      fileInput.value.value = ''
+  // If we have preview data, use the confirm import flow
+  if (previewData.value.length > 0) {
+    await confirmImport()
+  } else {
+    // Otherwise, try to parse the file first
+    try {
+      const result = await excelService.parseExcelFile(selectedFile.value)
+      previewData.value = result.amendments
+      
+      if (result.errors && result.errors.length > 0) {
+        fileErrors.value = result.errors
+      }
+    } catch (error) {
+      fileErrors.value = [error.message]
+      console.error('Import failed:', error)
+      amendmentStore.setError('Failed to import Excel file: ' + error.message)
     }
-    selectedFile.value = null
+  }
+}
+
+const confirmImport = async () => {
+  if (previewData.value.length === 0) return
+  
+  try {
+    // Import each amendment
+    for (const amendment of previewData.value) {
+      await amendmentStore.addAmendment(amendment)
+    }
+    
+    amendmentStore.setMessage(`Successfully imported ${previewData.value.length} amendments`)
+    clearPreview()
   } catch (error) {
     console.error('Import failed:', error)
+    amendmentStore.setError('Failed to import some amendments: ' + error.message)
   }
 }
 
 const handleExport = async () => {
   try {
-    await amendmentStore.exportToExcel()
+    if (useClientSideExport.value) {
+      // Use client-side Excel generation
+      await excelService.exportToExcel(amendmentStore.amendments)
+      amendmentStore.setMessage('Excel file exported successfully (client-side)')
+    } else {
+      // Use backend export
+      await amendmentStore.exportToExcel()
+    }
   } catch (error) {
     console.error('Export failed:', error)
+    amendmentStore.setError('Failed to export Excel file: ' + error.message)
   }
 }
 
 const handleDownloadTemplate = async () => {
   try {
-    await amendmentStore.downloadTemplate()
+    // Use client-side template generation
+    await excelService.generateTemplate()
+    amendmentStore.setMessage('Template downloaded successfully')
   } catch (error) {
     console.error('Download template failed:', error)
+    amendmentStore.setError('Failed to download template: ' + error.message)
   }
 }
 
