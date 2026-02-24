@@ -11,6 +11,7 @@ const DEMO_SUBMISSIONS = [
     amendment_ids: ['demo_1', 'demo_2', 'demo_9'],
     amendment_count: 3,
     submitted_by: 'Dr. Martin Choy',
+    submitted_by_name: 'Dr. Martin Choy',
     created_at: new Date(Date.now() - 6*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
     approved_at: new Date(Date.now() - 3*24*60*60*1000).toISOString()
@@ -23,6 +24,7 @@ const DEMO_SUBMISSIONS = [
     amendment_ids: ['demo_3', 'demo_8'],
     amendment_count: 2,
     submitted_by: 'Dr. David Lee',
+    submitted_by_name: 'Dr. David Lee',
     created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
   },
@@ -34,6 +36,7 @@ const DEMO_SUBMISSIONS = [
     amendment_ids: ['demo_4'],
     amendment_count: 1,
     submitted_by: 'Dr. James Park',
+    submitted_by_name: 'Dr. James Park',
     created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
   },
   {
@@ -44,6 +47,7 @@ const DEMO_SUBMISSIONS = [
     amendment_ids: ['demo_7'],
     amendment_count: 1,
     submitted_by: 'Dr. Susan Black',
+    submitted_by_name: 'Dr. Susan Black',
     rejection_reason: 'Missing instructor signature for row 1. Please resubmit with complete documentation.',
     created_at: new Date(Date.now() - 7*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 6*24*60*60*1000).toISOString(),
@@ -57,6 +61,7 @@ const DEMO_SUBMISSIONS = [
     amendment_ids: ['demo_5'],
     amendment_count: 1,
     submitted_by: 'Dr. Rachel Kim',
+    submitted_by_name: 'Dr. Rachel Kim',
     created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
   }
 ]
@@ -126,6 +131,7 @@ export const useSubmissionStore = defineStore('submission', () => {
         status: 'Draft',
         amendment_count: data.amendment_ids?.length || 0,
         submitted_by: 'Admin User',
+        submitted_by_name: 'Admin User',
         created_at: new Date().toISOString()
       }
       submissions.value.unshift(newSub)
