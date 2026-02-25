@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/32c5d7be-6982-4253-9fd0-b9d80c3bd7ab/resourceGroups/appsvc_linux_eastasia/providers/Microsoft.Web/sites/Grade-Amendment",
+    "appService.deploySubpath": "."
+}
