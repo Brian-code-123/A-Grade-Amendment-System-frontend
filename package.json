@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server.js",
     "test:unit": "vitest",
     "lint": "eslint . --fix --cache"
   },
@@ -21,6 +22,7 @@
     "apexcharts": "^5.3.5",
     "bootstrap": "^5.3.8",
     "dotenv": "^17.2.3",
+    "express": "^4.18.2",
     "file-saver": "^2.0.5",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^4.2.0",

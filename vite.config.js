@@ -18,8 +18,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
-
-server: {
+  build: {
+    rollupOptions: {
+      external: [],
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
+  server: {
     proxy: {
       '/api': {
             target: 'http://localhost:3000',
@@ -27,10 +34,6 @@ server: {
       }
     }
 },
-
-
-
-
 })
 
 
