@@ -432,23 +432,214 @@ export function downloadTemplate(data = {}) {
 /**
  * Download a filled-in Grade Amendment Form
  */
-export function downloadFilledForm(amendment) {
-  const data = {
-    academicYear: amendment.academic_year || '',
-    term: amendment.term || '',
-    studentNo: amendment.student_no || amendment.student_id || '',
-    studentName: amendment.student_name || '',
-    courseCode: amendment.course_code || '',
-    courseTitle: amendment.course_title || '',
-    originalGrade: amendment.original_grade || '',
-    newGrade: amendment.new_grade || '',
-    reasonType: amendment.reason_type || '',
-    reasonDetails: amendment.reason_details || '',
-    appealGrounds: amendment.appeal_grounds || '',
-    appealDetails: amendment.appeal_details || '',
-    instructorName: amendment.instructor_name || '',
-    department: amendment.department || ''
+/**
+ * Download filled form with user signature
+ */
+import { useAuthStore } from '@/stores/authStore'
+
+export async function downloadFilledForm(amendment) {
+  try {
+    const { PDFDocument, PDFImage } = await import('pdf-lib')
+    const auth = useAuthStore()
+    
+    const data = {
+      academicYear: amendment.academic_year || '',
+      term: amendment.term || '',
+      studentNo: amendment.student_no || amendment.student_id || '',
+      studentName: amendment.student_name || '',
+      courseCode: amendment.course_code || '',
+      courseTitle: amendment.course_title || '',
+      originalGrade: amendment.original_grade || '',
+      newGrade: amendment.new_grade || '',
+      reasonType: amendment.reason_type || '',
+      reasonDetails: amendment.reason_details || '',
+      appealGrounds: amendment.appeal_grounds || '',
+      appealDetails: amendment.appeal_details || '',
+      instructorName: amendment.instructor_name || auth.user?.name || '',
+      instructorSignature: auth.user?.signature || '',
+      instructorDate: new Date().toLocaleDateString(),
+      department: amendment.department || '',
+      departmentHeadName: '',
+      departmentHeadSignature: auth.user?.signature || '',
+      departmentHeadDate: new Date().toLocaleDateString(),
+      registrarSignature: auth.user?.signature || '',
+      registrarDate: new Date().toLocaleDateString()
+    }
+    
+    // Load template PDF
+    const templateUrl = '/grade-amendment-template.pdf'
+    const response = await fetch(templateUrl)
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load template: ${response.status}`)
+    }
+    
+    const arrayBuffer = await response.arrayBuffer()
+    const pdfDoc = await PDFDocument.load(arrayBuffer)
+    const pages = pdfDoc.getPages()
+    const firstPage = pages[0]
+    
+    // Add text to the PDF
+    const { rgb } = await import('pdf-lib')
+    
+    // Define positions (adjust these based on your template layout)
+    const positions = {
+      academicYear: { x: 50, y: 750 },
+      term: { x: 150, y: 750 },
+      studentNo: { x: 50, y: 710 },
+      studentName: { x: 150, y: 710 },
+      courseCode: { x: 50, y: 670 },
+      courseTitle: { x: 150, y: 670 },
+      originalGrade: { x: 50, y: 630 },
+      newGrade: { x: 150, y: 630 },
+      reasonTypeConversion: { x: 50, y: 590 },
+      reasonTypeMakeup: { x: 50, y: 575 },
+      reasonTypeSupplementary: { x: 50, y: 560 },
+      reasonTypeReview: { x: 50, y: 545 },
+      reasonTypeAppeal: { x: 50, y: 530 },
+      reasonTypeOthers: { x: 50, y: 515 },
+      reasonDetails: { x: 50, y: 490 },
+      appealGrounds: { x: 50, y: 460 },
+      appealDetails: { x: 50, y: 430 },
+      instructorName: { x: 50, y: 400 },
+      instructorSignature: { x: 50, y: 370, width: 100, height: 30 },
+      instructorDate: { x: 150, y: 370 },
+      department: { x: 50, y: 340 },
+      departmentHeadName: { x: 150, y: 340 },
+      departmentHeadSignature: { x: 50, y: 310, width: 100, height: 30 },
+      departmentHeadDate: { x: 150, y: 310 },
+      registrarSignature: { x: 50, y: 280, width: 100, height: 30 },
+      registrarDate: { x: 150, y: 280 }
+    }
+    
+    // Helper function to add field
+    const addField = (fieldData, fieldKey) => {
+      if (fieldData && positions[fieldKey]) {
+        firstPage.drawText(String(fieldData), { 
+          x: positions[fieldKey].x, 
+          y: positions[fieldKey].y,
+          size: 10,
+          color: rgb(0, 0, 0)
+        })
+      }
+    }
+    
+    // Helper function to add signature image
+    const addSignature = async (signatureData, positionKey) => {
+      if (!signatureData || !positions[positionKey]) return
+      
+      try {
+        const signatureImage = await pdfDoc.embedPng(signatureData)
+        const pos = positions[positionKey]
+        firstPage.drawImage(signatureImage, {
+          x: pos.x,
+          y: pos.y - pos.height,
+          width: pos.width,
+          height: pos.height
+        })
+      } catch (e) {
+        console.warn('Could not embed signature:', e)
+      }
+    }
+    
+    // Helper function to draw checkbox
+    const drawCheckbox = (x, y, isChecked, size = 3) => {
+      // Draw box outline
+      firstPage.drawRectangle({
+        x: x,
+        y: y - size,
+        width: size * 2,
+        height: size * 2,
+        borderColor: rgb(0, 0, 0),
+        borderWidth: 0.5
+      })
+      
+      // Draw checkmark if checked
+      if (isChecked) {
+        firstPage.drawText('✓', {
+          x: x + 1,
+          y: y - 1,
+          size: 8,
+          color: rgb(0, 0, 0)
+        })
+      }
+    }
+    
+    // Add all text fields
+    addField(data.academicYear, 'academicYear')
+    addField(data.term, 'term')
+    addField(data.studentNo, 'studentNo')
+    addField(data.studentName, 'studentName')
+    addField(data.courseCode, 'courseCode')
+    addField(data.courseTitle, 'courseTitle')
+    addField(data.originalGrade, 'originalGrade')
+    addField(data.newGrade, 'newGrade')
+    addField(data.reasonDetails, 'reasonDetails')
+    addField(data.appealGrounds, 'appealGrounds')
+    addField(data.appealDetails, 'appealDetails')
+    addField(data.instructorName, 'instructorName')
+    addField(data.instructorDate, 'instructorDate')
+    addField(data.department, 'department')
+    addField(data.departmentHeadName, 'departmentHeadName')
+    addField(data.departmentHeadDate, 'departmentHeadDate')
+    addField(data.registrarDate, 'registrarDate')
+    
+    // Add signatures
+    await addSignature(data.instructorSignature, 'instructorSignature')
+    await addSignature(data.departmentHeadSignature, 'departmentHeadSignature')
+    await addSignature(data.registrarSignature, 'registrarSignature')
+    
+    // Draw checkboxes for reason types
+    const reasonType = data.reasonType.toLowerCase()
+    if (positions.reasonTypeConversion) {
+      drawCheckbox(positions.reasonTypeConversion.x, positions.reasonTypeConversion.y, reasonType === 'conversion')
+    }
+    if (positions.reasonTypeMakeup) {
+      drawCheckbox(positions.reasonTypeMakeup.x, positions.reasonTypeMakeup.y, reasonType === 'makeup')
+    }
+    if (positions.reasonTypeSupplementary) {
+      drawCheckbox(positions.reasonTypeSupplementary.x, positions.reasonTypeSupplementary.y, reasonType === 'supplementary')
+    }
+    if (positions.reasonTypeReview) {
+      drawCheckbox(positions.reasonTypeReview.x, positions.reasonTypeReview.y, reasonType === 'review')
+    }
+    if (positions.reasonTypeAppeal) {
+      drawCheckbox(positions.reasonTypeAppeal.x, positions.reasonTypeAppeal.y, reasonType === 'appeal')
+    }
+    if (positions.reasonTypeOthers) {
+      drawCheckbox(positions.reasonTypeOthers.x, positions.reasonTypeOthers.y, reasonType === 'others')
+    }
+    
+    // Save and download
+    const modifiedPdfBytes = await pdfDoc.save()
+    const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `Grade_Amendment_${data.studentNo || 'Form'}_${data.courseCode || ''}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+    
+  } catch (error) {
+    console.error('Error generating PDF from template:', error)
+    // Fallback to original jsPDF generation
+    const data = {
+      academicYear: amendment.academic_year || '',
+      term: amendment.term || '',
+      studentNo: amendment.student_no || amendment.student_id || '',
+      studentName: amendment.student_name || '',
+      courseCode: amendment.course_code || '',
+      courseTitle: amendment.course_title || '',
+      originalGrade: amendment.original_grade || '',
+      newGrade: amendment.new_grade || '',
+      reasonType: amendment.reason_type || '',
+      reasonDetails: amendment.reason_details || '',
+      appealGrounds: amendment.appeal_grounds || '',
+      appealDetails: amendment.appeal_details || '',
+      instructorName: amendment.instructor_name || '',
+      department: amendment.department || ''
+    }
+    const doc = generateGradeAmendmentPDF(data)
+    doc.save(`Grade_Amendment_${data.studentNo || 'Form'}_${data.courseCode || ''}.pdf`)
   }
-  const doc = generateGradeAmendmentPDF(data)
-  doc.save(`Grade_Amendment_${data.studentNo || 'Form'}_${data.courseCode || ''}.pdf`)
 }
