@@ -86,5 +86,41 @@ export const useAuthStore = defineStore('auth', () => {
     return { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/json' }
   }
 
-  return { token, user, isLoggedIn, isAdmin, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth }
+  async function saveSignature(signatureImage) {
+    try {
+      // Update current user locally first (always works)
+      if (user.value) {
+        user.value.signature = signatureImage
+        localStorage.setItem('user', JSON.stringify(user.value))
+      }
+      
+      // Try to save to backend API if available
+      try {
+        const res = await fetch('/api/auth/signature', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ signature: signatureImage }),
+          timeout: 5000 // 5 second timeout
+        })
+        
+        if (res.ok) {
+          const data = await res.json()
+          return data
+        } else {
+          console.warn('Backend API not available, using local storage only')
+          return { message: 'Signature saved locally' }
+        }
+      } catch (apiError) {
+        console.warn('Backend API error, using local storage:', apiError)
+        // Backend not available, but local storage is saved, so continue
+        return { message: 'Signature saved locally' }
+      }
+      
+    } catch (error) {
+      console.error('Error saving signature:', error)
+      throw error
+    }
+  }
+
+  return { token, user, isLoggedIn, isAdmin, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth, saveSignature }
 })

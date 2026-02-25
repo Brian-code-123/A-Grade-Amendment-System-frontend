@@ -48,6 +48,18 @@ const router = createRouter({
       name: 'feedback',
       component: () => import('@/views/FeedbackView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/signature-setup',
+      name: 'signature-setup',
+      component: () => import('@/views/SignatureSetupView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/pdf-calibration',
+      name: 'pdf-calibration',
+      component: () => import('@/views/PDFCalibrationView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })
