@@ -67,17 +67,6 @@ const helpContent = computed(() => {
       ]
     }
   }
-  if (path === '/feedback') {
-    return {
-      title: 'Feedback',
-      tips: [
-        'Select a category that best describes your feedback.',
-        'Provide a clear subject and detailed message.',
-        'Rate your experience using the star rating.',
-        'View your previous feedback in the history section.'
-      ]
-    }
-  }
   if (path === '/login') {
     return {
       title: 'Login / Register',
@@ -118,11 +107,6 @@ const helpContent = computed(() => {
               <span class="small">{{ tip }}</span>
             </li>
           </ul>
-        </div>
-        <div class="card-footer text-center">
-          <router-link to="/feedback" class="btn btn-sm btn-outline-primary" @click="isOpen = false">
-            <i class="bi bi-chat-dots"></i> Send Feedback
-          </router-link>
         </div>
       </div>
     </transition>
