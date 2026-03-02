@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
+import { sendSubmissionEmail } from '@/services/emailService'
 
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
@@ -14,6 +15,79 @@ const newDesc = ref('')
 const selectedAmendments = ref([])
 const successMsg = ref('')
 const errorMsg = ref('')
+const emailSending = ref(false)
+
+/* ── Batch selection for submissions ───────────────────────────── */
+const selectedSubIds = reactive([])
+
+const draftSubmissions = computed(() => subStore.submissions.filter(s => s.status === 'Draft'))
+
+const allDraftsSelected = computed(() => {
+  return draftSubmissions.value.length > 0 && draftSubmissions.value.every(s => selectedSubIds.includes(s._id))
+})
+
+function toggleSelectAllDrafts() {
+  if (allDraftsSelected.value) {
+    draftSubmissions.value.forEach(s => {
+      const idx = selectedSubIds.indexOf(s._id)
+      if (idx >= 0) selectedSubIds.splice(idx, 1)
+    })
+  } else {
+    draftSubmissions.value.forEach(s => {
+      if (!selectedSubIds.includes(s._id)) selectedSubIds.push(s._id)
+    })
+  }
+}
+
+function toggleSubSelect(id) {
+  const idx = selectedSubIds.indexOf(id)
+  idx >= 0 ? selectedSubIds.splice(idx, 1) : selectedSubIds.push(id)
+}
+
+const selectedDraftCount = computed(() => {
+  return selectedSubIds.filter(id => {
+    const s = subStore.submissions.find(s => s._id === id)
+    return s && s.status === 'Draft'
+  }).length
+})
+
+async function batchSubmitToAdmin() {
+  const ids = selectedSubIds.filter(id => {
+    const s = subStore.submissions.find(s => s._id === id)
+    return s && s.status === 'Draft'
+  })
+  if (ids.length === 0) { errorMsg.value = 'No draft submissions selected'; return }
+  if (!confirm(`Submit ${ids.length} submission(s) to admin for review? Email notifications will be sent.`)) return
+
+  emailSending.value = true
+  errorMsg.value = ''
+  let count = 0
+  for (const id of ids) {
+    try {
+      const submission = subStore.submissions.find(s => s._id === id)
+      if (!submission) continue
+
+      const amendments = (submission.amendment_ids || [])
+        .map(aid => amStore.amendments.find(a => a._id === aid))
+        .filter(Boolean)
+
+      await subStore.submitToAdmin(id)
+
+      try {
+        await sendSubmissionEmail(submission, amendments, auth.user)
+      } catch { /* email optional */ }
+
+      count++
+    } catch { /* continue */ }
+  }
+  selectedSubIds.splice(0)
+  emailSending.value = false
+  if (count > 0) {
+    successMsg.value = `${count} submission(s) submitted to admin successfully!`
+  } else {
+    errorMsg.value = 'Failed to submit any submissions'
+  }
+}
 
 const pendingAmendments = computed(() => {
   return amStore.amendments.filter(a => !a.submission_id && a.status === 'Pending')
@@ -42,12 +116,37 @@ async function createAndSubmit() {
 }
 
 async function submitToAdmin(id) {
-  if (!confirm('Submit to admin for review? This action cannot be undone.')) return
+  if (!confirm('Submit to admin for review? This will send an email notification to the admin (22240802@life.hkbu.edu.hk).')) return
+  emailSending.value = true
+  errorMsg.value = ''
   try {
+    // Get submission details
+    const submission = subStore.submissions.find(s => s._id === id)
+    if (!submission) throw new Error('Submission not found')
+
+    // Resolve amendment details for the email
+    const amendments = (submission.amendment_ids || [])
+      .map(aid => amStore.amendments.find(a => a._id === aid))
+      .filter(Boolean)
+
+    // Update submission status
     await subStore.submitToAdmin(id)
-    successMsg.value = 'Submitted to admin successfully. Email notification sent.'
+
+    // Send automated noreply email to admin
+    try {
+      const emailResult = await sendSubmissionEmail(submission, amendments, auth.user)
+      if (emailResult.demo) {
+        successMsg.value = 'Submitted to admin successfully! (Email logged — Azure not configured yet)'
+      } else {
+        successMsg.value = 'Submitted to admin successfully! Notification email sent to 22240802@life.hkbu.edu.hk'
+      }
+    } catch {
+      successMsg.value = 'Submitted to admin successfully. (Email notification failed — please notify admin manually)'
+    }
   } catch (e) {
     errorMsg.value = e.message
+  } finally {
+    emailSending.value = false
   }
 }
 
@@ -106,6 +205,35 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Batch submit toolbar -->
+    <div v-if="draftSubmissions.length > 0" class="card shadow-sm mb-3 border-0" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input" :checked="allDraftsSelected" @change="toggleSelectAllDrafts" />
+            <span class="fw-semibold small text-muted">
+              <i class="bi bi-send-check me-1"></i>Select draft submissions for batch submit
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span v-if="selectedDraftCount > 0" class="badge bg-dark rounded-pill px-3 py-2">
+              <i class="bi bi-check2-square me-1"></i>{{ selectedDraftCount }} selected
+            </span>
+            <button
+              v-if="selectedDraftCount > 0"
+              class="btn btn-sm btn-success rounded-pill px-3"
+              @click="batchSubmitToAdmin"
+              :disabled="emailSending"
+            >
+              <span v-if="emailSending" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-send-fill me-1"></i>
+              Submit {{ selectedDraftCount }} to Admin
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Submissions List -->
     <div class="card shadow-sm">
       <div class="card-body p-0">
@@ -115,6 +243,7 @@ onMounted(() => {
           <table class="table table-hover mb-0">
             <thead>
               <tr>
+                <th style="width:40px"></th>
                 <th>Title</th>
                 <th>Status</th>
                 <th>Amendments</th>
@@ -123,7 +252,16 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in subStore.submissions" :key="s._id">
+              <tr v-for="s in subStore.submissions" :key="s._id" :class="{ 'table-active': selectedSubIds.includes(s._id) }">
+                <td>
+                  <input
+                    v-if="s.status === 'Draft'"
+                    type="checkbox"
+                    class="form-check-input"
+                    :checked="selectedSubIds.includes(s._id)"
+                    @change="toggleSubSelect(s._id)"
+                  />
+                </td>
                 <td>
                   <div class="fw-semibold">{{ s.title }}</div>
                   <div class="text-muted small">{{ s.description }}</div>
@@ -132,8 +270,9 @@ onMounted(() => {
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
-                  <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)">
-                    <i class="bi bi-send"></i> Submit to Admin
+                  <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending">
+                    <span v-if="emailSending" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="bi bi-send"></i> Submit to Admin
                   </button>
                   <span v-else-if="s.status === 'Submitted'" class="text-muted small">Awaiting review</span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>

@@ -55,12 +55,6 @@ const router = createRouter({
       component: () => import('@/views/SignatureSetupView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/pdf-calibration',
-      name: 'pdf-calibration',
-      component: () => import('@/views/PDFCalibrationView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
-    }
   ]
 })
 

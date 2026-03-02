@@ -1,20 +1,29 @@
-module.exports = {
-  root: true,
-  env: {
-    node: true,
-    browser: true
+import js from '@eslint/js'
+import pluginVue from 'eslint-plugin-vue'
+import globals from 'globals'
+
+export default [
+  {
+    name: 'app/files-to-lint',
+    files: ['**/*.{js,mjs,cjs,vue}']
   },
-  extends: [
-    'plugin:vue/vue3-essential',
-    'eslint:recommended'
-  ],
-  parserOptions: {
-    ecmaVersion: 2020,
-    sourceType: 'module'
+  {
+    name: 'app/files-to-ignore',
+    ignores: ['**/dist/**', '**/node_modules/**']
   },
-  rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-    'vue/multi-word-component-names': 'off'
+  js.configs.recommended,
+  ...pluginVue.configs['flat/essential'],
+  {
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-console': 'off',
+      'no-debugger': 'warn',
+      'vue/multi-word-component-names': 'off'
+    }
   }
-}
+]
