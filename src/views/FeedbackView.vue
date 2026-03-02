@@ -18,12 +18,33 @@ const form = ref({
 const categories = ['General', 'Bug Report', 'Feature Request', 'UI/UX', 'Performance', 'Other']
 const hoverRating = ref(0)
 
+const isDemoUser = () => auth.token?.startsWith('demo_token_')
+
+// Demo feedback history
+const DEMO_FEEDBACKS = [
+  { _id: 'df1', subject: 'Great system!', message: 'The grade amendment workflow is very smooth and intuitive.', category: 'General', rating: 5, created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString() },
+  { _id: 'df2', subject: 'Dark mode suggestion', message: 'Would be nice to have a darker contrast option for the tables.', category: 'UI/UX', rating: 4, created_at: new Date(Date.now() - 7*24*60*60*1000).toISOString() }
+]
+
 async function submitFeedback() {
   errorMsg.value = ''
   if (!form.value.subject || !form.value.message) {
     errorMsg.value = 'Subject and message are required'
     return
   }
+
+  // Demo mode — save locally
+  if (isDemoUser()) {
+    feedbacks.value.unshift({
+      _id: 'df_' + Date.now(),
+      ...form.value,
+      created_at: new Date().toISOString()
+    })
+    successMsg.value = 'Feedback submitted successfully!'
+    form.value = { category: 'General', subject: '', message: '', rating: 0 }
+    return
+  }
+
   try {
     const res = await fetch('/api/feedback', {
       method: 'POST',
@@ -42,6 +63,11 @@ async function submitFeedback() {
 
 async function fetchFeedbacks() {
   loading.value = true
+  if (isDemoUser()) {
+    feedbacks.value = DEMO_FEEDBACKS
+    loading.value = false
+    return
+  }
   try {
     const res = await fetch('/api/feedback', { headers: auth.authHeaders() })
     if (res.ok) feedbacks.value = await res.json()
