@@ -206,10 +206,14 @@ export const useSubmissionStore = defineStore('submission', () => {
 
     try {
       let url = '/api/submissions'
-      if (query) {
-        const params = new URLSearchParams(query)
-        url += '?' + params.toString()
+      const params = new URLSearchParams(query || {})
+      // Ensure we fetch all statuses including Draft
+      if (!params.has('status')) {
+        params.append('includeAll', 'true')
       }
+      const queryString = params.toString()
+      if (queryString) url += '?' + queryString
+      
       const res = await fetch(url, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch submissions')
       submissions.value = await res.json()
@@ -263,6 +267,12 @@ export const useSubmissionStore = defineStore('submission', () => {
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Failed to create submission')
+    
+    // Add newly created draft submission to the store immediately
+    if (result && result.status === 'Draft') {
+      submissions.value.unshift(result)
+    }
+    
     return result
   }
 
