@@ -60,6 +60,12 @@ const router = createRouter({
       name: 'pdf-calibration',
       component: () => import('@/views/PDFCalibrationView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
@@ -68,13 +74,33 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || 'null')
 
+  // 如果需要認證但沒有token，重定向到登入
   if (to.meta.requiresAuth && !token) {
     next('/login')
-  } else if (to.meta.requiresAdmin && user?.role !== 'admin') {
-    next('/')
-  } else {
-    next()
+    return
   }
+
+  // 如果需要admin但用戶不是admin，重定向到首頁
+  if (to.meta.requiresAdmin && user?.role !== 'admin') {
+    next('/')
+    return
+  }
+
+  // 檢查簽名設定 - 如果用戶已登入但未設定簽名，且不在profile頁面或login頁面，則導向profile
+  if (
+    token &&
+    user &&
+    !user.signature &&
+    to.name !== 'profile' &&
+    to.name !== 'login' &&
+    to.name !== 'auth-callback' &&
+    to.meta.requiresAuth
+  ) {
+    next('/profile')
+    return
+  }
+
+  next()
 })
 
 export default router
