@@ -44,6 +44,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/pdf-editor',
+      name: 'pdf-editor',
+      component: () => import('@/views/PDFEditorView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/feedback',
       name: 'feedback',
       component: () => import('@/views/FeedbackView.vue'),
@@ -56,10 +62,10 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/pdf-calibration',
-      name: 'pdf-calibration',
-      component: () => import('@/views/PDFCalibrationView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      path: '/pdf-editor',
+      name: 'pdf-editor',
+      component: () => import('@/views/PDFEditorView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/profile',

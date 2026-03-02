@@ -16,11 +16,22 @@ const loginForm = ref({ email: '', password: '' })
 const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Programme Director' })
 
 function demoLogin() {
-  const demoToken = 'demo_token_' + Date.now()
+  const demoToken = 'demo_token_admin_' + Date.now()
   const demoUser = {
     email: '22240802@life.hkbu.edu.hk',
     name: 'Admin User',
     role: 'admin'
+  }
+  auth.setAuth(demoToken, demoUser)
+  router.push('/')
+}
+
+function demoLoginPD() {
+  const demoToken = 'demo_token_pd_' + Date.now()
+  const demoUser = {
+    email: 'martin.choy@hkbu.edu.hk',
+    name: 'Dr. Martin Choy',
+    role: 'Programme Director'
   }
   auth.setAuth(demoToken, demoUser)
   router.push('/')
@@ -88,9 +99,13 @@ async function handleRegister() {
           <div class="glass-card">
 
             <!-- Demo quick login -->
-            <button class="btn-demo w-100 mb-4" @click="demoLogin">
+            <button class="btn-demo w-100 mb-2" @click="demoLogin">
               <i class="bi bi-lightning-charge me-2"></i>
-              Quick Demo Access
+              Quick Demo — Admin
+            </button>
+            <button class="btn-demo btn-demo-pd w-100 mb-4" @click="demoLoginPD">
+              <i class="bi bi-person-badge me-2"></i>
+              Quick Demo — Programme Director
             </button>
 
             <!-- Tabs -->
@@ -152,7 +167,7 @@ async function handleRegister() {
           </div><!-- /glass-card -->
 
           <div class="text-center mt-3">
-            <small class="text-muted opacity-75">Hong Kong Baptist University &copy; 2025</small>
+            <small class="text-muted opacity-75">Hong Kong Baptist University &copy; 2026</small>
           </div>
 
         </div>
@@ -311,6 +326,26 @@ async function handleRegister() {
 [data-bs-theme="dark"] .btn-demo:hover {
   background: linear-gradient(135deg, rgba(0,180,216,0.22), rgba(0,144,184,0.18));
   border-color: rgba(0,180,216,0.5);
+}
+
+/* PD demo button accent */
+.btn-demo-pd {
+  background: linear-gradient(135deg, rgba(25,135,84,0.12), rgba(40,167,69,0.10));
+  border-color: rgba(25,135,84,0.30);
+  color: #198754;
+}
+.btn-demo-pd:hover {
+  background: linear-gradient(135deg, rgba(25,135,84,0.22), rgba(40,167,69,0.18));
+  border-color: rgba(25,135,84,0.5);
+}
+[data-bs-theme="dark"] .btn-demo-pd {
+  border-color: rgba(40,167,69,0.30);
+  color: #5dd39e;
+  background: linear-gradient(135deg, rgba(40,167,69,0.12), rgba(25,135,84,0.10));
+}
+[data-bs-theme="dark"] .btn-demo-pd:hover {
+  background: linear-gradient(135deg, rgba(40,167,69,0.22), rgba(25,135,84,0.18));
+  border-color: rgba(40,167,69,0.5);
 }
 
 /* Primary button */
