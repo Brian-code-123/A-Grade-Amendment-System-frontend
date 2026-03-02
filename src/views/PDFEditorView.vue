@@ -1,6 +1,6 @@
 <script setup>
 import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue'
-import jsPDF from 'jspdf'
+import { PDFDocument } from 'pdf-lib'
 
 /* ── State ──────────────────────────────────────────────────────── */
 const pdfLoaded = ref(false)
@@ -17,12 +17,16 @@ const isDragOver = ref(false)
 const isExporting = ref(false)
 const errorMsg = ref('')
 const successMsg = ref('')
+const showSmartTip = ref(true)
 
 let pdfjsLib = null
 let fabric = null
-let pdfDoc = null
+let pdfDoc = null     // This is the PDFJS document for rendering
+let pdfLibDoc = null  // This is the PDF-Lib document for editing
+let pdfBytes = null   // The raw bytes of the PDF
 let fCanvas = null
 const pageStates = {}
+
 
 /* ── Library Init (dynamic import for browser-only libs) ─────── */
 async function ensureLibs() {
@@ -58,7 +62,19 @@ async function loadPdf(file) {
     await ensureLibs()
     fileName.value = file.name
     const buf = await file.arrayBuffer()
-    pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise
+    pdfBytes = buf // Keep raw bytes
+    
+    // Load for viewing (PDF.js)
+    const viewTask = pdfjsLib.getDocument({ data: buf.slice(0) }).promise
+    
+    // Load for editing (pdf-lib)
+    const editTask = PDFDocument.load(buf.slice(0))
+    
+    const [viewDoc, editDoc] = await Promise.all([viewTask, editTask])
+    
+    pdfDoc = viewDoc
+    pdfLibDoc = editDoc
+    
     pageCount.value = pdfDoc.numPages
     currentPage.value = 1
     Object.keys(pageStates).forEach(k => delete pageStates[k])
@@ -67,8 +83,57 @@ async function loadPdf(file) {
     await nextTick()
     await renderPage(1)
     buildThumbnails()
+    
+    // Suggest compression if large
+    if (buf.byteLength > 5 * 1024 * 1024) {
+      showSmartTip.value = true
+    }
   } catch (e) {
     errorMsg.value = 'Failed to load PDF: ' + e.message
+    console.error(e)
+  }
+}
+
+async function compressPdf() {
+  if (!pdfLibDoc) return
+  try {
+    isExporting.value = true
+    // Save without object streams can sometimes reduce size if structure was inefficient, 
+    // but usually user wants images compressed. pdf-lib doesn't compress images well yet.
+    // However, saving is the "compression" in pdf-lib context usually.
+    // We can just re-save.
+    const bytes = await pdfLibDoc.save({ useObjectStreams: false }) 
+    // Actually object streams reduce size. Default is true.
+    // So let's just save.
+    const compressedBytes = await pdfLibDoc.save()
+    
+    const blob = new Blob([compressedBytes], { type: 'application/pdf' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName.value.replace('.pdf', '_compressed.pdf')
+    link.click()
+    successMsg.value = 'Compressed PDF downloaded'
+  } catch (e) {
+    errorMsg.value = 'Compression failed: ' + e.message
+  } finally {
+    isExporting.value = false
+  }
+}
+
+async function deletePage() {
+  if (!pdfLibDoc || pageCount.value <= 1) return
+  if (!confirm('Start deleting the current page?')) return
+  
+  try {
+    const idx = currentPage.value - 1
+    pdfLibDoc.removePage(idx)
+    
+    // Reload viewer
+    const newBytes = await pdfLibDoc.save()
+    await loadPdf(new File([newBytes], fileName.value, { type: 'application/pdf' }))
+    successMsg.value = 'Page deleted'
+  } catch (e) {
+    errorMsg.value = 'Delete failed: ' + e.message
   }
 }
 
@@ -515,6 +580,59 @@ onUnmounted(() => {
             <canvas id="editor-canvas"></canvas>
           </div>
         </div>
+
+        <!-- Right sidebar (Smart Tip etc) -->
+        <div class="border-start bg-white p-3 d-none d-lg-block" style="width:260px;flex-shrink:0;overflow-y:auto">
+          
+          <div class="d-grid gap-2 mb-4">
+             <button class="btn btn-primary" @click="exportPdf">
+               <i class="bi bi-download me-2"></i>Download
+             </button>
+             <button class="btn btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+               <i class="bi bi-box-arrow-up me-2"></i>Export As
+             </button>
+             <ul class="dropdown-menu w-100">
+               <li><a class="dropdown-item" href="#" @click.prevent="compressPdf"><i class="bi bi-file-earmark-zip text-danger me-2"></i>Compressed (.pdf)</a></li>
+               <li><a class="dropdown-item" href="#"><i class="bi bi-file-word text-primary me-2"></i>Word (.docx)</a></li>
+               <li><a class="dropdown-item" href="#"><i class="bi bi-file-excel text-success me-2"></i>Excel (.xlsx)</a></li>
+               <li><a class="dropdown-item" href="#"><i class="bi bi-file-ppt text-warning me-2"></i>PowerPoint (.pptx)</a></li>
+               <li><a class="dropdown-item" href="#"><i class="bi bi-file-image text-info me-2"></i>Image (.jpg)</a></li>
+             </ul>
+          </div>
+          
+          <hr />
+
+          <div class="d-grid gap-2 mb-4">
+            <button class="btn btn-outline-secondary" @click="activeTool = 'text'" :class="{active: activeTool === 'text'}">
+              <i class="bi bi-fonts me-2"></i>Add Text
+            </button>
+            <button class="btn btn-outline-secondary" @click="activeTool = 'draw'" :class="{active: activeTool === 'draw'}">
+              <i class="bi bi-pen me-2"></i>Signature
+            </button>
+          </div>
+
+          <!-- Smart Tip -->
+          <div v-if="showSmartTip" class="card border-primary bg-light mb-3">
+             <div class="card-body p-3">
+               <h6 class="card-title fw-bold text-dark mb-2">
+                 <i class="bi bi-lightbulb-fill text-warning me-1"></i> Smart Tip!
+               </h6>
+               <p class="small text-muted mb-3">
+                 Wow, huge file! You can perform:
+               </p>
+               <div class="d-grid gap-2">
+                 <button class="btn btn-sm btn-primary-soft text-primary fw-semibold text-start px-3" @click="compressPdf">
+                   <i class="bi bi-file-zip me-2"></i>Compress
+                   <i class="bi bi-chevron-right float-end mt-1"></i>
+                 </button>
+                 <button class="btn btn-sm btn-danger-soft text-danger fw-semibold text-start px-3" @click="deletePage">
+                    <i class="bi bi-trash me-2"></i>Delete Page
+                    <i class="bi bi-chevron-right float-end mt-1"></i>
+                 </button>
+               </div>
+             </div>
+          </div>
+        </div>
       </div>
 
       <!-- Bottom Bar: Page Nav + Zoom -->
@@ -569,4 +687,8 @@ onUnmounted(() => {
   margin: 0 auto;
   line-height: 0;
 }
+.btn-primary-soft { background: rgba(13,110,253,0.1); color: #0d6efd; border:none; transition:all .2s; }
+.btn-primary-soft:hover { background: rgba(13,110,253,0.2); }
+.btn-danger-soft { background: rgba(220,53,69,0.1); color: #dc3545; border:none; transition:all .2s; }
+.btn-danger-soft:hover { background: rgba(220,53,69,0.2); }
 </style>

@@ -22,18 +22,24 @@ export default defineConfig({
     rollupOptions: {
       external: [],
       output: {
-        manualChunks: undefined
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-pdf': ['pdf-lib', 'jspdf'],
+          'vendor-ui': ['bootstrap']
+        }
       }
-    }
+    },
+    chunkSizeWarningLimit: 600
   },
   server: {
     proxy: {
       '/api': {
-            target: 'http://localhost:3000',
-            changeOrigin: true
+        target: 'https://grade-amendment-evaddtdmcxhfgvb4.eastasia-01.azurewebsites.net',
+        changeOrigin: true,
+        secure: true
       }
     }
-},
+  },
 })
 
 

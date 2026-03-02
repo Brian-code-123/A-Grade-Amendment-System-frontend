@@ -261,7 +261,7 @@ function handleLogout() {
   border-radius: 8px;
   padding: 0.45rem 0.9rem;
   font-weight: 500;
-  font-size: 1.08rem;
+  font-size: 0.97rem;
   transition: background 0.18s, color 0.18s;
 }
 .navbar-light .nav-tab:hover {
