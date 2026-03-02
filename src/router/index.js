@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,7 +6,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: () => import('@/views/HomeView.vue')
     },
     {
       path: '/login',
@@ -59,12 +58,6 @@ const router = createRouter({
       path: '/signature-setup',
       name: 'signature-setup',
       component: () => import('@/views/SignatureSetupView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/pdf-editor',
-      name: 'pdf-editor',
-      component: () => import('@/views/PDFEditorView.vue'),
       meta: { requiresAuth: true }
     },
     {

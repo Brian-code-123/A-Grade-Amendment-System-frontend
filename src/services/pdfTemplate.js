@@ -5,8 +5,25 @@
  */
 import { jsPDF } from 'jspdf'
 import { useAuthStore } from '@/stores/authStore'
+import { PDFDocument } from 'pdf-lib'
 
-/* ── Drawing helpers ─────────────────────────────────────────────── */
+/* ── PDF-Lib Helper for Template Download ────────────────────────── */
+export async function downloadTemplate() {
+  try {
+    const existingPdfBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+    const blob = new Blob([existingPdfBytes], { type: 'application/pdf' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'form.pdf'
+    link.click()
+  } catch (e) {
+    console.error('Error downloading template:', e)
+    alert('Failed to download form.pdf from server root.')
+  }
+}
+
+
+/* ── Drawing helpers (jsPDF) ─────────────────────────────────────── */
 
 function box(doc, x, y, w, h) {
   doc.setDrawColor(0)
@@ -48,6 +65,7 @@ function field(doc, label, x, y, endX, value) {
 /* ── Signature background removal ────────────────────────────────
  *  Takes a data URL (PNG from signature_pad) and returns a new
  *  data URL with white/light background pixels made transparent.
+
  *  Only dark signature strokes remain.
  * ─────────────────────────────────────────────────────────────── */
 export function removeSignatureBackground(dataUrl) {
@@ -604,14 +622,6 @@ export function generateGradeAmendmentPDF(data = {}) {
   doc.text('Last modified: Dec 2025', M, y)
 
   return doc
-}
-
-/**
- * Download the Grade Amendment Form template as PDF
- */
-export function downloadTemplate(data = {}) {
-  const doc = generateGradeAmendmentPDF(data)
-  doc.save('Grade Amendments.pdf')
 }
 
 /**
