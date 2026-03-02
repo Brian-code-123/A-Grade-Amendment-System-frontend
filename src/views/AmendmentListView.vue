@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { downloadTemplate, downloadFilledForm } from '@/services/pdfTemplate'
@@ -171,6 +171,16 @@ const reasonLabel = (type) => {
   const found = REASON_OPTIONS.find(r => r.value === type)
   return found ? found.label : type || '-'
 }
+
+// Filter amendments based on user role
+const filteredAmendments = computed(() => {
+  // For admin users, exclude draft status amendments
+  if (auth.user?.role === 'admin') {
+    return store.amendments.filter(amendment => amendment.status !== 'Draft')
+  }
+  // For non-admin users, show all amendments
+  return store.amendments
+})
 
 onMounted(() => store.fetchAmendments())
 </script>
@@ -532,7 +542,7 @@ onMounted(() => store.fetchAmendments())
     <div class="card">
       <div class="card-body p-0">
         <div v-if="store.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
-        <div v-else-if="store.amendments.length === 0" class="text-center text-muted py-4">No amendments found. Create one above.</div>
+        <div v-else-if="filteredAmendments.length === 0" class="text-center text-muted py-4">No amendments found. Create one above.</div>
         <div v-else class="table-responsive">
           <table class="table table-hover mb-0 align-middle">
             <thead>
@@ -548,7 +558,7 @@ onMounted(() => store.fetchAmendments())
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in store.amendments" :key="a._id">
+              <tr v-for="a in filteredAmendments" :key="a._id">
                 <td class="small text-nowrap">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>

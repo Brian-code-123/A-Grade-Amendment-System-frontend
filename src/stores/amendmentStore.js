@@ -431,10 +431,14 @@ export const useAmendmentStore = defineStore('amendment', () => {
 
       // For real users, fetch from API
       let url = '/api/amendments'
-      if (query) {
-        const params = new URLSearchParams(query)
-        url += '?' + params.toString()
+      const params = new URLSearchParams(query || {})
+      // Ensure we fetch all statuses including Draft
+      if (!params.has('status')) {
+        params.append('includeAll', 'true')
       }
+      const queryString = params.toString()
+      if (queryString) url += '?' + queryString
+      
       const res = await fetch(url, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch amendments')
       amendments.value = await res.json()
@@ -468,6 +472,8 @@ export const useAmendmentStore = defineStore('amendment', () => {
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Failed to create amendment')
+    
+    // Add newly created amendment to the store immediately
     amendments.value.unshift(result)
     return result
   }

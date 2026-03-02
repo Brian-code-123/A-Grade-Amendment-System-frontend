@@ -14,9 +14,6 @@
         ref="signatureCanvas"
         class="w-100 bg-white border rounded"
         style="cursor: crosshair; touch-action: none; display: block; max-width: 100%;"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
       ></canvas>
     </div>
 
@@ -36,10 +33,10 @@
       </button>
       <button
         type="button"
-        class="btn btn-sm btn-outline-info"
-        @click="undoSignature"
+        class="btn btn-sm btn-outline-success"
+        @click="updatePreview"
       >
-        <i class="bi bi-arrow-left me-1"></i>Undo
+        <i class="bi bi-check-lg me-1"></i>Confirm
       </button>
     </div>
 
@@ -58,7 +55,7 @@
         type="button"
         class="btn btn-primary flex-grow-1"
         @click="confirmSignature"
-        :disabled="!isSignatureValid"
+        :disabled="!isSignatureValid && !signaturePreview"
       >
         <i class="bi bi-check-circle me-1"></i>Confirm Signature
       </button>
@@ -96,7 +93,7 @@ const hasValidationError = ref(false)
 const validationError = ref('')
 
 // 計算屬性
-const isSignatureValid = ref(false)
+const isSignatureValid = ref(!!props.existingSignature) // Start as true if existing signature exists
 
 // 生命週期
 onMounted(async () => {
@@ -137,21 +134,29 @@ const initSignaturePad = () => {
     hasValidationError.value = false
   })
 
-  signatureCanvas.value.addEventListener('mouseup', checkSignatureValidity)
-  signatureCanvas.value.addEventListener('touchend', checkSignatureValidity)
-}
+  signatureCanvas.value.addEventListener('mouseup', () => {
+    setTimeout(checkSignatureValidity, 50) // Small delay to ensure stroke is complete
+  })
+  
+  signatureCanvas.value.addEventListener('touchstart', (e) => {
+    e.preventDefault()
+    hasValidationError.value = false
+  })
+  
+  signatureCanvas.value.addEventListener('touchmove', (e) => {
+    e.preventDefault()
+  })
+  
+  signatureCanvas.value.addEventListener('touchend', (e) => {
+    e.preventDefault()
+    setTimeout(checkSignatureValidity, 50) // Small delay to ensure stroke is complete
+  })
 
-const handleTouchStart = (e) => {
-  e.preventDefault()
-}
-
-const handleTouchMove = (e) => {
-  e.preventDefault()
-}
-
-const handleTouchEnd = (e) => {
-  e.preventDefault()
-  checkSignatureValidity()
+  // If editing existing signature, ensure it's loaded and valid
+  if (props.existingSignature) {
+    signaturePreview.value = props.existingSignature
+    isSignatureValid.value = true
+  }
 }
 
 const checkSignatureValidity = () => {
@@ -159,9 +164,12 @@ const checkSignatureValidity = () => {
   
   const isEmpty = signaturePad.isEmpty()
   isSignatureValid.value = !isEmpty
+  hasValidationError.value = false // Clear any validation errors
   
   if (!isEmpty) {
     updatePreview()
+  } else {
+    signaturePreview.value = null
   }
 }
 
@@ -192,6 +200,12 @@ const undoSignature = () => {
 }
 
 const confirmSignature = () => {
+  // If there's a preview, use it; otherwise check if signature pad has valid signature
+  if (signaturePreview.value) {
+    emit('signature-confirmed', signaturePreview.value)
+    return
+  }
+  
   if (!isSignatureValid.value) {
     hasValidationError.value = true
     validationError.value = 'Please draw your signature'
