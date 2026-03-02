@@ -99,14 +99,21 @@ function handleLogout() {
               </ul>
             </li>
 
-            <!-- 3. Feedback -->
+            <!-- 3. PDF Editor -->
+            <li class="nav-item">
+              <router-link class="nav-link nav-tab" to="/pdf-editor" active-class="active">
+                <i class="bi bi-pencil-square me-1"></i>PDF Editor
+              </router-link>
+            </li>
+
+            <!-- 4. Feedback -->
             <li class="nav-item">
               <router-link class="nav-link nav-tab" to="/feedback" active-class="active">
                 <i class="bi bi-chat-dots me-1"></i>Feedback
               </router-link>
             </li>
 
-            <!-- 4. Admin (admin role only) -->
+            <!-- 5. Admin (admin role only) -->
             <li class="nav-item" v-if="auth.isAdmin">
               <router-link class="nav-link nav-tab" to="/admin" active-class="active">
                 <i class="bi bi-shield-lock me-1"></i>Admin
