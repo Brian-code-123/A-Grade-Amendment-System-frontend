@@ -2,7 +2,6 @@
 import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { getMsalInstance, loginRequest } from '@/auth/msalConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -10,30 +9,7 @@ const auth = useAuthStore()
 const error = ref('')
 
 onMounted(async () => {
-  // First try MSAL redirect handling
-  try {
-    const msalInstance = getMsalInstance()
-    await msalInstance.initialize()
-    const response = await msalInstance.handleRedirectPromise()
-    if (response && response.account) {
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        ...loginRequest,
-        account: response.account
-      })
-      const msalUser = {
-        email: response.account.username,
-        name: response.account.name || response.account.username,
-        role: 'admin'
-      }
-      auth.setAuth(tokenResponse.accessToken, msalUser)
-      router.replace('/')
-      return
-    }
-  } catch (e) {
-    console.warn('MSAL redirect handling:', e.message)
-  }
-
-  // Fallback: try query params (backend OAuth callback)
+  // Handle token-based OAuth callback (backend redirect)
   const token = route.query.token
   const userParam = route.query.user
 
@@ -48,7 +24,8 @@ onMounted(async () => {
   } else if (route.query.error) {
     error.value = route.query.error || 'Authentication failed'
   } else {
-    error.value = 'No authentication token received'
+    // Nothing useful here — redirect to login
+    router.replace('/login')
   }
 })
 </script>
