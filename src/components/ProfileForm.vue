@@ -261,7 +261,8 @@ const hasChanges = computed(() => {
 })
 
 const hasErrors = computed(() => {
-  return Object.keys(errors.value).length > 0 || !formData.value.signature
+  // Only check for validation errors, not missing signature since signature is handled separately
+  return Object.keys(errors.value).some(key => key !== 'signature' && errors.value[key])
 })
 
 // 監聽props變化
@@ -344,6 +345,9 @@ const handleSave = () => {
   
   if (!formData.value.signature) {
     errors.value.signature = 'Signature is required'
+    return
+  } else {
+    delete errors.value.signature // Clear signature error if signature exists
   }
   
   if (Object.keys(errors.value).length === 0) {
