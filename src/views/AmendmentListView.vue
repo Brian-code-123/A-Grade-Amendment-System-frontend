@@ -10,6 +10,8 @@ const auth = useAuthStore()
 
 const showForm = ref(false)
 const editingId = ref(null)
+const courseCodeFilter = ref('')
+const statusFilter = ref('')
 
 const VALID_GRADES = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','I','NR','PR','YR','W','P','NP']
 
@@ -172,14 +174,39 @@ const reasonLabel = (type) => {
   return found ? found.label : type || '-'
 }
 
-// Filter amendments based on user role
+// Get unique status options for filter dropdown
+const statusOptions = computed(() => {
+  const statuses = [...new Set(store.amendments.map(a => a.status).filter(Boolean))]
+  return statuses.sort()
+})
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return courseCodeFilter.value || statusFilter.value
+})
+
+// Filter amendments based on user role and search filters
 const filteredAmendments = computed(() => {
+  let amendmentList = store.amendments
+  
   // For admin users, exclude draft status amendments
   if (auth.user?.role === 'admin') {
-    return store.amendments.filter(amendment => amendment.status !== 'Draft')
+    amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
   }
-  // For non-admin users, show all amendments
-  return store.amendments
+  
+  // Apply course code filter if search term exists
+  if (courseCodeFilter.value) {
+    amendmentList = amendmentList.filter(amendment => 
+      amendment.course_code?.toLowerCase().includes(courseCodeFilter.value.toLowerCase())
+    )
+  }
+  
+  // Apply status filter if selected
+  if (statusFilter.value) {
+    amendmentList = amendmentList.filter(amendment => amendment.status === statusFilter.value)
+  }
+  
+  return amendmentList
 })
 
 onMounted(() => store.fetchAmendments())
@@ -196,6 +223,57 @@ onMounted(() => store.fetchAmendments())
         <button class="btn btn-primary btn-sm" @click="showForm = !showForm; if(!showForm) resetForm()">
           <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
         </button>
+      </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted">Search by Course Code</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input 
+            v-model="courseCodeFilter" 
+            type="text" 
+            class="form-control" 
+            placeholder="e.g. COMP3047"
+          />
+          <button 
+            v-if="courseCodeFilter" 
+            @click="courseCodeFilter = ''" 
+            class="btn btn-outline-secondary" 
+            type="button"
+          >
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted">Filter by Status</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+          <select v-model="statusFilter" class="form-select">
+            <option value="">All Statuses</option>
+            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+          </select>
+          <button 
+            v-if="statusFilter" 
+            @click="statusFilter = ''" 
+            class="btn btn-outline-secondary" 
+            type="button"
+          >
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+      <div v-if="hasActiveFilters" class="col-md-5 d-flex align-items-end">
+        <div class="alert alert-info mb-0 py-2 px-3 flex-grow-1">
+          <i class="bi bi-info-circle me-1"></i>
+          Showing {{ filteredAmendments.length }} of {{ store.amendments.length }} amendments
+          <button @click="courseCodeFilter = ''; statusFilter = ''" class="btn btn-sm btn-outline-primary ms-2">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Clear All
+          </button>
+        </div>
       </div>
     </div>
 
