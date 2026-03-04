@@ -62,14 +62,8 @@ async function loginWithHKBU() {
 }
 
 function demoLogin() {
-  const demoToken = 'demo_token_' + Date.now()
-  const demoUser = {
-    email: '22240802@life.hkbu.edu.hk',
-    name: 'Admin User',
-    role: 'admin'
-  }
-  auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  // 跳转到演示登录页面
+  router.push('/demo-login')
 }
 
 async function handleLogin() {
