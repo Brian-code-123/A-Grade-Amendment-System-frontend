@@ -15,6 +15,16 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue')
     },
     {
+      path: '/demo-login',
+      name: 'demo-login',
+      component: () => import('@/views/DemoLoginView.vue')
+    },
+    {
+      path: '/demo-verify',
+      name: 'demo-verify',
+      component: () => import('@/views/DemoVerifyView.vue')
+    },
+    {
       path: '/auth/callback',
       name: 'auth-callback',
       component: () => import('@/views/AuthCallbackView.vue')
