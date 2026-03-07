@@ -661,6 +661,168 @@ export async function downloadFilledForm(amendment) {
     endorsementDate: new Date().toLocaleDateString()
   }
 
-  const doc = generateGradeAmendmentPDF(data)
-  doc.save(`Grade Amendments.pdf`)
+  try {
+    // Try template-based PDF first
+    const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
+    const pdfBytes = await pdfDoc.save()
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (e) {
+    console.warn('Template-based export failed, falling back to generated PDF:', e.message)
+    // Fallback to original generated PDF
+    const doc = generateGradeAmendmentPDF(data)
+    doc.save(`Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`)
+  }
+}
+
+/**
+ * Generate Grade Amendment PDF using the template PDF as base
+ * Fills in data at exact coordinates provided
+ */
+async function generateGradeAmendmentPDFWithTemplate(data = {}) {
+  const { rgb } = await import('pdf-lib')
+  
+  // Load the template PDF
+  const templateBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+  const pdfDoc = await PDFDocument.load(templateBytes)
+
+  try {
+    const pages = pdfDoc.getPages()
+    const page1 = pages[0]
+
+    // Helper to draw text at exact coordinates
+    const drawField = (text, x, y, size = 10) => {
+      if (text === null || text === undefined || text === '') return
+      try {
+        page1.drawText(String(text), {
+          x,
+          y,
+          size,
+          color: rgb(0, 0, 0),
+        })
+      } catch (e) {
+        console.warn(`Failed to draw text at ${x}, ${y}:`, e.message)
+      }
+    }
+
+    // Helper to draw checkmark/tick at checkbox
+    const drawTick = (x, y) => {
+      try {
+        page1.drawText('V', {
+          x,
+          y,
+          size: 11,
+          color: rgb(0, 0, 0),
+        })
+      } catch (e) {
+        console.warn(`Failed to draw tick at ${x}, ${y}:`, e.message)
+      }
+    }
+
+    // Helper to add signature image
+    const addSignature = async (signatureDataUrl, x, y, width = 45, height = 18) => {
+      if (!signatureDataUrl) return
+      try {
+        const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
+        page1.drawImage(signatureImage, {
+          x,
+          y,
+          width,
+          height,
+        })
+      } catch (e) {
+        console.warn(`Failed to add signature at ${x}, ${y}:`, e.message)
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STUDENT INFORMATION (appears on both sides)
+    // ═══════════════════════════════════════════════════════════════
+    drawField(data.studentNo, 128, 705, 10)
+    drawField(data.studentName, 423, 704, 10)
+    if (data.courseCode || data.courseTitle) {
+      const courseText = data.courseCode && data.courseTitle 
+        ? `${data.courseCode} - ${data.courseTitle}`
+        : data.courseCode || ''
+      const truncated = courseText.length > 50 ? courseText.substring(0, 47) + '...' : courseText
+      drawField(truncated, 196, 686, 9)
+    }
+    drawField(data.originalGrade, 178, 667, 10)
+    drawField(data.newGrade, 415, 667, 10)
+
+    // ═══════════════════════════════════════════════════════════════
+    // LEFT SIDE - NON-APPEAL REASONS
+    // ═══════════════════════════════════════════════════════════════
+    if (data.reasonType !== 'appeal') {
+      // Reason checkboxes
+      if (data.reasonType === 'conversion') {
+        drawTick(29, 539)
+      } else if (data.reasonType === 'makeup') {
+        drawTick(29, 522)
+        drawField(data.reasonDetails, 35, 510, 9)
+      } else if (data.reasonType === 'supplementary') {
+        drawTick(29, 468)
+        drawField(data.reasonDetails, 35, 453, 9)
+      } else if (data.reasonType === 'review') {
+        drawTick(29, 412)
+        drawField(data.reasonDetails, 35, 382, 9)
+      } else if (data.reasonType === 'others') {
+        drawTick(29, 344)
+        drawField(data.reasonDetails, 35, 330, 9)
+      }
+
+      // Course Instructor Section (left side)
+      drawField(data.instructorName, 150, 291, 10)
+      drawField(data.department, 116, 275, 10)
+      // Signature @ 109,256
+      await addSignature(data.instructorSignature, 109, 256, 45, 18)
+      drawField(data.instructorDate, 111, 239, 10)
+
+      // Programme Director Section (left side)
+      drawField(data.endorserName, 70, 182, 10)
+      // Signature @ 70, 182
+      await addSignature(data.endorsementSignature, 70, 182, 45, 18)
+      drawField(data.endorsementDate, 110, 148, 10)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // RIGHT SIDE - APPEAL BY STUDENT
+    // ═══════════════════════════════════════════════════════════════
+    if (data.reasonType === 'appeal') {
+      // Appeal checkbox
+      drawTick(305, 539)
+
+      // Appeal grounds checkboxes
+      if (data.appealGrounds === 'Technical errors') {
+        drawTick(305, 504)
+      } else if (data.appealGrounds === 'Procedural faults') {
+        drawTick(380, 505)
+      }
+
+      // Appeal details
+      drawField(data.appealDetails, 306, 472, 9)
+
+      // Course Instructor Section (right side)
+      drawField(data.instructorName, 441, 420, 10)
+      drawField(data.department, 389, 401, 10)
+      // Signature @ 376,369
+      await addSignature(data.instructorSignature, 376, 369, 45, 18)
+      drawField(data.instructorDate, 375, 344, 10)
+
+      // Programme Director Section (right side)
+      drawField(data.endorserName, 327, 293, 10)
+      // Signature @ 327, 293
+      await addSignature(data.endorsementSignature, 327, 293, 45, 18)
+      drawField(data.endorsementDate, 356, 254, 10)
+    }
+
+    return pdfDoc
+  } catch (e) {
+    console.error('Error filling template PDF:', e)
+    throw e
+  }
 }
