@@ -209,7 +209,16 @@ const filteredAmendments = computed(() => {
   return amendmentList
 })
 
-onMounted(() => store.fetchAmendments())
+onMounted(async () => {
+  try {
+    await store.fetchAmendments()
+    if (store.error) {
+      errorMsg.value = 'Failed to load amendments: ' + store.error
+    }
+  } catch (err) {
+    errorMsg.value = 'Error loading amendments: ' + err.message
+  }
+})
 </script>
 
 <template>
@@ -219,8 +228,8 @@ onMounted(() => store.fetchAmendments())
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> Grade Amendments</h3>
       <div>
-        <button @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
-        <button class="btn btn-primary btn-sm" @click="showForm = !showForm; if(!showForm) resetForm()">
+        <button type="button" @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
+        <button type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
           <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
         </button>
       </div>
