@@ -3,7 +3,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
-import { generateGradeAmendmentPDF, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const subStore = useSubmissionStore()
@@ -138,15 +138,39 @@ async function handlePrint(id) {
       : null
 
     if (amendments.length === 1) {
-      const doc = generateGradeAmendmentPDF(buildPdfData(amendments[0], cleanSig))
-      const pdfBlob = doc.output('blob')
+      const pdfData = buildPdfData(amendments[0], cleanSig)
+      let doc
+      try {
+        const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+        doc = await pdfDocObj.save()
+      } catch (err) {
+        console.warn('Template PDF failed, using fallback:', err)
+        doc = generateGradeAmendmentPDF(pdfData).output('blob')
+      }
+      
+      const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
       const pdfUrl = URL.createObjectURL(pdfBlob)
       const w = window.open(pdfUrl, '_blank')
       if (w) w.addEventListener('load', () => w.print())
     } else {
       for (const a of amendments) {
-        const doc = generateGradeAmendmentPDF(buildPdfData(a, cleanSig))
-        doc.save(`Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`)
+        const pdfData = buildPdfData(a, cleanSig)
+        let doc
+        try {
+          const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+          doc = await pdfDocObj.save()
+        } catch (err) {
+          console.warn('Template PDF failed, using fallback:', err)
+          doc = generateGradeAmendmentPDF(pdfData).output('blob')
+        }
+        
+        const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+        const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(pdfBlob)
+        link.download = filename
+        link.click()
+        URL.revokeObjectURL(link.href)
       }
     }
     successMsg.value = `Printed ${amendments.length} Grade Amendment Form(s)`
@@ -193,8 +217,23 @@ async function batchPrint() {
       const sub = subStore.submissions.find(s => s._id === id)
       const amendments = resolveAmendmentsForSubmission(sub)
       for (const a of amendments) {
-        const doc = generateGradeAmendmentPDF(buildPdfData(a, cleanSig))
-        doc.save(`Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`)
+        const pdfData = buildPdfData(a, cleanSig)
+        let doc
+        try {
+          const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+          doc = await pdfDocObj.save()
+        } catch (err) {
+          console.warn('Template PDF failed, using fallback:', err)
+          doc = generateGradeAmendmentPDF(pdfData).output('blob')
+        }
+        
+        const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+        const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(pdfBlob)
+        link.download = filename
+        link.click()
+        URL.revokeObjectURL(link.href)
         totalForms++
       }
     } catch { /* continue */ }

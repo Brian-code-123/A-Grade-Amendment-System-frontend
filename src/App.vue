@@ -65,10 +65,9 @@ function handleLogout() {
 
             <!-- 2. Amendments (dropdown) -->
             <li class="nav-item dropdown">
-              <a
-                class="nav-link nav-tab dropdown-toggle"
-                href="#"
-                role="button"
+              <button
+                class="nav-link nav-tab dropdown-toggle btn btn-link"
+                type="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
                 :class="{
@@ -79,7 +78,7 @@ function handleLogout() {
                 }"
               >
                 <i class="bi bi-pencil-square me-1"></i>Amendments
-              </a>
+              </button>
               <ul class="dropdown-menu dropdown-menu-animated mt-1">
                 <li>
                   <router-link class="dropdown-item" to="/amendments" active-class="active">

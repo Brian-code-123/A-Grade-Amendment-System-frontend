@@ -683,7 +683,7 @@ export async function downloadFilledForm(amendment) {
  * Generate Grade Amendment PDF using the template PDF as base
  * Fills in data at exact coordinates provided
  */
-async function generateGradeAmendmentPDFWithTemplate(data = {}) {
+export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
   const { rgb } = await import('pdf-lib')
   
   // Load the template PDF
