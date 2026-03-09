@@ -1,12 +1,13 @@
 <script setup>
-import { onMounted } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import HelpAssistant from '@/components/HelpAssistant.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const themeStore = useThemeStore()
 const notif = useNotificationStore()
@@ -20,6 +21,15 @@ onMounted(() => {
   }
 })
 
+const isAuthRoute = computed(() =>
+  ['/login', '/demo-login', '/demo-verify', '/auth-callback'].includes(route.path)
+)
+
+const userInitials = computed(() => {
+  const name = auth.user?.name || auth.userName || ''
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'
+})
+
 function handleLogout() {
   auth.logout()
   router.push('/login')
@@ -29,14 +39,17 @@ function handleLogout() {
 <template>
   <div class="app-wrapper">
     <nav
-      class="navbar navbar-expand-lg sticky-top glass-nav"
+      v-if="!isAuthRoute"
+      class="navbar navbar-expand-lg sticky-top app-nav"
       :class="themeStore.theme === 'dark' ? 'navbar-dark' : 'navbar-light'"
     >
       <div class="container">
 
         <!-- Brand -->
         <router-link class="navbar-brand d-flex align-items-center gap-2" to="/">
-          <img src="@/assets/logo.png" alt="HKBU" height="36" />
+          <img src="@/assets/logo.png" alt="HKBU Logo" height="26" />
+          <span class="nav-divider"></span>
+          <span class="nav-brand-text">Grade Amendment System</span>
         </router-link>
 
         <!-- Mobile toggler -->
@@ -187,11 +200,11 @@ function handleLogout() {
             <!-- User dropdown -->
             <div v-if="auth.isLoggedIn" class="dropdown">
               <button
-                class="btn btn-sm btn-primary dropdown-toggle d-flex align-items-center gap-1"
+                class="btn user-btn dropdown-toggle d-flex align-items-center gap-2"
                 data-bs-toggle="dropdown"
               >
-                <i class="bi bi-person-circle"></i>
-                <span class="d-none d-sm-inline">{{ auth.userName }}</span>
+                <span class="user-avatar">{{ userInitials }}</span>
+                <span class="d-none d-md-inline user-name">{{ auth.userName }}</span>
               </button>
               <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
                 <li class="px-3 py-1">
@@ -219,8 +232,8 @@ function handleLogout() {
             </div>
 
             <!-- Login button (logged-out state) -->
-            <router-link v-if="!auth.isLoggedIn" to="/login" class="btn btn-sm btn-primary">
-              <i class="bi bi-box-arrow-in-right me-1"></i>HKBU Login
+            <router-link v-if="!auth.isLoggedIn" to="/login" class="btn nav-login-btn">
+              <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
             </router-link>
 
           </div>
@@ -229,11 +242,15 @@ function handleLogout() {
     </nav>
 
     <main class="flex-grow-1">
-      <RouterView />
+      <router-view v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
 
-    <footer class="text-center py-3 border-top mt-4">
-      <small class="text-muted">&copy; 2026 HKBU Grade Amendment System</small>
+    <footer v-if="route.path !== '/' && !isAuthRoute" class="text-center py-2 border-top">
+      <small class="text-muted opacity-60">&copy; 2026 HKBU Academic Registry</small>
     </footer>
 
     <HelpAssistant />
@@ -247,83 +264,200 @@ function handleLogout() {
   min-height: 100vh;
 }
 
-/* ── Glassmorphism navbar ── */
-.glass-nav {
-  background: rgba(255, 255, 255, 0.82) !important;
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border-bottom: 1px solid rgba(12, 142, 235, 0.12);
-  box-shadow: 0 2px 20px rgba(12, 142, 235, 0.07);
+/* ── Page transitions ── */
+.page-enter-active { animation: pageIn 0.22s cubic-bezier(.4,0,.2,1); }
+.page-leave-active { animation: pageOut 0.18s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes pageIn  { from { opacity:0; transform:translateY(8px);  } to { opacity:1; transform:translateY(0); } }
+@keyframes pageOut { to   { opacity:0; transform:translateY(-6px); } }
+
+/* ═══════════════════════════════════════
+   APP NAVBAR — Professional academic bar
+   ═══════════════════════════════════════ */
+.app-nav {
+  height: 56px;
+  background: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  z-index: 1000;
 }
-.navbar-dark.glass-nav {
-  background: rgba(10, 22, 40, 0.82) !important;
-  border-bottom: 1px solid rgba(0, 180, 216, 0.18);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
+.navbar-dark.app-nav {
+  background: #0d1b2a !important;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 1px 12px rgba(0,0,0,0.35);
 }
 
-/* ── Nav tabs ── */
+/* Brand */
+.navbar-brand {
+  padding: 0;
+  margin-right: 1.5rem;
+}
+.nav-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: rgba(0,0,0,0.15);
+  vertical-align: middle;
+}
+.navbar-dark .nav-divider { background: rgba(255,255,255,0.2); }
+.nav-brand-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1a2d3d;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  max-width: 120px;
+  white-space: normal;
+}
+.navbar-dark .nav-brand-text { color: #c8ddef; }
+
+/* ── Nav tabs — underline indicator style ── */
 .nav-tab {
-  border-radius: 8px;
-  padding: 0.45rem 0.9rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 14px;
+  font-size: 0.865rem;
   font-weight: 500;
-  font-size: 0.97rem;
-  transition: background 0.18s, color 0.18s;
+  color: #5a6a7a;
+  border-radius: 0;
+  white-space: nowrap;
+  transition: color 0.18s;
+  text-decoration: none;
 }
-.navbar-light .nav-tab:hover {
-  background: rgba(12, 142, 235, 0.08);
-  color: #0c8eeb !important;
+.nav-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10px; right: 10px;
+  height: 2.5px;
+  background: #0c8eeb;
+  border-radius: 2px 2px 0 0;
+  transform: scaleX(0);
+  transition: transform 0.2s cubic-bezier(.4,0,.2,1);
 }
-.navbar-light .nav-tab.active {
-  background: rgba(12, 142, 235, 0.13);
-  color: #0c8eeb !important;
+.nav-tab:hover { color: #0c8eeb; }
+.nav-tab:hover::after { transform: scaleX(0.6); opacity: 0.5; }
+.nav-tab.active { color: #0c8eeb !important; font-weight: 600; }
+.nav-tab.active::after { transform: scaleX(1) !important; opacity: 1 !important; }
+
+/* Dropdown toggle (extends nav-tab) */
+.nav-tab.dropdown-toggle.btn {
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
-.navbar-dark .nav-tab:hover {
-  background: rgba(0, 180, 216, 0.13);
-  color: #00b4d8 !important;
-}
-.navbar-dark .nav-tab.active {
-  background: rgba(0, 180, 216, 0.18);
-  color: #00b4d8 !important;
-}
+.navbar-dark .nav-tab { color: #8ba5bf; }
+.navbar-dark .nav-tab:hover,
+.navbar-dark .nav-tab.active { color: #4ecff5 !important; }
+.navbar-dark .nav-tab::after { background: #00b4d8; }
 
 /* ── Icon-only button ── */
 .btn-icon {
-  width: 34px;
-  height: 34px;
+  width: 34px; height: 34px;
   padding: 0;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   background: transparent;
   border: 1px solid transparent;
   color: inherit;
   transition: background 0.18s, border-color 0.18s;
 }
 .btn-icon:hover {
-  background: rgba(12, 142, 235, 0.1);
-  border-color: rgba(12, 142, 235, 0.25);
+  background: rgba(12, 142, 235, 0.08);
+  border-color: rgba(12, 142, 235, 0.2);
+  color: #0c8eeb;
 }
 .navbar-dark .btn-icon:hover {
-  background: rgba(0, 180, 216, 0.15);
-  border-color: rgba(0, 180, 216, 0.3);
+  background: rgba(0, 180, 216, 0.14);
+  border-color: rgba(0, 180, 216, 0.28);
+  color: #00b4d8;
 }
+
+/* ── User avatar button ── */
+.user-btn {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 1.5px solid rgba(12,142,235,0.25);
+  border-radius: 40px;
+  padding: 3px 10px 3px 3px;
+  transition: all 0.18s;
+  gap: 6px;
+  box-shadow: none;
+}
+.user-btn:hover {
+  border-color: #0c8eeb;
+  background: rgba(12,142,235,0.05);
+}
+.navbar-dark .user-btn { border-color: rgba(0,180,216,0.28); }
+.navbar-dark .user-btn:hover { border-color: #00b4d8; background: rgba(0,180,216,0.08); }
+.user-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0c8eeb, #36a9fa);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.navbar-dark .user-avatar { background: linear-gradient(135deg, #00b4d8, #0090b8); }
+.user-name {
+  font-size: 0.845rem;
+  font-weight: 500;
+  color: #1a2d3d;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.navbar-dark .user-name { color: #c0d4e6; }
+
+/* ── Login button ── */
+.nav-login-btn {
+  padding: 0.38rem 1rem;
+  font-size: 0.855rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0c8eeb, #36a9fa);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(12,142,235,0.28);
+  transition: all 0.18s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.nav-login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(12,142,235,0.38);
+  color: #fff;
+}
+.navbar-dark .nav-login-btn { background: linear-gradient(135deg, #00b4d8, #0090b8); box-shadow: 0 2px 8px rgba(0,180,216,0.3); }
 
 /* ── Dropdown animation ── */
 .dropdown-menu-animated {
-  animation: fadeSlideDown 0.18s ease;
+  animation: fadeSlideDown 0.16s ease;
   border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
+[data-bs-theme="dark"] .dropdown-menu-animated {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.08);
+}
 @keyframes fadeSlideDown {
-  from { opacity: 0; transform: translateY(-6px); }
+  from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .dropdown-item {
   border-radius: 6px;
   margin: 2px 4px;
   width: calc(100% - 8px);
+  font-size: 0.875rem;
   transition: background 0.15s;
 }
 </style>

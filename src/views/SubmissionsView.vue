@@ -116,7 +116,7 @@ async function createAndSubmit() {
 }
 
 async function submitToAdmin(id) {
-  if (!confirm('Submit to admin for review? This will send an email notification to the admin (22240802@life.hkbu.edu.hk).')) return
+  if (!confirm('Submit to admin for review? An email notification will be sent to the administrator.')) return
   emailSending.value = true
   errorMsg.value = ''
   try {
@@ -138,7 +138,7 @@ async function submitToAdmin(id) {
       if (emailResult.demo) {
         successMsg.value = 'Submitted to admin successfully! (Email logged — Azure not configured yet)'
       } else {
-        successMsg.value = 'Submitted to admin successfully! Notification email sent to 22240802@life.hkbu.edu.hk'
+        successMsg.value = 'Submitted successfully. The administrator has been notified.'
       }
     } catch {
       successMsg.value = 'Submitted to admin successfully. (Email notification failed — please notify admin manually)'
