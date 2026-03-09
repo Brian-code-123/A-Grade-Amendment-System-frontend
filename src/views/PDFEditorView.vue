@@ -577,15 +577,72 @@ const zoomOut = () => {
   renderPage()
 }
 
+// Helper: render a given page number to an offscreen canvas with annotations composited on top
+const renderPageToCanvas = async (pageNum) => {
+  const page = await pdfDoc.getPage(pageNum)
+  const scale = zoomLevel.value / 100
+  const viewport = page.getViewport({ scale })
+
+  // Offscreen PDF canvas
+  const pdfC = document.createElement('canvas')
+  pdfC.width = viewport.width
+  pdfC.height = viewport.height
+  await page.render({ canvasContext: pdfC.getContext('2d'), viewport }).promise
+
+  // Composite canvas: PDF bg + annotations
+  const composite = document.createElement('canvas')
+  composite.width = viewport.width
+  composite.height = viewport.height
+  const ctx = composite.getContext('2d')
+  ctx.drawImage(pdfC, 0, 0)
+
+  // Replay annotations stored for this page
+  const annotations = pageAnnotations[pageNum] || []
+  annotations.forEach(stroke => {
+    if (stroke.type === 'path') {
+      ctx.globalAlpha = stroke.opacity
+      ctx.strokeStyle = stroke.color
+      ctx.lineWidth = stroke.width
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      stroke.points.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y)
+        else ctx.lineTo(pt.x, pt.y)
+      })
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    } else if (stroke.type === 'rect') {
+      ctx.strokeStyle = stroke.color
+      ctx.lineWidth = stroke.width
+      ctx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
+    } else if (stroke.type === 'text') {
+      ctx.fillStyle = stroke.color
+      ctx.font = (stroke.fontSize || 16) + 'px Arial'
+      ctx.textBaseline = 'top'
+      ctx.fillText(stroke.text, stroke.x, stroke.y)
+      ctx.textBaseline = 'alphabetic'
+    }
+  })
+
+  return composite
+}
+
 // Export functions
 const exportAsPNG = async () => {
   try {
-    const canvas = document.getElementById('pdf-canvas')
-    const link = document.createElement('a')
-    link.href = canvas.toDataURL('image/png')
-    link.download = fileName.value.replace(/\.pdf$/i, '') + '_page' + currentPage.value + '.png'
-    link.click()
-    successMsg.value = 'PNG exported successfully!'
+    const baseName = fileName.value.replace(/\.pdf$/i, '')
+    successMsg.value = 'Exporting PNG…'
+    for (let p = 1; p <= pageCount.value; p++) {
+      const canvas = await renderPageToCanvas(p)
+      const link = document.createElement('a')
+      link.href = canvas.toDataURL('image/png')
+      link.download = `${baseName}_page${p}.png`
+      link.click()
+      // Brief delay so browser doesn't block multiple simultaneous downloads
+      await new Promise(r => setTimeout(r, 350))
+    }
+    successMsg.value = `Exported ${pageCount.value} page(s) as PNG!`
     setTimeout(() => successMsg.value = '', 3000)
   } catch (e) {
     errorMsg.value = 'Export failed: ' + e.message
@@ -628,19 +685,34 @@ const exportAsWord = async () => {
 const exportAsPDF = async () => {
   try {
     const { jsPDF } = await import('jspdf')
-    
-    const pdfCanvas = document.getElementById('pdf-canvas')
-    const imgData = pdfCanvas.toDataURL('image/png')
-    const pdf = new jsPDF({
-      orientation: pdfCanvas.width > pdfCanvas.height ? 'l' : 'p',
-      unit: 'px',
-      format: [pdfCanvas.width, pdfCanvas.height]
-    })
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfCanvas.width, pdfCanvas.height)
-    pdf.save(fileName.value.replace(/\.pdf$/i, '') + '_annotated.pdf')
-    successMsg.value = 'PDF exported successfully!'
-    setTimeout(() => successMsg.value = '', 3000)
+    const baseName = fileName.value.replace(/\.pdf$/i, '')
+    successMsg.value = 'Exporting PDF…'
+
+    let pdf = null
+    for (let p = 1; p <= pageCount.value; p++) {
+      const canvas = await renderPageToCanvas(p)
+      const imgData = canvas.toDataURL('image/png')
+      const w = canvas.width
+      const h = canvas.height
+
+      if (!pdf) {
+        pdf = new jsPDF({
+          orientation: w > h ? 'l' : 'p',
+          unit: 'px',
+          format: [w, h],
+          hotfixes: ['px_scaling']
+        })
+      } else {
+        pdf.addPage([w, h], w > h ? 'l' : 'p')
+      }
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h)
+    }
+
+    if (pdf) {
+      pdf.save(`${baseName}_annotated.pdf`)
+      successMsg.value = `Exported ${pageCount.value} page(s) as PDF!`
+      setTimeout(() => successMsg.value = '', 3000)
+    }
   } catch (e) {
     errorMsg.value = 'Export failed: ' + e.message
     setTimeout(() => errorMsg.value = '', 3000)
