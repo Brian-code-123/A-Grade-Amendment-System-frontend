@@ -203,6 +203,12 @@ function handleLogout() {
                     <i class="bi bi-person-circle me-2"></i>Profile
                   </router-link>
                 </li>
+                <li v-if="auth.isDemoUser">
+                  <a class="dropdown-item" href="#" @click.prevent="auth.switchRole()">
+                    <i class="bi bi-arrow-left-right me-2 text-warning"></i>
+                    Switch to {{ auth.user?.role === 'admin' ? 'Programme Director' : 'Admin' }}
+                  </a>
+                </li>
                 <li><hr class="dropdown-divider my-1" /></li>
                 <li>
                   <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
