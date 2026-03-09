@@ -35,6 +35,18 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
+  async function loginWithCode(email, password, verificationCode) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, verificationCode })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'Login failed')
+    setAuth(data.token, data.user || data)
+    return data
+  }
+
   async function register(name, email, password, role) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -86,5 +98,5 @@ export const useAuthStore = defineStore('auth', () => {
     return { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/json' }
   }
 
-  return { token, user, isLoggedIn, isAdmin, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth }
+  return { token, user, isLoggedIn, isAdmin, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth }
 })
