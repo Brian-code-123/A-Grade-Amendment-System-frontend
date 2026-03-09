@@ -47,7 +47,7 @@ function handleLogout() {
 
         <!-- Brand -->
         <router-link class="navbar-brand d-flex align-items-center gap-2" to="/">
-          <img src="@/assets/logo.png" alt="HKBU Logo" height="26" />
+          <img src="@/assets/logo.png" alt="HKBU Logo" class="nav-logo" />
           <span class="nav-divider"></span>
           <span class="nav-brand-text">Grade Amendment System</span>
         </router-link>
@@ -292,6 +292,14 @@ function handleLogout() {
 .navbar-brand {
   padding: 0;
   margin-right: 1.5rem;
+  flex-shrink: 0;
+}
+.nav-logo {
+  height: 30px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  display: block;
 }
 .nav-divider {
   display: inline-block;
@@ -299,6 +307,7 @@ function handleLogout() {
   height: 20px;
   background: rgba(0,0,0,0.15);
   vertical-align: middle;
+  flex-shrink: 0;
 }
 .navbar-dark .nav-divider { background: rgba(255,255,255,0.2); }
 .nav-brand-text {
@@ -307,8 +316,7 @@ function handleLogout() {
   color: #1a2d3d;
   letter-spacing: 0.01em;
   line-height: 1.2;
-  max-width: 120px;
-  white-space: normal;
+  white-space: nowrap;
 }
 .navbar-dark .nav-brand-text { color: #c8ddef; }
 
@@ -319,7 +327,7 @@ function handleLogout() {
   align-items: center;
   height: 56px;
   padding: 0 14px;
-  font-size: 0.865rem;
+  font-size: 0.935rem;
   font-weight: 500;
   color: #5a6a7a;
   border-radius: 0;
@@ -406,7 +414,7 @@ function handleLogout() {
 }
 .navbar-dark .user-avatar { background: linear-gradient(135deg, #00b4d8, #0090b8); }
 .user-name {
-  font-size: 0.845rem;
+  font-size: 0.912rem;
   font-weight: 500;
   color: #1a2d3d;
   max-width: 120px;
@@ -419,7 +427,7 @@ function handleLogout() {
 /* ── Login button ── */
 .nav-login-btn {
   padding: 0.38rem 1rem;
-  font-size: 0.855rem;
+  font-size: 0.923rem;
   font-weight: 600;
   border-radius: 8px;
   background: linear-gradient(135deg, #0c8eeb, #36a9fa);
@@ -457,7 +465,7 @@ function handleLogout() {
   border-radius: 6px;
   margin: 2px 4px;
   width: calc(100% - 8px);
-  font-size: 0.875rem;
+  font-size: 0.945rem;
   transition: background 0.15s;
 }
 </style>
