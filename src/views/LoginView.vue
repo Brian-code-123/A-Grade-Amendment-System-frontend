@@ -14,8 +14,11 @@ const loading = ref(false)
 const error = ref('')
 const msalReady = ref(false)
 
-const loginForm = ref({ email: '', password: '' })
+const loginForm = ref({ email: '', password: '', verificationCode: '' })
 const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Programme Director' })
+const codeSent = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
 
 let msalInstance = null
 
@@ -66,15 +69,58 @@ function demoLogin() {
   router.push('/demo-login')
 }
 
+async function sendVerificationCode() {
+  error.value = ''
+  if (!loginForm.value.email || !loginForm.value.password) {
+    error.value = 'Please enter your email and password first.'
+    return
+  }
+  
+  sendingCode.value = true
+  try {
+    const res = await fetch('/api/auth/send-verification-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: loginForm.value.email, 
+        password: loginForm.value.password 
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'Failed to send verification code')
+    
+    codeSent.value = true
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    sendingCode.value = false
+  }
+}
+
 async function handleLogin() {
   error.value = ''
   if (!loginForm.value.email || !loginForm.value.password) {
     error.value = 'Please enter your email and password.'
     return
   }
+  if (!loginForm.value.verificationCode) {
+    error.value = 'Please enter the verification code sent to your email.'
+    return
+  }
   loading.value = true
   try {
-    await auth.login(loginForm.value.email, loginForm.value.password)
+    await auth.loginWithCode(
+      loginForm.value.email, 
+      loginForm.value.password, 
+      loginForm.value.verificationCode
+    )
     router.push('/')
   } catch (e) {
     error.value = e.message
@@ -161,10 +207,40 @@ async function handleRegister() {
                 <label class="form-label small fw-semibold">Email</label>
                 <input v-model="loginForm.email" type="email" class="glass-input" placeholder="you@hkbu.edu.hk" required />
               </div>
-              <div class="mb-4">
+              <div class="mb-3">
                 <label class="form-label small fw-semibold">Password</label>
                 <input v-model="loginForm.password" type="password" class="glass-input" placeholder="••••••••" required />
               </div>
+              
+              <!-- Verification Code Section -->
+              <div class="mb-3">
+                <label class="form-label small fw-semibold">Verification Code</label>
+                <div class="input-group-code">
+                  <input 
+                    v-model="loginForm.verificationCode" 
+                    type="text" 
+                    class="glass-input flex-grow-1" 
+                    placeholder="Enter 6-digit code" 
+                    maxlength="6"
+                    :required="codeSent"
+                  />
+                  <button 
+                    type="button" 
+                    class="btn-send-code" 
+                    @click="sendVerificationCode"
+                    :disabled="sendingCode || countdown > 0"
+                  >
+                    <span v-if="sendingCode" class="spinner-border spinner-border-sm"></span>
+                    <span v-else-if="countdown > 0">{{ countdown }}s</span>
+                    <span v-else>{{ codeSent ? 'Resend' : 'Send Code' }}</span>
+                  </button>
+                </div>
+                <small v-if="codeSent" class="text-success d-block mt-1">
+                  <i class="bi bi-check-circle me-1"></i>
+                  Verification code sent to your email
+                </small>
+              </div>
+              
               <button type="submit" class="btn-primary-glass w-100" :disabled="loading">
                 <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                 Sign In
@@ -439,5 +515,52 @@ async function handleRegister() {
 [data-bs-theme="dark"] .btn-primary-glass {
   background: linear-gradient(135deg, #00b4d8, #0090b8);
   box-shadow: 0 4px 14px rgba(0,180,216,0.3);
+}
+
+/* Verification Code Input Group */
+.input-group-code {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.input-group-code .glass-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-send-code {
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, rgba(12,142,235,0.15), rgba(54,169,250,0.12));
+  border: 2px solid rgba(12,142,235,0.35);
+  color: #0070c9;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.btn-send-code:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(12,142,235,0.25), rgba(54,169,250,0.22));
+  border-color: rgba(12,142,235,0.5);
+}
+
+.btn-send-code:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-bs-theme="dark"] .btn-send-code {
+  border-color: rgba(0,180,216,0.3);
+  color: #00d6ff;
+  background: linear-gradient(135deg, rgba(0,180,216,0.12), rgba(0,144,184,0.10));
+}
+
+[data-bs-theme="dark"] .btn-send-code:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0,180,216,0.22), rgba(0,144,184,0.18));
+  border-color: rgba(0,180,216,0.5);
 }
 </style>
