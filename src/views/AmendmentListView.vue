@@ -1,14 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { downloadTemplate, downloadFilledForm } from '@/services/pdfTemplate'
+import SignaturePrompt from '@/components/SignaturePrompt.vue'
 
 const store = useAmendmentStore()
 const auth = useAuthStore()
 
 const showForm = ref(false)
 const editingId = ref(null)
+const courseCodeFilter = ref('')
+const statusFilter = ref('')
 
 const VALID_GRADES = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','I','NR','PR','YR','W','P','NP']
 
@@ -44,6 +47,8 @@ const form = ref(blankForm())
 const formErrors = ref({})
 const successMsg = ref('')
 const errorMsg = ref('')
+const showPreview = ref(false)
+const isSubmitting = ref(false)
 
 function resetForm() {
   form.value = blankForm()
@@ -98,19 +103,33 @@ async function submitForm() {
   if (!validateForm()) return
   successMsg.value = ''
   errorMsg.value = ''
+  
+  // 首先進入預覽模式
+  showPreview.value = true
+}
+
+async function confirmAndSubmit() {
+  isSubmitting.value = true
   try {
     if (editingId.value) {
       await store.updateAmendment(editingId.value, toPayload(form.value))
-      successMsg.value = 'Amendment updated successfully'
+      successMsg.value = '✓ Amendment updated successfully. Data cannot be changed.'
     } else {
       await store.createAmendment(toPayload(form.value))
-      successMsg.value = 'Amendment created successfully'
+      successMsg.value = '✓ Amendment submitted successfully. Submitted data cannot be modified.'
     }
     resetForm()
     showForm.value = false
+    showPreview.value = false
   } catch (err) {
     errorMsg.value = err.message
+  } finally {
+    isSubmitting.value = false
   }
+}
+
+function cancelPreview() {
+  showPreview.value = false
 }
 
 function startEdit(a) {
@@ -155,26 +174,127 @@ const reasonLabel = (type) => {
   return found ? found.label : type || '-'
 }
 
-onMounted(() => store.fetchAmendments())
+// Get unique status options for filter dropdown
+const statusOptions = computed(() => {
+  const statuses = [...new Set(store.amendments.map(a => a.status).filter(Boolean))]
+  return statuses.sort()
+})
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return courseCodeFilter.value || statusFilter.value
+})
+
+// Filter amendments based on user role and search filters
+const filteredAmendments = computed(() => {
+  let amendmentList = store.amendments
+  
+  // For admin users, exclude draft status amendments
+  if (auth.user?.role === 'admin') {
+    amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
+  }
+  
+  // Apply course code filter if search term exists
+  if (courseCodeFilter.value) {
+    amendmentList = amendmentList.filter(amendment => 
+      amendment.course_code?.toLowerCase().includes(courseCodeFilter.value.toLowerCase())
+    )
+  }
+  
+  // Apply status filter if selected
+  if (statusFilter.value) {
+    amendmentList = amendmentList.filter(amendment => amendment.status === statusFilter.value)
+  }
+  
+  return amendmentList
+})
+
+onMounted(async () => {
+  try {
+    await store.fetchAmendments()
+    if (store.error) {
+      errorMsg.value = 'Failed to load amendments: ' + store.error
+    }
+  } catch (err) {
+    errorMsg.value = 'Error loading amendments: ' + err.message
+  }
+})
 </script>
 
 <template>
   <div class="container py-4">
+    <SignaturePrompt />
+    
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> Grade Amendments</h3>
       <div>
-        <button @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
-        <button class="btn btn-primary btn-sm" @click="showForm = !showForm; if(!showForm) resetForm()">
+        <button type="button" @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
+        <button type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
           <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
         </button>
       </div>
     </div>
 
+    <!-- Search and Filter Bar -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted">Search by Course Code</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input 
+            v-model="courseCodeFilter" 
+            type="text" 
+            class="form-control" 
+            placeholder="e.g. COMP3047"
+          />
+          <button 
+            v-if="courseCodeFilter" 
+            @click="courseCodeFilter = ''" 
+            class="btn btn-outline-secondary" 
+            type="button"
+          >
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted">Filter by Status</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-funnel"></i></span>
+          <select v-model="statusFilter" class="form-select">
+            <option value="">All Statuses</option>
+            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+          </select>
+          <button 
+            v-if="statusFilter" 
+            @click="statusFilter = ''" 
+            class="btn btn-outline-secondary" 
+            type="button"
+          >
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+      <div v-if="hasActiveFilters" class="col-md-5 d-flex align-items-end">
+        <div class="alert alert-info mb-0 py-2 px-3 flex-grow-1">
+          <i class="bi bi-info-circle me-1"></i>
+          Showing {{ filteredAmendments.length }} of {{ store.amendments.length }} amendments
+          <button @click="courseCodeFilter = ''; statusFilter = ''" class="btn btn-sm btn-outline-primary ms-2">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Clear All
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="successMsg" class="alert alert-success alert-dismissible fade show" role="alert">
-      {{ successMsg }}<button type="button" class="btn-close" @click="successMsg = ''"></button>
+      <i class="bi bi-check-circle me-2"></i>
+      <strong>Success!</strong> {{ successMsg }}
+      <button type="button" class="btn-close" @click="successMsg = ''"></button>
     </div>
     <div v-if="errorMsg" class="alert alert-danger alert-dismissible fade show" role="alert">
-      {{ errorMsg }}<button type="button" class="btn-close" @click="errorMsg = ''"></button>
+      <i class="bi bi-exclamation-circle me-2"></i>
+      <strong>Error!</strong> {{ errorMsg }}
+      <button type="button" class="btn-close" @click="errorMsg = ''"></button>
     </div>
 
     <!-- ===== Amendment Form ===== -->
@@ -184,6 +304,12 @@ onMounted(() => store.fetchAmendments())
         {{ editingId ? 'Edit Amendment' : 'Request for Grade Amendment' }}
       </div>
       <div class="card-body">
+        <!-- 提示訊息 -->
+        <div v-if="editingId" class="alert alert-info alert-dismissible fade show" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Edit Mode:</strong> You are editing an existing amendment. Review your changes carefully before confirming.
+        </div>
+
         <form @submit.prevent="submitForm">
 
           <!-- Row 1: AY + Term -->
@@ -310,7 +436,7 @@ onMounted(() => store.fetchAmendments())
           <!-- Submit -->
           <div class="mt-4 d-flex gap-2">
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-lg"></i> {{ editingId ? 'Update Amendment' : 'Submit Amendment' }}
+              <i class="bi bi-eye me-1"></i> {{ editingId ? 'Review Changes' : 'Preview & Submit' }}
             </button>
             <button type="button" class="btn btn-secondary" @click="showForm = false; resetForm()">Cancel</button>
           </div>
@@ -318,11 +444,192 @@ onMounted(() => store.fetchAmendments())
       </div>
     </div>
 
-    <!-- ===== Amendments Table ===== -->
+    <!-- ===== Preview Modal ===== -->
+    <div v-if="showPreview" class="modal d-block" style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white border-0">
+            <h5 class="modal-title">
+              <i class="bi bi-eye me-2"></i>Preview {{ editingId ? 'Changes' : 'Amendment Submission' }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="cancelPreview" :disabled="isSubmitting"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="alert alert-info" role="alert">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Please review the information below carefully.</strong> Once submitted, the data cannot be modified.
+            </div>
+
+            <!-- 預覽內容按區塊分組 -->
+            <div class="row g-3 mb-4">
+              <!-- 基本信息區 -->
+              <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-info bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-calendar-range me-2"></i>Academic Information
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <small class="text-muted">Academic Year</small>
+                      <p class="mb-0"><strong>{{ form.academicYear }}</strong></p>
+                    </div>
+                    <div>
+                      <small class="text-muted">Term</small>
+                      <p class="mb-0"><strong>{{ form.term }}</strong></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 學生信息區 -->
+              <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-success bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-person-badge me-2"></i>Student Information
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <small class="text-muted">Student No.</small>
+                      <p class="mb-0"><strong>{{ form.studentNo }}</strong></p>
+                    </div>
+                    <div>
+                      <small class="text-muted">Name</small>
+                      <p class="mb-0"><strong>{{ form.studentName }}</strong></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 課程信息區 -->
+              <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-warning bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-book me-2"></i>Course Information
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <small class="text-muted">Course Code</small>
+                      <p class="mb-0"><strong>{{ form.courseCode }}</strong></p>
+                    </div>
+                    <div>
+                      <small class="text-muted">Course Title</small>
+                      <p class="mb-0"><strong>{{ form.courseTitle }}</strong></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 成績信息區 -->
+              <div class="col-md-6">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-danger bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-graph-up me-2"></i>Grade Information
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <small class="text-muted">Original Grade</small>
+                      <p class="mb-0"><span class="badge bg-secondary">{{ form.originalGrade }}</span></p>
+                    </div>
+                    <div>
+                      <small class="text-muted">New Grade</small>
+                      <p class="mb-0"><span class="badge bg-primary">{{ form.newGrade }}</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 修正理由區 -->
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-primary bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-chat-dot me-2"></i>Reason for Amendment
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-2">
+                      <small class="text-muted">Reason Type</small>
+                      <p class="mb-1"><strong>{{ reasonLabel(form.reasonType) }}</strong></p>
+                    </div>
+
+                    <div v-if="['makeup','supplementary','review','others'].includes(form.reasonType)" class="mb-2">
+                      <small class="text-muted">Details</small>
+                      <p class="mb-0"><em>{{ form.reasonDetails }}</em></p>
+                    </div>
+
+                    <div v-if="form.reasonType === 'appeal'" class="border-start ps-3">
+                      <div class="mb-2">
+                        <small class="text-muted">Grounds for Appeal</small>
+                        <p class="mb-1"><strong>{{ form.appealGrounds }}</strong></p>
+                      </div>
+                      <div>
+                        <small class="text-muted">Appeal Details</small>
+                        <p class="mb-0"><em>{{ form.appealDetails }}</em></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 講師信息區 -->
+              <div class="col-12">
+                <div class="card border-0 bg-light">
+                  <div class="card-header bg-secondary bg-opacity-10 border-0 fw-bold">
+                    <i class="bi bi-mortarboard me-2"></i>Instructor Information
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <small class="text-muted">Instructor Name</small>
+                        <p class="mb-0"><strong>{{ form.instructorName }}</strong></p>
+                      </div>
+                      <div class="col-md-6">
+                        <small class="text-muted">Department</small>
+                        <p class="mb-0"><strong>{{ form.department }}</strong></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 警告訊息 -->
+            <div class="alert alert-warning" role="alert">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Important:</strong> Once submitted, this amendment cannot be modified. Please ensure all information is correct.
+            </div>
+          </div>
+
+          <div class="modal-footer border-top bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="cancelPreview"
+              :disabled="isSubmitting"
+            >
+              <i class="bi bi-pencil me-1"></i>Edit
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="confirmAndSubmit"
+              :disabled="isSubmitting"
+            >
+              <span v-if="!isSubmitting">
+                <i class="bi bi-check-lg me-1"></i>{{ editingId ? 'Confirm Update' : 'Confirm Submission' }}
+              </span>
+              <span v-else>
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Submitting...
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-body p-0">
         <div v-if="store.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
-        <div v-else-if="store.amendments.length === 0" class="text-center text-muted py-4">No amendments found. Create one above.</div>
+        <div v-else-if="filteredAmendments.length === 0" class="text-center text-muted py-4">No amendments found. Create one above.</div>
         <div v-else class="table-responsive">
           <table class="table table-hover mb-0 align-middle">
             <thead>
@@ -338,7 +645,7 @@ onMounted(() => store.fetchAmendments())
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in store.amendments" :key="a._id">
+              <tr v-for="a in filteredAmendments" :key="a._id">
                 <td class="small text-nowrap">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>

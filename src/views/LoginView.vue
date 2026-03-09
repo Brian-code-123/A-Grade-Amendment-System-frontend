@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
-import { getMsalInstance, loginRequest } from '@/auth/msalConfig'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -12,57 +11,12 @@ if (auth.isLoggedIn) router.replace('/')
 const tab = ref('login')
 const loading = ref(false)
 const error = ref('')
-const msalReady = ref(false)
 
 const loginForm = ref({ email: '', password: '', verificationCode: '' })
 const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Programme Director' })
 const codeSent = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
-
-let msalInstance = null
-
-onMounted(async () => {
-  try {
-    msalInstance = getMsalInstance()
-    await msalInstance.initialize()
-    msalReady.value = true
-  } catch (e) {
-    console.warn('MSAL init skipped:', e.message)
-  }
-})
-
-async function loginWithHKBU() {
-  error.value = ''
-  if (!msalReady.value || !msalInstance) {
-    error.value = 'Azure AD is not configured. Please set VITE_AZURE_CLIENT_ID in .env or use Demo Access.'
-    return
-  }
-  loading.value = true
-  try {
-    const response = await msalInstance.loginPopup(loginRequest)
-    const account = response.account
-    const tokenResponse = await msalInstance.acquireTokenSilent({
-      ...loginRequest,
-      account
-    })
-    const msalUser = {
-      email: account.username,
-      name: account.name || account.username,
-      role: 'admin'
-    }
-    auth.setAuth(tokenResponse.accessToken, msalUser)
-    router.push('/')
-  } catch (e) {
-    if (e.errorCode === 'user_cancelled') {
-      error.value = ''
-    } else {
-      error.value = 'HKBU login failed: ' + (e.errorMessage || e.message)
-    }
-  } finally {
-    loading.value = false
-  }
-}
 
 function demoLogin() {
   // 跳转到演示登录页面
@@ -102,6 +56,17 @@ async function sendVerificationCode() {
   } finally {
     sendingCode.value = false
   }
+}
+
+function demoLoginPD() {
+  const demoToken = 'demo_token_pd_' + Date.now()
+  const demoUser = {
+    email: 'martin.choy@hkbu.edu.hk',
+    name: 'Dr. Martin Choy',
+    role: 'Programme Director'
+  }
+  auth.setAuth(demoToken, demoUser)
+  router.push('/')
 }
 
 async function handleLogin() {
@@ -173,24 +138,15 @@ async function handleRegister() {
           <!-- Glass card -->
           <div class="glass-card">
 
-            <!-- HKBU SSO button -->
-            <button class="btn-hkbu-sso w-100 mb-2" @click="loginWithHKBU">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 23 23" fill="currentColor" class="me-2">
-                <path d="M0 0h11v11H0zM12 0h11v11H12zM0 12h11v11H0zM12 12h11v11H12z"/>
-              </svg>
-              Sign in with HKBU Account
-            </button>
-
             <!-- Demo quick login -->
-            <button class="btn-demo w-100 mb-4" @click="demoLogin">
+            <button class="btn-demo w-100 mb-2" @click="demoLogin">
               <i class="bi bi-lightning-charge me-2"></i>
-              Quick Demo Access
+              Quick Demo — Admin
             </button>
-
-            <!-- divider -->
-            <div class="divider-text mb-4">
-              <span>or use email</span>
-            </div>
+            <button class="btn-demo btn-demo-pd w-100 mb-4" @click="demoLoginPD">
+              <i class="bi bi-person-badge me-2"></i>
+              Quick Demo — Programme Director
+            </button>
 
             <!-- Tabs -->
             <div class="glass-tabs mb-4">
@@ -281,7 +237,7 @@ async function handleRegister() {
           </div><!-- /glass-card -->
 
           <div class="text-center mt-3">
-            <small class="text-muted opacity-75">Secured by Microsoft Azure AD</small>
+            <small class="text-muted opacity-75">Hong Kong Baptist University &copy; 2026</small>
           </div>
 
         </div>
@@ -335,84 +291,7 @@ async function handleRegister() {
   box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(0,180,216,0.1) inset;
 }
 
-/* HKBU SSO button */
-.btn-hkbu-sso {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.7rem 1.25rem;
-  background: linear-gradient(135deg, #0c8eeb, #36a9fa);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(12,142,235,0.35);
-}
-
-.btn-hkbu-sso:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 22px rgba(12,142,235,0.45);
-}
-
-[data-bs-theme="dark"] .btn-hkbu-sso {
-  background: linear-gradient(135deg, #00b4d8, #0090b8);
-  box-shadow: 0 4px 16px rgba(0,180,216,0.35);
-}
-
-/* Demo button */
-.btn-demo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem 1.25rem;
-  background: linear-gradient(135deg, rgba(12,142,235,0.15), rgba(54,169,250,0.12));
-  border: 2px solid rgba(12,142,235,0.35);
-  color: #0070c9;
-  font-weight: 600;
-  font-size: 0.95rem;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-demo:hover {
-  background: linear-gradient(135deg, rgba(12,142,235,0.25), rgba(54,169,250,0.22));
-  border-color: rgba(12,142,235,0.5);
-  transform: translateY(-1px);
-}
-
-[data-bs-theme="dark"] .btn-demo {
-  border-color: rgba(0,180,216,0.3);
-  color: #00d6ff;
-  background: linear-gradient(135deg, rgba(0,180,216,0.12), rgba(0,144,184,0.10));
-}
-
-[data-bs-theme="dark"] .btn-demo:hover {
-  background: linear-gradient(135deg, rgba(0,180,216,0.22), rgba(0,144,184,0.18));
-  border-color: rgba(0,180,216,0.5);
-}
-
-/* Divider */
-.divider-text {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: rgba(100,130,160,0.7);
-  font-size: 0.78rem;
-}
-.divider-text::before,
-.divider-text::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.4;
-}
-
-/* Tabs */
+/* Primary button */
 .glass-tabs {
   display: flex;
   background: rgba(0,0,0,0.05);
@@ -484,6 +363,59 @@ async function handleRegister() {
 
 .glass-input::placeholder {
   color: rgba(100,130,160,0.5);
+}
+
+/* Demo button */
+.btn-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.25rem;
+  background: linear-gradient(135deg, rgba(12,142,235,0.15), rgba(54,169,250,0.12));
+  border: 2px solid rgba(12,142,235,0.35);
+  color: #0070c9;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-demo:hover {
+  background: linear-gradient(135deg, rgba(12,142,235,0.25), rgba(54,169,250,0.22));
+  border-color: rgba(12,142,235,0.5);
+  transform: translateY(-1px);
+}
+
+[data-bs-theme="dark"] .btn-demo {
+  border-color: rgba(0,180,216,0.3);
+  color: #00d6ff;
+  background: linear-gradient(135deg, rgba(0,180,216,0.12), rgba(0,144,184,0.10));
+}
+
+[data-bs-theme="dark"] .btn-demo:hover {
+  background: linear-gradient(135deg, rgba(0,180,216,0.22), rgba(0,144,184,0.18));
+  border-color: rgba(0,180,216,0.5);
+}
+
+/* PD demo button accent */
+.btn-demo-pd {
+  background: linear-gradient(135deg, rgba(25,135,84,0.12), rgba(40,167,69,0.10));
+  border-color: rgba(25,135,84,0.30);
+  color: #198754;
+}
+.btn-demo-pd:hover {
+  background: linear-gradient(135deg, rgba(25,135,84,0.22), rgba(40,167,69,0.18));
+  border-color: rgba(25,135,84,0.5);
+}
+[data-bs-theme="dark"] .btn-demo-pd {
+  border-color: rgba(40,167,69,0.30);
+  color: #5dd39e;
+  background: linear-gradient(135deg, rgba(40,167,69,0.12), rgba(25,135,84,0.10));
+}
+[data-bs-theme="dark"] .btn-demo-pd:hover {
+  background: linear-gradient(135deg, rgba(40,167,69,0.22), rgba(25,135,84,0.18));
+  border-color: rgba(40,167,69,0.5);
 }
 
 /* Primary button */

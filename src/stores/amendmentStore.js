@@ -163,12 +163,256 @@ export const useAmendmentStore = defineStore('amendment', () => {
       department: 'COMP',
       status: 'Pending',
       created_at: new Date(Date.now() - 8*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'demo_10',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22240811',
+      student_name: 'Emily Fung',
+      course_code: 'COMP3055',
+      course_title: 'Operating Systems',
+      original_grade: 'I',
+      new_grade: 'B',
+      reason_type: 'conversion',
+      reason_details: 'Submitted late coursework with medical certificate',
+      instructor_name: 'Dr. Henry Adams',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 9*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'demo_11',
+      academic_year: '2025-2026',
+      term: '2',
+      student_no: '22240812',
+      student_name: 'Jason Tse',
+      course_code: 'COMP4035',
+      course_title: 'Distributed Systems',
+      original_grade: 'C-',
+      new_grade: 'B-',
+      reason_type: 'appeal',
+      appeal_grounds: 'Technical errors',
+      appeal_details: 'Group project contribution was incorrectly attributed',
+      instructor_name: 'Prof. Emily Wong',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'demo_12',
+      academic_year: '2024-2025',
+      term: '2',
+      student_no: '22240813',
+      student_name: 'Sophia Lau',
+      course_code: 'COMP3060',
+      course_title: 'Human-Computer Interaction',
+      original_grade: 'NR',
+      new_grade: 'A',
+      reason_type: 'conversion',
+      reason_details: 'Deferred final project submitted and graded A',
+      instructor_name: 'Dr. James Park',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'demo_13',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22240814',
+      student_name: 'Daniel Ng',
+      course_code: 'COMP4045',
+      course_title: 'Computer Vision',
+      original_grade: 'D',
+      new_grade: 'C',
+      reason_type: 'supplementary',
+      reason_details: 'Passed supplementary exam with score 58',
+      instructor_name: 'Dr. Rachel Kim',
+      department: 'COMP',
+      status: 'Draft',
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'demo_14',
+      academic_year: '2025-2026',
+      term: '2',
+      student_no: '22240815',
+      student_name: 'Grace Yip',
+      course_code: 'COMP3070',
+      course_title: 'Artificial Intelligence',
+      original_grade: 'B+',
+      new_grade: 'A-',
+      reason_type: 'review',
+      reason_details: 'Re-marking of final exam revealed scoring error (+5 marks)',
+      instructor_name: 'Dr. David Lee',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString()
+    }
+  ]
+
+  // Demo data for PD user (Programme Director)
+  const PD_DEMO_DATA = [
+    {
+      _id: 'pd_1',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22241001',
+      student_name: 'Alice Yeung',
+      course_code: 'COMP3047',
+      course_title: 'Software Engineering',
+      original_grade: 'I',
+      new_grade: 'B+',
+      reason_type: 'conversion',
+      reason_details: 'Completed missing final project',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 3*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_2',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22241002',
+      student_name: 'Billy Lam',
+      course_code: 'COMP3047',
+      course_title: 'Software Engineering',
+      original_grade: 'NR',
+      new_grade: 'A-',
+      reason_type: 'conversion',
+      reason_details: 'Submitted deferred coursework',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_3',
+      academic_year: '2025-2026',
+      term: '2',
+      student_no: '22241003',
+      student_name: 'Cherry Ho',
+      course_code: 'COMP4055',
+      course_title: 'Cloud Computing',
+      original_grade: 'C',
+      new_grade: 'B',
+      reason_type: 'review',
+      reason_details: 'Re-marking revealed scoring error in assignment 3',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_4',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22241004',
+      student_name: 'David Kwok',
+      course_code: 'COMP3080',
+      course_title: 'Information Security',
+      original_grade: 'D',
+      new_grade: 'C+',
+      reason_type: 'supplementary',
+      reason_details: 'Passed supplementary exam with score 68',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Submitted',
+      created_at: new Date(Date.now() - 5*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_5',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22241005',
+      student_name: 'Ethan Mok',
+      course_code: 'COMP3047',
+      course_title: 'Software Engineering',
+      original_grade: 'I',
+      new_grade: 'B',
+      reason_type: 'conversion',
+      reason_details: 'Completed deferred lab assignments',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 6*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_6',
+      academic_year: '2025-2026',
+      term: '2',
+      student_no: '22241006',
+      student_name: 'Fiona Chan',
+      course_code: 'COMP4060',
+      course_title: 'Natural Language Processing',
+      original_grade: 'B',
+      new_grade: 'A-',
+      reason_type: 'appeal',
+      appeal_grounds: 'Technical errors',
+      appeal_details: 'Group project peer-review scores were incorrectly calculated',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_7',
+      academic_year: '2024-2025',
+      term: '2',
+      student_no: '22241007',
+      student_name: 'Gary Wong',
+      course_code: 'COMP3090',
+      course_title: 'Compiler Design',
+      original_grade: 'C-',
+      new_grade: 'B-',
+      reason_type: 'makeup',
+      reason_details: 'Makeup exam score: 72. Student had medical absence.',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 7*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_8',
+      academic_year: '2025-2026',
+      term: '1',
+      student_no: '22241008',
+      student_name: 'Helen Tam',
+      course_code: 'COMP4055',
+      course_title: 'Cloud Computing',
+      original_grade: 'D+',
+      new_grade: 'C+',
+      reason_type: 'supplementary',
+      reason_details: 'Passed supplementary examination with score 60',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Pending',
+      created_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_9',
+      academic_year: '2025-2026',
+      term: '2',
+      student_no: '22241009',
+      student_name: 'Ivan Leung',
+      course_code: 'COMP3050',
+      course_title: 'Web Development',
+      original_grade: 'NR',
+      new_grade: 'B+',
+      reason_type: 'conversion',
+      reason_details: 'Completed deferred final assessment with distinction',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Draft',
+      created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
     }
   ]
 
   const isDemoUser = () => {
     const auth = useAuthStore()
-    return auth.user?.email === '22240802@life.hkbu.edu.hk' && auth.token?.startsWith('demo_token_')
+    return auth.token?.startsWith('demo_token_')
   }
 
   async function fetchAmendments(query) {
@@ -179,17 +423,22 @@ export const useAmendmentStore = defineStore('amendment', () => {
     try {
       // For demo users, return hardcoded demo data
       if (isDemoUser()) {
-        amendments.value = DEMO_DATA
+        const auth2 = useAuthStore()
+        amendments.value = auth2.user?.role === 'admin' ? DEMO_DATA : PD_DEMO_DATA
         loading.value = false
         return
       }
 
       // For real users, fetch from API
       let url = '/api/amendments'
-      if (query) {
-        const params = new URLSearchParams(query)
-        url += '?' + params.toString()
+      const params = new URLSearchParams(query || {})
+      // Ensure we fetch all statuses including Draft
+      if (!params.has('status')) {
+        params.append('includeAll', 'true')
       }
+      const queryString = params.toString()
+      if (queryString) url += '?' + queryString
+      
       const res = await fetch(url, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch amendments')
       amendments.value = await res.json()
@@ -223,6 +472,8 @@ export const useAmendmentStore = defineStore('amendment', () => {
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Failed to create amendment')
+    
+    // Add newly created amendment to the store immediately
     amendments.value.unshift(result)
     return result
   }

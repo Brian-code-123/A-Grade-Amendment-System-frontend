@@ -65,10 +65,9 @@ function handleLogout() {
 
             <!-- 2. Amendments (dropdown) -->
             <li class="nav-item dropdown">
-              <a
-                class="nav-link nav-tab dropdown-toggle"
-                href="#"
-                role="button"
+              <button
+                class="nav-link nav-tab dropdown-toggle btn btn-link"
+                type="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
                 :class="{
@@ -79,7 +78,7 @@ function handleLogout() {
                 }"
               >
                 <i class="bi bi-pencil-square me-1"></i>Amendments
-              </a>
+              </button>
               <ul class="dropdown-menu dropdown-menu-animated mt-1">
                 <li>
                   <router-link class="dropdown-item" to="/amendments" active-class="active">
@@ -99,14 +98,21 @@ function handleLogout() {
               </ul>
             </li>
 
-            <!-- 3. Feedback -->
+            <!-- 3. PDF Editor -->
+            <li class="nav-item">
+              <router-link class="nav-link nav-tab" to="/pdf-editor" active-class="active">
+                <i class="bi bi-pencil-square me-1"></i>PDF Editor
+              </router-link>
+            </li>
+
+            <!-- 4. Feedback -->
             <li class="nav-item">
               <router-link class="nav-link nav-tab" to="/feedback" active-class="active">
                 <i class="bi bi-chat-dots me-1"></i>Feedback
               </router-link>
             </li>
 
-            <!-- 4. Admin (admin role only) -->
+            <!-- 5. Admin (admin role only) -->
             <li class="nav-item" v-if="auth.isAdmin">
               <router-link class="nav-link nav-tab" to="/admin" active-class="active">
                 <i class="bi bi-shield-lock me-1"></i>Admin
@@ -193,6 +199,18 @@ function handleLogout() {
                 </li>
                 <li><hr class="dropdown-divider my-1" /></li>
                 <li>
+                  <router-link class="dropdown-item" to="/profile">
+                    <i class="bi bi-person-circle me-2"></i>Profile
+                  </router-link>
+                </li>
+                <li v-if="auth.isDemoUser">
+                  <a class="dropdown-item" href="#" @click.prevent="auth.switchRole()">
+                    <i class="bi bi-arrow-left-right me-2 text-warning"></i>
+                    Switch to {{ auth.user?.role === 'admin' ? 'Programme Director' : 'Admin' }}
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider my-1" /></li>
+                <li>
                   <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
                     <i class="bi bi-box-arrow-right me-2"></i>Logout
                   </a>
@@ -248,7 +266,7 @@ function handleLogout() {
   border-radius: 8px;
   padding: 0.45rem 0.9rem;
   font-weight: 500;
-  font-size: 1.08rem;
+  font-size: 0.97rem;
   transition: background 0.18s, color 0.18s;
 }
 .navbar-light .nav-tab:hover {
