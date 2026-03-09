@@ -87,6 +87,21 @@ export const useAuthStore = defineStore('auth', () => {
     return { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/json' }
   }
 
+  function switchRole() {
+    if (!token.value?.startsWith('demo_token_')) return
+    const newRole = user.value?.role === 'admin' ? 'Programme Director' : 'admin'
+    const newUser = {
+      ...user.value,
+      role: newRole,
+      name: newRole === 'admin' ? 'Admin User' : 'Dr. Martin Choy',
+      email: newRole === 'admin' ? '22240802@life.hkbu.edu.hk' : 'martin.choy@hkbu.edu.hk'
+    }
+    const newToken = 'demo_token_' + (newRole === 'admin' ? 'admin' : 'pd') + '_' + Date.now()
+    setAuth(newToken, newUser)
+  }
+
+  const isDemoUser = computed(() => token.value?.startsWith('demo_token_'))
+
   async function saveSignature(signatureImage) {
     try {
       // Update current user locally first (always works)
@@ -123,5 +138,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isLoggedIn, isAdmin, isPD, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth, saveSignature }
+  return { token, user, isLoggedIn, isAdmin, isPD, isDemoUser, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth, saveSignature, switchRole }
 })

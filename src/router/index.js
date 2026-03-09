@@ -86,8 +86,10 @@ router.beforeEach((to, from, next) => {
   }
 
   // 檢查簽名設定 - 如果用戶已登入但未設定簽名，且不在profile頁面或login頁面，則導向profile
+  // Demo users (demo_token_) skip signature check
   if (
     token &&
+    !token.startsWith('demo_token_') &&
     user &&
     !user.signature &&
     to.name !== 'profile' &&
