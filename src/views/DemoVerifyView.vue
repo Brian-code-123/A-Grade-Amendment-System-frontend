@@ -41,7 +41,7 @@ function handleVerify() {
     setTimeout(() => {
       const demoToken = 'demo_token_' + Date.now()
       const demoUser = {
-        email: '22240802@life.hkbu.edu.hk',
+        email: 'grade-admin@hkbu.edu.hk',
         name: 'Admin User',
         role: 'admin'
       }

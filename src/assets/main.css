@@ -271,3 +271,115 @@ img[alt="HKBU Logo"] {
 [data-bs-theme="dark"] img[alt="HKBU Logo"] {
   filter: brightness(0) invert(1);
 }
+
+/* ============================================
+   ANIMATION SYSTEM — Hackathon-level polish
+   ============================================ */
+
+/* Stagger entrance */
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-in    { animation: slideUpFade 0.32s cubic-bezier(.4,0,.2,1) both; }
+.anim-in-d1 { animation: slideUpFade 0.32s 0.06s cubic-bezier(.4,0,.2,1) both; }
+.anim-in-d2 { animation: slideUpFade 0.32s 0.12s cubic-bezier(.4,0,.2,1) both; }
+.anim-in-d3 { animation: slideUpFade 0.32s 0.18s cubic-bezier(.4,0,.2,1) both; }
+.anim-in-d4 { animation: slideUpFade 0.32s 0.24s cubic-bezier(.4,0,.2,1) both; }
+
+/* Scale in */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.scale-in { animation: scaleIn 0.28s cubic-bezier(.4,0,.2,1) both; }
+
+/* Fade only */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fadeIn 0.3s ease both; }
+
+/* Number pop */
+@keyframes countPop {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.88); }
+  70%  { transform: translateY(-2px) scale(1.04); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.count-num { animation: countPop 0.45s cubic-bezier(.4,0,.2,1) both; }
+
+/* Float for decorative panels */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+.floating { animation: float 5s ease-in-out infinite; }
+
+/* Shake for error messages */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-6px); }
+  40%, 80%  { transform: translateX(6px); }
+}
+.shake { animation: shake 0.4s ease-in-out; }
+
+/* Badge pulse */
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,53,69,0.5); }
+  60%       { box-shadow: 0 0 0 5px rgba(220,53,69,0); }
+}
+.badge.bg-danger { animation: badgePulse 2.4s ease-in-out infinite; }
+
+/* Gradient shift (for branded panels) */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+/* Global button press feedback */
+.btn:not(:disabled):active {
+  transform: scale(0.965) !important;
+  transition-duration: 0.07s !important;
+}
+
+/* Global card hover lift — override the ones already defined */
+body.light-mode .card:hover,
+body:not(.dark-mode) .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 36px rgba(12,142,235,0.14), 0 1px 0 rgba(255,255,255,0.8) inset !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+[data-bs-theme="dark"] .card:hover {
+  transform: translateY(-2px);
+}
+
+/* Smooth transitions across the board */
+.btn       { transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.18s ease, opacity 0.18s ease !important; }
+.nav-link  { transition: background 0.16s ease, color 0.16s ease !important; }
+
+/* Input focus ring animation */
+.form-control,
+.form-select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -400% 0; }
+  100% { background-position:  400% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f4f8 25%, #e8eff8 50%, #f0f4f8 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 6px;
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(12,142,235,0.2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(12,142,235,0.4); }
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(0,180,216,0.22); }
+

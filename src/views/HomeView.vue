@@ -153,6 +153,89 @@ const stats = computed(() => {
   }
 })
 
+// Admin Performance Stats
+const performanceStats = computed(() => {
+  const ams = amStore.amendments
+  const processed = ams.filter(a => a.status !== 'Pending').length
+  const avgTime = processed > 0 ? Math.floor(Math.random() * 30) + 5 : 0 // Mock: 5-35 days
+  const approvalRate = processed > 0 ? Math.round((ams.filter(a => a.status === 'Approved').length / processed) * 100) : 0
+  
+  return {
+    pending: ams.filter(a => a.status === 'Pending').length,
+    processed: processed,
+    avgProcessingDays: avgTime,
+    approvalRate: approvalRate
+  }
+})
+
+// FAQ/Help Links
+const faqItems = [
+  {
+    icon: 'bi-question-circle',
+    title: 'How to Submit?',
+    description: 'View detailed steps and requirements',
+    link: '/help/submit-amendments'
+  },
+  {
+    icon: 'bi-search',
+    title: 'Track My Request',
+    description: 'Check your application status',
+    link: '/submissions'
+  },
+  {
+    icon: 'bi-envelope',
+    title: 'Contact Admin',
+    description: 'Get technical support and help',
+    link: '#'
+  }
+]
+
+// System Announcements
+const announcements = [
+  {
+    id: 1,
+    type: 'info',
+    icon: 'bi-info-circle',
+    title: 'Latest Update',
+    message: 'Grade Amendment System updated to latest version with new features.',
+    date: '2026-03-10'
+  },
+  {
+    id: 2,
+    type: 'warning',
+    icon: 'bi-exclamation-triangle',
+    title: 'System Maintenance',
+    message: 'Regular system maintenance every Sunday 23:00-24:00.',
+    date: '2026-03-10'
+  },
+  {
+    id: 3,
+    type: 'danger',
+    icon: 'bi-exclamation-circle',
+    title: 'Important Notice',
+    message: 'Please submit your applications before the deadline. Late submissions will not be accepted.',
+    date: '2026-03-09'
+  }
+]
+
+const getAnnouncementBadgeClass = (type) => {
+  const map = {
+    'info': 'bg-info',
+    'warning': 'bg-warning text-dark',
+    'danger': 'bg-danger'
+  }
+  return map[type] || 'bg-secondary'
+}
+
+const getAnnouncementBorderClass = (type) => {
+  const map = {
+    'info': 'border-info',
+    'warning': 'border-warning',
+    'danger': 'border-danger'
+  }
+  return map[type] || 'border-secondary'
+}
+
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }
   else currentMonth.value--
@@ -182,105 +265,45 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container py-4">
+  <div class="home-panel">
     <!-- Header -->
-    <div class="text-center mb-4">
-      <img src="@/assets/logo.png" alt="HKBU Logo" style="height:60px" class="mb-2" />
-      <h2 class="fw-bold">Grade Amendment System</h2>
-      <p class="text-muted">Hong Kong Baptist University &mdash; Academic Registry</p>
+    <div class="home-hdr anim-in d-flex align-items-center justify-content-between">
+      <div>
+        <h4 class="fw-bold mb-0">Grade Amendment System</h4>
+        <small class="text-muted">Academic Registry · Hong Kong Baptist University</small>
+      </div>
+      <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill" style="font-size:0.75rem">
+        <i class="bi bi-calendar3 me-1"></i>{{ months[currentMonth] }} {{ currentYear }}
+      </span>
     </div>
 
-    <!-- Workflow Visualization (always visible) -->
-    <div class="card shadow-sm mb-4 workflow-card">
-      <div class="card-header fw-bold"><i class="bi bi-diagram-3"></i> Amendment Workflow</div>
-      <div class="card-body py-3">
-        <div class="workflow-steps">
-          <div class="workflow-step">
-            <div class="step-icon bg-info text-white"><i class="bi bi-bell"></i></div>
-            <div class="step-label">Receive Notification</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-primary text-white"><i class="bi bi-pencil-square"></i></div>
-            <div class="step-label">Fill Form / Excel</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-warning text-dark"><i class="bi bi-file-earmark-excel"></i></div>
-            <div class="step-label">Upload & Validate</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-secondary text-white"><i class="bi bi-list-check"></i></div>
-            <div class="step-label">Generate Records</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-primary text-white"><i class="bi bi-send"></i></div>
-            <div class="step-label">PD Submits</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-dark text-white"><i class="bi bi-envelope"></i></div>
-            <div class="step-label">Email Admin</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-success text-white"><i class="bi bi-shield-check"></i></div>
-            <div class="step-label">Admin Confirms</div>
-          </div>
-          <div class="workflow-arrow"><i class="bi bi-chevron-right"></i></div>
-          <div class="workflow-step">
-            <div class="step-icon bg-success text-white"><i class="bi bi-check-circle"></i></div>
-            <div class="step-label">Complete</div>
-          </div>
-        </div>
+    <!-- Stats -->
+    <div v-if="auth.isLoggedIn" class="home-stats anim-in-d1">
+      <div class="stat-card-item">
+        <div class="stat-number text-primary count-num">{{ stats.totalAmendments }}</div>
+        <div class="stat-label">Amendments</div>
+      </div>
+      <div class="stat-card-item">
+        <div class="stat-number text-warning count-num">{{ stats.pending }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card-item">
+        <div class="stat-number text-success count-num">{{ stats.approved }}</div>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-card-item">
+        <div class="stat-number text-info count-num">{{ stats.totalSubmissions }}</div>
+        <div class="stat-label">Submissions</div>
       </div>
     </div>
 
-    <!-- Stats Cards (logged in only) -->
-    <div v-if="auth.isLoggedIn" class="row g-3 mb-4">
-      <div class="col-6 col-md-3">
-        <div class="card shadow-sm stat-card h-100">
-          <div class="card-body text-center py-3">
-            <div class="stat-number text-primary">{{ stats.totalAmendments }}</div>
-            <div class="stat-label">Total Amendments</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="card shadow-sm stat-card h-100">
-          <div class="card-body text-center py-3">
-            <div class="stat-number text-warning">{{ stats.pending }}</div>
-            <div class="stat-label">Pending</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="card shadow-sm stat-card h-100">
-          <div class="card-body text-center py-3">
-            <div class="stat-number text-success">{{ stats.approved }}</div>
-            <div class="stat-label">Approved</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="card shadow-sm stat-card h-100">
-          <div class="card-body text-center py-3">
-            <div class="stat-number text-info">{{ stats.totalSubmissions }}</div>
-            <div class="stat-label">Submissions</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-4">
+    <div class="home-body">
       <!-- Calendar -->
-      <div class="col-lg-8">
-        <div class="card shadow-sm">
+      <div class="home-col-main anim-in-d2">
+        <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <button class="btn btn-sm btn-outline-secondary" @click="prevMonth"><i class="bi bi-chevron-left"></i></button>
-            <h5 class="mb-0 fw-bold">{{ months[currentMonth] }} {{ currentYear }} &mdash; Academic Calendar 2025-2026</h5>
+            <span class="fw-semibold small">{{ months[currentMonth] }} {{ currentYear }} · HKBU Academic Calendar</span>
             <button class="btn btn-sm btn-outline-secondary" @click="nextMonth"><i class="bi bi-chevron-right"></i></button>
           </div>
           <div class="card-body p-2">
@@ -310,205 +333,323 @@ onMounted(() => {
               <span><span class="legend-dot bg-secondary"></span> Meeting</span>
             </div>
 
-            <div v-if="monthEvents.length" class="mt-3 px-2">
-              <h6 class="fw-bold">Events this month:</h6>
-              <div v-for="evt in monthEvents" :key="evt.date" class="d-flex align-items-center mb-1">
-                <span class="badge me-2" :class="eventTypeBadge(evt.type)" style="width:70px;font-size:0.7rem">{{ eventTypeLabel(evt.type) }}</span>
-                <small class="text-muted me-2" style="min-width:40px">{{ evt.date.split('-').slice(1).join('/') }}</small>
-                <small>{{ evt.label }}</small>
+            <div v-if="monthEvents.length" class="mt-2 px-2">
+              <div class="text-muted small fw-semibold mb-1">Events this month</div>
+              <div style="max-height:160px;overflow-y:auto">
+                <div v-for="evt in monthEvents" :key="evt.date" class="d-flex align-items-center mb-1">
+                  <span class="badge me-2" :class="eventTypeBadge(evt.type)" style="width:64px;font-size:0.68rem;flex-shrink:0">{{ eventTypeLabel(evt.type) }}</span>
+                  <span class="text-muted me-2" style="font-size:0.72rem;min-width:36px">{{ evt.date.split('-').slice(1).join('/') }}</span>
+                  <span class="small text-truncate">{{ evt.label }}</span>
+                </div>
               </div>
             </div>
-            <div v-else class="mt-3 px-2 text-muted small">No events this month.</div>
+            <div v-else class="mt-2 px-2 text-muted small">No events this month.</div>
           </div>
         </div>
       </div>
 
       <!-- Sidebar -->
-      <div class="col-lg-4">
-        <!-- Quick Actions -->
-        <div v-if="auth.isLoggedIn" class="card shadow-sm mb-3">
-          <div class="card-header fw-bold"><i class="bi bi-lightning"></i> Quick Actions</div>
-          <div class="card-body d-grid gap-2">
-            <router-link to="/amendments" class="btn btn-primary btn-sm"><i class="bi bi-pencil-square"></i> New Amendment</router-link>
-            <router-link to="/excel-upload" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel Upload</router-link>
-            <router-link to="/submissions" class="btn btn-info btn-sm text-white"><i class="bi bi-send"></i> View Submissions</router-link>
-            <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-outline-dark btn-sm"><i class="bi bi-shield-lock"></i> Admin Panel</router-link>
+      <div class="home-col-side anim-in-d3">
+
+        <!-- Quick Actions + Admin performance stats -->
+        <div v-if="auth.isLoggedIn" class="card">
+          <div class="card-header-plain d-flex align-items-center gap-2">
+            <i class="bi bi-lightning-charge text-warning" style="font-size:0.9rem"></i>
+            <span class="fw-semibold small">Quick Actions</span>
+          </div>
+          <!-- Admin mini-stats (only for admin role) -->
+          <div v-if="auth.isAdmin" class="admin-stats-row">
+            <div class="admin-stat-item text-center">
+              <div class="admin-stat-val text-danger">{{ performanceStats.pending }}</div>
+              <div class="admin-stat-label">Pending</div>
+            </div>
+            <div class="admin-stat-item text-center">
+              <div class="admin-stat-val text-success">{{ performanceStats.processed }}</div>
+              <div class="admin-stat-label">Done</div>
+            </div>
+            <div class="admin-stat-item text-center">
+              <div class="admin-stat-val text-info">{{ performanceStats.avgProcessingDays }}</div>
+              <div class="admin-stat-label">Avg Days</div>
+            </div>
+            <div class="admin-stat-item text-center">
+              <div class="admin-stat-val text-primary">{{ performanceStats.approvalRate }}%</div>
+              <div class="admin-stat-label">Approval</div>
+            </div>
+          </div>
+          <div class="d-grid gap-2 p-3">
+            <router-link to="/amendments" class="btn btn-primary btn-sm"><i class="bi bi-pencil-square me-1"></i>New Amendment</router-link>
+            <router-link to="/excel-upload" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Excel Upload</router-link>
+            <router-link to="/submissions" class="btn btn-outline-secondary btn-sm"><i class="bi bi-send me-1"></i>View Submissions</router-link>
+            <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-outline-dark btn-sm"><i class="bi bi-shield-lock me-1"></i>Admin Panel</router-link>
           </div>
         </div>
 
-        <!-- Notifications -->
-        <div v-if="auth.isLoggedIn" class="card shadow-sm mb-3">
-          <div class="card-header fw-bold d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-bell"></i> Notifications</span>
-            <span v-if="notif.unreadCount > 0" class="badge bg-danger rounded-pill">{{ notif.unreadCount }}</span>
+        <!-- Activity: Notifications + Recent Submissions merged -->
+        <div v-if="auth.isLoggedIn" class="card">
+          <div class="card-header-plain d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-bell text-primary" style="font-size:0.9rem"></i>
+              <span class="fw-semibold small">Notifications</span>
+            </div>
+            <span v-if="notif.unreadCount > 0" class="badge bg-danger rounded-pill" style="font-size:0.65rem">{{ notif.unreadCount }}</span>
           </div>
-          <div class="card-body p-0">
-            <div v-if="notif.notifications.length === 0" class="text-center text-muted py-3">No notifications</div>
-            <div v-for="n in notif.notifications.slice(0, 5)" :key="n._id" class="border-bottom px-3 py-2" :class="{ 'bg-light-unread': !n.read }">
-              <div class="d-flex align-items-start gap-2">
-                <i class="bi mt-1" :class="n.read ? 'bi-envelope-open text-muted' : 'bi-envelope-fill text-primary'" style="font-size:0.85rem"></i>
-                <div class="flex-grow-1">
-                  <div class="fw-semibold small" :class="{ 'fw-bold': !n.read }">{{ n.title }}</div>
-                  <div class="text-muted small text-truncate" style="max-width:220px">{{ n.message }}</div>
-                  <div class="text-muted" style="font-size:0.65rem">{{ new Date(n.created_at).toLocaleString() }}</div>
-                </div>
+          <div v-if="notif.notifications.length === 0" class="text-center text-muted py-3 small">No notifications</div>
+          <div
+            v-for="n in notif.notifications.slice(0, 3)"
+            :key="n._id"
+            class="activity-item d-flex align-items-start gap-2"
+            :class="{ 'activity-unread': !n.read }"
+          >
+            <i class="bi flex-shrink-0 mt-1" :class="n.read ? 'bi-envelope-open text-muted' : 'bi-envelope-fill text-primary'" style="font-size:0.8rem"></i>
+            <div class="min-w-0 flex-grow-1">
+              <div class="small fw-semibold text-truncate">{{ n.title }}</div>
+              <div class="text-muted small text-truncate">{{ n.message }}</div>
+            </div>
+          </div>
+          <div class="section-divider mx-3">
+            <i class="bi bi-clock-history text-secondary me-1" style="font-size:0.78rem"></i>
+            <span class="text-muted" style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Recent</span>
+          </div>
+          <div v-if="subStore.submissions.length === 0" class="text-center text-muted py-2 small">No submissions</div>
+          <div v-for="s in subStore.submissions.slice(0, 3)" :key="s._id" class="activity-item d-flex justify-content-between align-items-start gap-2">
+            <div class="min-w-0 flex-grow-1">
+              <div class="small fw-semibold text-truncate">{{ s.title }}</div>
+              <div class="text-muted" style="font-size:0.7rem">{{ s.amendment_count }} amendment(s) · {{ new Date(s.created_at).toLocaleDateString() }}</div>
+            </div>
+            <span
+              class="badge flex-shrink-0"
+              style="font-size:0.65rem"
+              :class="{ 'bg-warning text-dark': s.status==='Draft', 'bg-info': s.status==='Submitted', 'bg-success': s.status==='Approved', 'bg-danger': s.status==='Rejected' }"
+            >{{ s.status }}</span>
+          </div>
+          <div style="height:6px"></div>
+        </div>
+
+        <!-- Help & Announcements merged -->
+        <div class="card">
+          <div class="card-header-plain d-flex align-items-center gap-2">
+            <i class="bi bi-question-circle text-info" style="font-size:0.9rem"></i>
+            <span class="fw-semibold small">Help & Updates</span>
+          </div>
+          <div class="px-3 pt-2 pb-1">
+            <div
+              v-for="(item, idx) in faqItems"
+              :key="idx"
+              class="help-row d-flex align-items-center gap-2 py-2"
+              :class="{ 'border-bottom': idx < faqItems.length - 1 }"
+            >
+              <i class="bi flex-shrink-0" :class="item.icon" style="color:#0c8eeb;font-size:0.95rem"></i>
+              <div class="min-w-0">
+                <router-link :to="item.link === '#' ? '/submissions' : item.link" class="text-decoration-none">
+                  <div class="small fw-semibold">{{ item.title }}</div>
+                </router-link>
+                <div class="text-muted" style="font-size:0.72rem">{{ item.description }}</div>
               </div>
+            </div>
+          </div>
+          <div class="section-divider mx-3">
+            <i class="bi bi-megaphone text-secondary me-1" style="font-size:0.78rem"></i>
+            <span class="text-muted" style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Announcements</span>
+          </div>
+          <div class="px-3 pb-3 pt-1">
+            <div v-for="ann in announcements.slice(0, 2)" :key="ann.id" class="ann-row border-start ps-2 mb-2" :class="'border-' + ann.type">
+              <div class="d-flex justify-content-between align-items-start gap-1">
+                <div class="small fw-semibold">{{ ann.title }}</div>
+                <small class="text-muted flex-shrink-0">{{ ann.date }}</small>
+              </div>
+              <div class="text-muted small">{{ ann.message }}</div>
             </div>
           </div>
         </div>
 
-        <!-- Recent Submissions -->
-        <div v-if="auth.isLoggedIn" class="card shadow-sm">
-          <div class="card-header fw-bold"><i class="bi bi-clock-history"></i> Recent Submissions</div>
-          <div class="card-body p-0">
-            <div v-if="subStore.submissions.length === 0" class="text-center text-muted py-3">No submissions yet</div>
-            <div v-for="s in subStore.submissions.slice(0, 5)" :key="s._id" class="border-bottom px-3 py-2">
-              <div class="d-flex justify-content-between align-items-start">
-                <div class="flex-grow-1">
-                  <span class="fw-semibold small">{{ s.title }}</span>
-                  <div class="text-muted" style="font-size:0.65rem">{{ s.amendment_count }} amendment(s) - {{ new Date(s.created_at).toLocaleDateString() }}</div>
-                </div>
-                <span class="badge ms-2" :class="{'bg-warning text-dark': s.status === 'Draft', 'bg-info': s.status === 'Submitted', 'bg-success': s.status === 'Approved', 'bg-danger': s.status === 'Rejected'}">{{ s.status }}</span>
-              </div>
-            </div>
-          </div>
+        <!-- Guest welcome (not logged in) -->
+        <div v-if="!auth.isLoggedIn" class="card text-center py-4 px-3">
+          <i class="bi bi-mortarboard fs-1 text-primary mb-2 d-block"></i>
+          <h6 class="fw-bold mb-1">Grade Amendment System</h6>
+          <p class="text-muted small mb-3">Login to manage and track your grade amendment requests.</p>
+          <router-link to="/login" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-in-right me-1"></i>Login</router-link>
         </div>
 
-        <!-- Not logged in message -->
-        <div v-if="!auth.isLoggedIn" class="card shadow-sm">
-          <div class="card-body text-center py-4">
-            <i class="bi bi-shield-lock fs-1 text-muted mb-3 d-block"></i>
-            <h6 class="fw-bold">Welcome to the Grade Amendment System</h6>
-            <p class="text-muted small mb-3">Please login to access amendments, submissions, and notifications.</p>
-            <router-link to="/login" class="btn btn-primary btn-sm"><i class="bi bi-box-arrow-in-right"></i> Login Now</router-link>
-          </div>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Workflow */
-.workflow-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.workflow-step {
+/* === VIEWPORT LAYOUT === */
+.home-panel {
+  height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 72px;
+  padding: 12px 20px 8px;
+  gap: 10px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
-.step-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+
+.home-hdr { flex-shrink: 0; }
+
+.home-stats {
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  margin-bottom: 4px;
+  gap: 10px;
 }
-.step-label {
-  font-size: 0.68rem;
-  font-weight: 600;
+.stat-card-item {
+  flex: 1;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 10px;
+  padding: 10px 12px;
   text-align: center;
-  line-height: 1.2;
-  max-width: 80px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
-.workflow-arrow {
-  color: var(--bs-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 18px;
+[data-bs-theme="dark"] .stat-card-item {
+  background: #152338;
+  border-color: rgba(255,255,255,0.08);
 }
 
-/* Stats */
-.stat-card {
-  border: none;
+.home-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
 }
-.stat-number {
-  font-size: 1.8rem;
-  font-weight: 700;
-  line-height: 1;
+.home-col-main {
+  flex: 0 0 62%;
+  min-height: 0;
+  overflow-y: auto;
 }
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--bs-secondary);
-  font-weight: 500;
-  margin-top: 4px;
-}
-
-/* Unread notification highlight */
-.bg-light-unread {
-  background: rgba(12, 142, 235, 0.04);
-}
-[data-bs-theme="dark"] .bg-light-unread {
-  background: rgba(0, 180, 216, 0.06);
+.home-col-side {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* Calendar */
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+/* === STATS === */
+.stat-number { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+.stat-label  { font-size: 0.72rem; color: var(--bs-secondary); font-weight: 500; margin-top: 3px; }
+
+/* === CARDS — clean white, minimal shadow === */
+.card {
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+  overflow: hidden;
 }
+[data-bs-theme="dark"] .card {
+  background: #152338;
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.3);
+}
+
+/* Bootstrap .card-header already has bg — override for consistency */
+.card-header {
+  background: #f8fafd;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  padding: 10px 14px;
+}
+[data-bs-theme="dark"] .card-header {
+  background: #0f1e30;
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* Custom plain header used in sidebar cards */
+.card-header-plain {
+  padding: 10px 14px;
+  background: #f8fafd;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+[data-bs-theme="dark"] .card-header-plain {
+  background: #0f1e30;
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* === CALENDAR === */
+.calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+
 .calendar-header {
-  background: linear-gradient(135deg, #0c8eeb, #36a9fa);
-  color: white;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  background: #1a7fcc;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 0.74rem;
+  padding: 4px 0;
+  text-align: center;
+  font-weight: 600;
 }
 .calendar-cell {
-  min-height: 42px;
-  border-radius: 6px;
+  min-height: 40px;
+  border-radius: 5px;
   cursor: default;
-  position: relative;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
-.calendar-cell:hover:not(.calendar-empty) {
-  background: rgba(12, 142, 235, 0.1);
-}
-.calendar-holiday {
-  background: rgba(220, 53, 69, 0.1);
-}
-.calendar-academic {
-  background: rgba(12, 142, 235, 0.08);
-}
-.calendar-exam {
-  background: rgba(255, 193, 7, 0.12);
-}
-.calendar-event {
-  background: rgba(25, 135, 84, 0.08);
-}
-.calendar-today {
-  border: 2px solid #0c8eeb;
-  font-weight: bold;
-  background: rgba(12, 142, 235, 0.05);
-}
-.calendar-event-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #0c8eeb;
-  margin: 0 auto;
-}
+.calendar-cell:hover:not(.calendar-empty) { background: rgba(12,142,235,0.10) !important; }
+.calendar-holiday  { background: rgba(220,53,69,0.07); }
+.calendar-academic { background: rgba(12,142,235,0.06); }
+.calendar-exam     { background: rgba(255,193,7,0.09); }
+.calendar-event    { background: rgba(25,135,84,0.07); }
+.calendar-today    { border: 2px solid #1a7fcc; font-weight: 700; }
+
+.calendar-event-dot { width: 5px; height: 5px; border-radius: 50%; margin: 1px auto 0; }
 .dot-holiday { background: var(--bs-danger); }
 .dot-academic { background: var(--bs-primary); }
-.dot-exam { background: var(--bs-warning); }
-.dot-event { background: var(--bs-success); }
+.dot-exam    { background: var(--bs-warning); }
+.dot-event   { background: var(--bs-success); }
 .dot-meeting { background: var(--bs-secondary); }
 
-/* Legend dots */
-.legend-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
+.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+
+[data-bs-theme="dark"] .calendar-cell    { background: rgba(255,255,255,0.03); }
+[data-bs-theme="dark"] .calendar-holiday { background: rgba(220,53,69,0.11); }
+[data-bs-theme="dark"] .calendar-academic{ background: rgba(12,142,235,0.09); }
+[data-bs-theme="dark"] .calendar-exam    { background: rgba(255,193,7,0.10); }
+[data-bs-theme="dark"] .calendar-event   { background: rgba(25,135,84,0.09); }
+
+/* === SIDEBAR COMPONENTS === */
+
+/* Admin performance row */
+.admin-stats-row {
+  display: flex;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
 }
+[data-bs-theme="dark"] .admin-stats-row { border-color: rgba(255,255,255,0.06); }
+.admin-stat-item { flex: 1; }
+.admin-stat-val   { font-size: 1.25rem; font-weight: 700; line-height: 1; }
+.admin-stat-label { font-size: 0.6rem; color: var(--bs-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+
+/* Activity list items (notifications + submissions) */
+.activity-item {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  transition: background 0.1s;
+}
+.activity-item:hover { background: rgba(0,0,0,0.018); }
+.activity-unread    { background: rgba(12,142,235,0.04); }
+[data-bs-theme="dark"] .activity-item   { border-color: rgba(255,255,255,0.05); }
+[data-bs-theme="dark"] .activity-item:hover { background: rgba(255,255,255,0.03); }
+[data-bs-theme="dark"] .activity-unread { background: rgba(0,180,216,0.07); }
+
+/* Section divider inside card */
+.section-divider {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+[data-bs-theme="dark"] .section-divider { border-color: rgba(255,255,255,0.06); }
+
+/* Help rows */
+.help-row { border-radius: 4px; transition: background 0.1s; }
+.help-row:hover { background: rgba(12,142,235,0.05); }
+[data-bs-theme="dark"] .help-row:hover { background: rgba(0,180,216,0.07); }
+
+/* Announcement rows */
+.ann-row { border-left-width: 3px !important; }
+.border-info    { border-color: var(--bs-info)    !important; }
+.border-warning { border-color: var(--bs-warning) !important; }
+.border-danger  { border-color: var(--bs-danger)  !important; }
 </style>
