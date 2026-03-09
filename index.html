@@ -19,6 +19,17 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- Polyfill Map.prototype.getOrInsertComputed for Safari (required by pdfjs-dist v5) -->
+    <script>
+      if (typeof Map.prototype.getOrInsertComputed !== 'function') {
+        Map.prototype.getOrInsertComputed = function(key, callbackfn) {
+          if (!this.has(key)) {
+            this.set(key, callbackfn(key));
+          }
+          return this.get(key);
+        };
+      }
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
