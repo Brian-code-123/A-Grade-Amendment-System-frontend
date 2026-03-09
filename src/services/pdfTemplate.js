@@ -658,7 +658,15 @@ export async function downloadFilledForm(amendment) {
     // Endorsement box (Programme Director)
     endorsementSignature: cleanSig,
     endorserName: auth.user?.name || '',
-    endorsementDate: new Date().toLocaleDateString()
+    endorsementDate: new Date().toLocaleDateString(),
+    // Final year student warning checkbox (Page 1)
+    finalYearStudent: amendment.final_year_student || false,
+    // Page 2 — AAR Approval section (filled by Academic Registry)
+    approved: amendment.approved === true ? true : undefined,
+    notApproved: amendment.approved === false ? true : undefined,
+    registrarSignature: amendment.registrar_signature || null,
+    registrarDate: amendment.registrar_date || '',
+    registrarRemarks: amendment.registrar_remarks || ''
   }
 
   try {
@@ -755,6 +763,21 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     drawField(data.newGrade, 415, 667, 10)
 
     // ═══════════════════════════════════════════════════════════════
+    // ACADEMIC YEAR & TERM (Page 1)
+    // ═══════════════════════════════════════════════════════════════
+    if (data.academicYear) {
+      const p = data.academicYear.split('-')
+      if (p[0]) drawField(p[0].slice(-2), 338, 722, 10)
+      if (p[1]) drawField(p[1].slice(-2), 382, 722, 10)
+    }
+    if (data.term) drawField(String(data.term), 484, 722, 10)
+
+    // ═══════════════════════════════════════════════════════════════
+    // FINAL YEAR STUDENT CHECKBOX (Page 1) — "*If the grade..."
+    // ═══════════════════════════════════════════════════════════════
+    if (data.finalYearStudent) drawTick(46, 650)
+
+    // ═══════════════════════════════════════════════════════════════
     // LEFT SIDE - NON-APPEAL REASONS
     // ═══════════════════════════════════════════════════════════════
     if (data.reasonType !== 'appeal') {
@@ -818,6 +841,57 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       // Signature @ 327, 293
       await addSignature(data.endorsementSignature, 327, 293, 45, 18)
       drawField(data.endorsementDate, 356, 254, 10)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // PAGE 2 — ASSISTANT ACADEMIC REGISTRAR'S APPROVAL
+    // ═══════════════════════════════════════════════════════════════
+    if (pages.length > 1) {
+      const page2 = pages[1]
+
+      const drawField2 = (text, x, y, size = 10) => {
+        if (text === null || text === undefined || text === '') return
+        try {
+          page2.drawText(String(text), { x, y, size, color: rgb(0, 0, 0) })
+        } catch (e) {
+          console.warn(`Page2: Failed to draw text at ${x}, ${y}:`, e.message)
+        }
+      }
+
+      const drawTick2 = (x, y) => {
+        try {
+          page2.drawText('V', { x, y, size: 11, color: rgb(0, 0, 0) })
+        } catch (e) {
+          console.warn(`Page2: Failed to draw tick at ${x}, ${y}:`, e.message)
+        }
+      }
+
+      const addSignature2 = async (signatureDataUrl, x, y, width = 45, height = 18) => {
+        if (!signatureDataUrl) return
+        try {
+          const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
+          page2.drawImage(signatureImage, { x, y, width, height })
+        } catch (e) {
+          console.warn(`Page2: Failed to add signature at ${x}, ${y}:`, e.message)
+        }
+      }
+
+      // *Approved checkbox
+      if (data.approved === true) drawTick2(35, 748)
+
+      // *Not Approved checkbox
+      if (data.notApproved === true) drawTick2(115, 748)
+
+      // Signature
+      if (data.registrarSignature) {
+        await addSignature2(data.registrarSignature, 100, 710, 45, 18)
+      }
+
+      // Date
+      if (data.registrarDate) drawField2(data.registrarDate, 340, 728, 10)
+
+      // Remarks
+      if (data.registrarRemarks) drawField2(data.registrarRemarks, 98, 712, 9)
     }
 
     return pdfDoc
