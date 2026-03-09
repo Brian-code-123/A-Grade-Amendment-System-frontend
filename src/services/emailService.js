@@ -6,7 +6,7 @@
  */
 
 const API = '/api/send-email'
-const ADMIN_EMAIL = '22240802@life.hkbu.edu.hk'
+const ADMIN_EMAIL = '22240802@life.hkbu.edu.hk' // admin inbox — not displayed in UI
 
 /**
  * Low-level send helper — POSTs to the backend email endpoint.
