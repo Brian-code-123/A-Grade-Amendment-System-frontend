@@ -119,19 +119,9 @@
           </div>
 
           <div class="sidebar-section">
-            <h3>🗜️ Compress</h3>
-            <button @click="showCompressionModal = true" class="action-btn full-width">
-              <i class="bi bi-file-earmark-zip"></i> Compress PDF
-            </button>
-          </div>
-
-          <div class="sidebar-section">
             <h3>📤 Export As</h3>
             <button @click="exportAsPNG" class="export-btn">
               <i class="bi bi-image"></i> PNG
-            </button>
-            <button @click="exportAsWord" class="export-btn">
-              <i class="bi bi-file-word"></i> Word
             </button>
             <button @click="exportAsPDF" class="export-btn">
               <i class="bi bi-file-pdf"></i> PDF
@@ -208,7 +198,6 @@ const textX = ref(0)
 const textY = ref(0)
 const successMsg = ref('')
 const errorMsg = ref('')
-const showCompressionModal = ref(false)
 const directTextInput = ref(null)
 
 // Canvas references
@@ -643,38 +632,6 @@ const exportAsPNG = async () => {
       await new Promise(r => setTimeout(r, 350))
     }
     successMsg.value = `Exported ${pageCount.value} page(s) as PNG!`
-    setTimeout(() => successMsg.value = '', 3000)
-  } catch (e) {
-    errorMsg.value = 'Export failed: ' + e.message
-    setTimeout(() => errorMsg.value = '', 3000)
-  }
-}
-
-const exportAsWord = async () => {
-  try {
-    const { Document, Packer, Paragraph, Table, TableCell, TableRow } = await import('docx')
-    
-    const doc = new Document({
-      sections: [{
-        children: [
-          new Paragraph({
-            text: 'PDF Document Export',
-            bold: true,
-            size: 32
-          }),
-          new Paragraph('Page: ' + currentPage.value),
-          new Paragraph('')
-        ]
-      }]
-    })
-    
-    const buffer = await Packer.toBuffer(doc)
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = fileName.value.replace(/\.pdf$/i, '') + '.docx'
-    link.click()
-    successMsg.value = 'Word document exported successfully!'
     setTimeout(() => successMsg.value = '', 3000)
   } catch (e) {
     errorMsg.value = 'Export failed: ' + e.message
