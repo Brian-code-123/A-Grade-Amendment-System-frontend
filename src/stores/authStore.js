@@ -36,6 +36,18 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
+  async function loginWithCode(email, password, verificationCode) {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, verificationCode })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message || 'Login failed')
+    setAuth(data.token, data.user || data)
+    return data
+  }
+
   async function register(name, email, password, role) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -87,56 +99,5 @@ export const useAuthStore = defineStore('auth', () => {
     return { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/json' }
   }
 
-  function switchRole() {
-    if (!token.value?.startsWith('demo_token_')) return
-    const newRole = user.value?.role === 'admin' ? 'Programme Director' : 'admin'
-    const newUser = {
-      ...user.value,
-      role: newRole,
-      name: newRole === 'admin' ? 'Admin User' : 'Dr. Martin Choy',
-      email: newRole === 'admin' ? '22240802@life.hkbu.edu.hk' : 'martin.choy@hkbu.edu.hk'
-    }
-    const newToken = 'demo_token_' + (newRole === 'admin' ? 'admin' : 'pd') + '_' + Date.now()
-    setAuth(newToken, newUser)
-  }
-
-  const isDemoUser = computed(() => token.value?.startsWith('demo_token_'))
-
-  async function saveSignature(signatureImage) {
-    try {
-      // Update current user locally first (always works)
-      if (user.value) {
-        user.value.signature = signatureImage
-        localStorage.setItem('user', JSON.stringify(user.value))
-      }
-      
-      // Try to save to backend API if available
-      try {
-        const res = await fetch('/api/auth/signature', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ signature: signatureImage }),
-          timeout: 5000 // 5 second timeout
-        })
-        
-        if (res.ok) {
-          const data = await res.json()
-          return data
-        } else {
-          console.warn('Backend API not available, using local storage only')
-          return { message: 'Signature saved locally' }
-        }
-      } catch (apiError) {
-        console.warn('Backend API error, using local storage:', apiError)
-        // Backend not available, but local storage is saved, so continue
-        return { message: 'Signature saved locally' }
-      }
-      
-    } catch (error) {
-      console.error('Error saving signature:', error)
-      throw error
-    }
-  }
-
-  return { token, user, isLoggedIn, isAdmin, isPD, isDemoUser, userName, setAuth, login, register, logout, fetchMe, authHeaders, clearAuth, saveSignature, switchRole }
+  return { token, user, isLoggedIn, isAdmin, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth }
 })
