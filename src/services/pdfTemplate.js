@@ -806,9 +806,9 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       drawField(data.instructorDate, 111, 239, 10)
 
       // Programme Director Section (left side)
-      drawField(data.endorserName, 73, 186, 10)
-      // Signature @ 130, 186
-      await addSignature(data.endorsementSignature, 130, 186, 45, 18)
+      drawField(data.endorserName, 75, 184, 10)
+      // Signature @ 180, 183
+      await addSignature(data.endorsementSignature, 180, 183, 45, 18)
       drawField(data.endorsementDate, 110, 148, 10)
     }
 
@@ -837,9 +837,9 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       drawField(data.instructorDate, 375, 344, 10)
 
       // Programme Director Section (right side)
-      drawField(data.endorserName, 327, 293, 10)
-      // Signature @ 327, 293
-      await addSignature(data.endorsementSignature, 327, 293, 45, 18)
+      drawField(data.endorserName, 320, 292, 10)
+      // Signature @ 477, 292
+      await addSignature(data.endorsementSignature, 477, 292, 45, 18)
       drawField(data.endorsementDate, 356, 254, 10)
     }
 
