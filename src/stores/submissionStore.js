@@ -14,7 +14,8 @@ const DEMO_SUBMISSIONS = [
     submitted_by_name: 'Dr. Martin Choy',
     created_at: new Date(Date.now() - 6*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
-    approved_at: new Date(Date.now() - 3*24*60*60*1000).toISOString()
+    approved_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
+    printed: true
   },
   {
     _id: 'ds2',
