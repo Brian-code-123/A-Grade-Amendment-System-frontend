@@ -16,6 +16,7 @@ const selectedAmendments = ref([])
 const successMsg = ref('')
 const errorMsg = ref('')
 const emailSending = ref(false)
+const submitting = reactive({})
 
 /* ── Batch selection for submissions ───────────────────────────── */
 const selectedSubIds = reactive([])
@@ -117,7 +118,7 @@ async function createAndSubmit() {
 
 async function submitToAdmin(id) {
   if (!confirm('Submit to admin for review? An email notification will be sent to the administrator.')) return
-  emailSending.value = true
+  submitting[id] = true
   errorMsg.value = ''
   try {
     // Get submission details
@@ -146,7 +147,7 @@ async function submitToAdmin(id) {
   } catch (e) {
     errorMsg.value = e.message
   } finally {
-    emailSending.value = false
+    submitting[id] = false
   }
 }
 
@@ -270,8 +271,8 @@ onMounted(() => {
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
-                  <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending">
-                    <span v-if="emailSending" class="spinner-border spinner-border-sm me-1"></span>
+                  <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
+                    <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="bi bi-send"></i> Submit to Admin
                   </button>
                   <span v-else-if="s.status === 'Submitted'" class="text-muted small">Awaiting review</span>

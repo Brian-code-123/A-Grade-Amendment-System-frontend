@@ -135,12 +135,10 @@ async function handleRegister() {
         <h1 class="lp-title">Grade Amendment<br>System</h1>
         <p class="lp-sub">Academic Registry · Hong Kong Baptist University</p>
         <div class="lp-rule"></div>
-        <ul class="lp-features">
-          <li><i class="bi bi-pen-fill"></i><span>Streamlined grade amendment request workflow</span></li>
-          <li><i class="bi bi-file-earmark-pdf-fill"></i><span>Instant PDF generation &amp; digital signatures</span></li>
-          <li><i class="bi bi-table"></i><span>Excel-to-amendment batch processing</span></li>
-          <li><i class="bi bi-shield-check-fill"></i><span>Role-based access with 2FA verification</span></li>
-        </ul>
+        <blockquote class="lp-verse">
+          <p>Rejoice always, pray continually, give thanks in all circumstances.</p>
+          <cite>— 1 Thessalonians 5:16–18</cite>
+        </blockquote>
         <p class="lp-footer-text">© 2026 HKBU · Academic Registry</p>
       </div>
     </aside>
@@ -200,7 +198,7 @@ async function handleRegister() {
             <label>Email address</label>
             <div class="lp-input-wrap">
               <i class="bi bi-envelope lp-field-icon"></i>
-              <input v-model="loginForm.email" type="email" placeholder="you@hkbu.edu.hk" required />
+              <input v-model="loginForm.email" type="email" placeholder="you@life.hkbu.edu.hk" required />
             </div>
           </div>
           <div class="lp-field">
@@ -244,7 +242,7 @@ async function handleRegister() {
             <label>Email address</label>
             <div class="lp-input-wrap">
               <i class="bi bi-envelope lp-field-icon"></i>
-              <input v-model="regForm.email" type="email" placeholder="you@hkbu.edu.hk" required />
+              <input v-model="regForm.email" type="email" placeholder="you@life.hkbu.edu.hk" required />
             </div>
           </div>
           <div class="lp-field">
@@ -397,6 +395,27 @@ async function handleRegister() {
   opacity: 0.9;
   flex-shrink: 0;
   color: rgba(150,210,255,0.9);
+}
+
+.lp-verse {
+  margin: 0 0 24px;
+  padding: 0;
+  border: none;
+}
+.lp-verse p {
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.65;
+  opacity: 0.88;
+  margin: 0 0 6px;
+}
+.lp-verse cite {
+  font-size: 0.78rem;
+  opacity: 0.55;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .lp-footer-text {
