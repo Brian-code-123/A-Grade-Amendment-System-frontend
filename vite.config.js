@@ -32,11 +32,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 600
   },
   server: {
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'https://grade-amendment-evaddtdmcxhfgvb4.eastasia-01.azurewebsites.net',
-        changeOrigin: true,
-        secure: true
+        target: 'http://localhost:3000',
+        changeOrigin: true
       }
     }
   },
