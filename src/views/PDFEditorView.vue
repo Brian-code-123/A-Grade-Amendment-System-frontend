@@ -112,7 +112,52 @@
         <!-- Right Sidebar -->
         <div class="right-sidebar">
           <div class="sidebar-section">
-            <h3>📥 Download</h3>
+            <h3>� Form Data</h3>
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-size: 12px;">
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Academic Year:</label>
+                <input v-model="formDataInputs.academicYear" type="text" placeholder="e.g., 25" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" maxlength="2">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Term:</label>
+                <input v-model="formDataInputs.term" type="text" placeholder="e.g., 1" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Grade:</label>
+                <input v-model="formDataInputs.newGrade" type="text" placeholder="e.g., A" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
+              </div>
+              <hr style="margin: 8px 0;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">
+                Page 2 - Approval Status:
+                <span v-if="currentAmendment" style="display: block; font-size: 11px; font-weight: normal; color: #999; margin-top: 2px;">
+                  (from amendment: {{ currentAmendment.status }})
+                </span>
+              </div>
+              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                  <input :checked="formDataInputs.approved === true" @change="formDataInputs.approved = $event.target.checked ? true : null" type="checkbox" style="cursor: pointer;">
+                  <span>Approved</span>
+                </label>
+              </div>
+              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                  <input :checked="formDataInputs.approved === false" @change="formDataInputs.approved = $event.target.checked ? false : null" type="checkbox" style="cursor: pointer;">
+                  <span>Not Approved</span>
+                </label>
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Approval Date:</label>
+                <input v-model="formDataInputs.approvalDate" type="date" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" :disabled="formDataInputs.approved === null">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Remarks:</label>
+                <textarea v-model="formDataInputs.approvalRemarks" placeholder="Add remarks..." style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px;" rows="2" :disabled="formDataInputs.approved === null"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>�📥 Download</h3>
             <button @click="downloadOriginal" class="action-btn full-width">
               <i class="bi bi-download"></i> Original PDF
             </button>
@@ -158,10 +203,28 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { useAmendmentStore } from '@/stores/amendmentStore'
 import * as pdfjsLib from 'pdfjs-dist'
 
 const router = useRouter()
+const route = useRoute()
+const amendmentStore = useAmendmentStore()
+
+// Form data passed from submission/amendment
+const formData = ref(null)
+const currentAmendment = ref(null)
+
+// Form data inputs for page 2 approval info
+// approved: true = Approved checkbox, false = Not Approved checkbox, null = blank
+const formDataInputs = reactive({
+  academicYear: '',
+  term: '',
+  newGrade: '',
+  approved: null,
+  approvalDate: '',
+  approvalRemarks: ''
+})
 
 // Set worker - try local file first, then fallback to CDN
 // Start with local file path (served from /public)
@@ -567,7 +630,7 @@ const zoomOut = () => {
 }
 
 // Helper: render a given page number to an offscreen canvas with annotations composited on top
-const renderPageToCanvas = async (pageNum) => {
+const renderPageToCanvas = async (pageNum, includeFormData = false) => {
   const page = await pdfDoc.getPage(pageNum)
   const scale = zoomLevel.value / 100
   const viewport = page.getViewport({ scale })
@@ -614,7 +677,102 @@ const renderPageToCanvas = async (pageNum) => {
     }
   })
 
+  // Add form data if available and requested
+  if (includeFormData) {
+    // Check if there's any form data to add
+    const hasFormData = formDataInputs.academicYear || formDataInputs.term || formDataInputs.newGrade
+    // approved === null means no decision yet; true/false both count as "has data"
+    const hasApprovalData = formDataInputs.approved !== null || formDataInputs.approvalDate || formDataInputs.approvalRemarks
+
+    console.log(`renderPageToCanvas page=${pageNum} scale=${scale} hasFormData=${hasFormData} hasApprovalData=${hasApprovalData} approved=${formDataInputs.approved}`)
+
+    if (hasFormData && pageNum === 1) {
+      addFormDataToCanvas(ctx, 1, scale)
+    }
+    if (hasApprovalData && pageNum === 2) {
+      addFormDataToCanvas(ctx, 2, scale)
+    }
+  }
+
   return composite
+}
+
+// Helper: add form data text to canvas at specified coordinates
+// coords are in PDF user-units (at scale=1); multiply by scale for the actual canvas pixel position
+const addFormDataToCanvas = (ctx, pageNum, scale = 1) => {
+  const s = scale
+  ctx.fillStyle = '#000000'
+  ctx.textBaseline = 'top'
+
+  if (pageNum === 1) {
+    ctx.font = `bold ${12 * s}px Arial`
+
+    // AY first number (338, 722)
+    if (formDataInputs.academicYear) {
+      const ayNum = String(formDataInputs.academicYear).padStart(2, '0')
+      ctx.fillText(ayNum, 338 * s, 722 * s)
+    }
+
+    // AY second number (382, 722)
+    if (formDataInputs.academicYear) {
+      const nextYear = String(parseInt(formDataInputs.academicYear) + 1).padStart(2, '0')
+      ctx.fillText(nextYear, 382 * s, 722 * s)
+    }
+
+    // Term (484, 722)
+    if (formDataInputs.term) {
+      ctx.fillText(String(formDataInputs.term), 484 * s, 722 * s)
+    }
+
+    // Grade (46, 650)
+    if (formDataInputs.newGrade) {
+      ctx.fillText(String(formDataInputs.newGrade), 46 * s, 650 * s)
+    }
+  } else if (pageNum === 2) {
+    ctx.font = `bold ${13 * s}px Arial`
+
+    // Debug: draw a bright red marker so we can confirm the canvas is being written to
+    ctx.fillStyle = '#FF0000'
+    ctx.fillText('● PAGE2 OVERLAY ACTIVE', 10 * s, 10 * s)
+    ctx.fillStyle = '#000000'
+
+    // Approved checkbox (44, 746)
+    if (formDataInputs.approved === true) {
+      ctx.fillText('V', 44 * s, 746 * s)
+    }
+
+    // Not Approved checkbox (97, 746)
+    if (formDataInputs.approved === false) {
+      ctx.fillText('V', 97 * s, 746 * s)
+    }
+
+    ctx.font = `${11 * s}px Arial`
+
+    // Date (77, 712)
+    if (formDataInputs.approved !== null && formDataInputs.approvalDate) {
+      ctx.fillText(String(formDataInputs.approvalDate), 77 * s, 712 * s)
+    }
+
+    // Remarks (94, 678)
+    if (formDataInputs.approved !== null && formDataInputs.approvalRemarks) {
+      const maxWidth = 150 * s
+      const lineHeight = 12 * s
+      const words = String(formDataInputs.approvalRemarks).split(' ')
+      let line = ''
+      let y = 678 * s
+      for (const word of words) {
+        const testLine = line + word + ' '
+        if (ctx.measureText(testLine).width > maxWidth) {
+          ctx.fillText(line.trim(), 94 * s, y)
+          line = word + ' '
+          y += lineHeight
+        } else {
+          line = testLine
+        }
+      }
+      if (line.trim()) ctx.fillText(line.trim(), 94 * s, y)
+    }
+  }
 }
 
 // Export functions
@@ -623,7 +781,7 @@ const exportAsPNG = async () => {
     const baseName = fileName.value.replace(/\.pdf$/i, '')
     successMsg.value = 'Exporting PNG…'
     for (let p = 1; p <= pageCount.value; p++) {
-      const canvas = await renderPageToCanvas(p)
+      const canvas = await renderPageToCanvas(p, true)
       const link = document.createElement('a')
       link.href = canvas.toDataURL('image/png')
       link.download = `${baseName}_page${p}.png`
@@ -647,7 +805,7 @@ const exportAsPDF = async () => {
 
     let pdf = null
     for (let p = 1; p <= pageCount.value; p++) {
-      const canvas = await renderPageToCanvas(p)
+      const canvas = await renderPageToCanvas(p, true)
       const imgData = canvas.toDataURL('image/png')
       const w = canvas.width
       const h = canvas.height
@@ -712,12 +870,73 @@ const redoAction = () => {
   }
 }
 
+// Auto-populate form data based on amendment status
+const populateFormFromAmendment = () => {
+  if (!currentAmendment.value) return
+  
+  const amendment = currentAmendment.value
+  
+  // Populate basic fields
+  if (amendment.academic_year) {
+    // Extract the first 2 digits (e.g., "2025-2026" -> "25")
+    const year = String(amendment.academic_year).split('-')[0]
+    formDataInputs.academicYear = year.slice(-2)
+  }
+  
+  if (amendment.term) {
+    formDataInputs.term = String(amendment.term)
+  }
+  
+  if (amendment.new_grade || amendment.newGrade) {
+    formDataInputs.newGrade = amendment.new_grade || amendment.newGrade
+  }
+  
+  // Set approval status based on amendment status
+  if (amendment.status === 'Approved') {
+    formDataInputs.approved = true
+  } else if (amendment.status === 'Rejected') {
+    formDataInputs.approved = false
+  } else {
+    formDataInputs.approved = null
+  }
+  
+  console.log('Form populated from amendment:', formDataInputs)
+}
+
 onMounted(() => {
   // Setup worker fallback after component is mounted
   setupWorkerFallback().catch(err => {
     console.error('Error setting up worker fallback:', err)
   })
+  
+  // Capture form data from route state if available
+  if (route.state?.formData) {
+    formData.value = route.state.formData
+    console.log('Form data received:', formData.value)
+  }
+  
+  // Try to get current amendment from store and auto-populate form
+  if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
+    currentAmendment.value = amendmentStore.amendments[0]
+    populateFormFromAmendment()
+  } else {
+    // Load amendments if not already loaded
+    amendmentStore.fetchAmendments().then(() => {
+      if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
+        currentAmendment.value = amendmentStore.amendments[0]
+        populateFormFromAmendment()
+      }
+    }).catch(err => console.error('Failed to fetch amendments:', err))
+  }
 })
+
+// Watch for amendment changes and update form
+watch(() => amendmentStore.amendments, () => {
+  if (amendmentStore.amendments && amendmentStore.amendments.length > 0 && !currentAmendment.value) {
+    currentAmendment.value = amendmentStore.amendments[0]
+    populateFormFromAmendment()
+  }
+}, { deep: true })
 </script>
 
 <style scoped>

@@ -25,6 +25,9 @@ const selectedIds = reactive([])
 
 const filteredSubmissions = computed(() => {
   if (statusFilter.value === 'All') return subStore.submissions
+  if (statusFilter.value === 'Printed') {
+    return subStore.submissions.filter(s => s.printed === true)
+  }
   return subStore.submissions.filter(s => s.status === statusFilter.value)
 })
 
@@ -255,7 +258,7 @@ const statusBadge = (status) => {
 }
 
 const filterBtnClass = (opt) => {
-  const map = { All: 'btn-dark', Submitted: 'btn-info', Approved: 'btn-success', Draft: 'btn-warning', Rejected: 'btn-danger' }
+  const map = { All: 'btn-dark', Submitted: 'btn-info', Approved: 'btn-success', Draft: 'btn-warning', Rejected: 'btn-danger', Printed: 'btn-purple' }
   return map[opt] || 'btn-dark'
 }
 
@@ -320,7 +323,7 @@ onMounted(() => {
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="text-muted fw-semibold small me-1"><i class="bi bi-funnel"></i> Filter:</span>
             <button
-              v-for="opt in ['All','Submitted','Approved','Draft','Rejected']"
+              v-for="opt in ['All','Submitted','Approved','Draft','Rejected','Printed']"
               :key="opt"
               class="btn btn-sm rounded-pill px-3"
               :class="statusFilter === opt ? filterBtnClass(opt) : 'btn-outline-secondary'"
@@ -328,7 +331,7 @@ onMounted(() => {
             >
               {{ opt }}
               <span v-if="opt !== 'All'" class="badge rounded-pill ms-1" :class="statusFilter === opt ? 'bg-white text-dark' : 'bg-secondary bg-opacity-25'">
-                {{ subStore.submissions.filter(s => s.status === opt).length }}
+                {{ opt === 'Printed' ? subStore.submissions.filter(s => s.printed === true).length : subStore.submissions.filter(s => s.status === opt).length }}
               </span>
               <span v-else class="badge rounded-pill ms-1" :class="statusFilter === 'All' ? 'bg-white text-dark' : 'bg-secondary bg-opacity-25'">
                 {{ subStore.submissions.length }}
