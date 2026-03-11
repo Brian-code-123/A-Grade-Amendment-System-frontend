@@ -30,8 +30,10 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Login failed')
+    const text = await res.text()
+    let data = {}
+    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
     setAuth(data.token, data.user || data)
     return data
   }
@@ -42,8 +44,10 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, verificationCode })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Login failed')
+    const text = await res.text()
+    let data = {}
+    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
     setAuth(data.token, data.user || data)
     return data
   }
@@ -54,9 +58,21 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, role })
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Registration failed')
-    setAuth(data.token, data.user || data)
+    const text = await res.text()
+    let data = {}
+    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    console.log('[register] status:', res.status, 'body:', text)
+    if (!res.ok) {
+      // 409 Conflict = explicit duplicate email from server
+      // 500 with no message = likely duplicate email / DB unique constraint crash
+      const isDuplicate = res.status === 409 ||
+        (res.status === 500 && !data.message) ||
+        /duplicate|already exist|already registered|unique/i.test(data.message || '') ||
+        /duplicate|already exist|already registered|unique/i.test(text || '')
+      if (isDuplicate) throw new Error('This email is already registered. Please log in instead.')
+      throw new Error(data.message || `Registration failed (${res.status})`)
+    }
+    if (data.token) setAuth(data.token, data.user || data)
     return data
   }
 
@@ -84,9 +100,13 @@ export const useAuthStore = defineStore('auth', () => {
         headers: { 'Authorization': 'Bearer ' + token.value }
       })
       if (res.ok) {
-        const data = await res.json()
-        user.value = data
-        localStorage.setItem('user', JSON.stringify(data))
+        const text = await res.text()
+        let data = {}
+        try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+        if (data && Object.keys(data).length) {
+          user.value = data
+          localStorage.setItem('user', JSON.stringify(data))
+        }
       } else {
         clearAuth()
       }
