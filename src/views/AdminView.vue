@@ -19,16 +19,104 @@ const detailModal = ref(false)
 const detailSubmission = ref(null)
 const detailAmendments = ref([])
 
+/* ══════════════════════════════════════════════════════════════════ */
+/* AD HOC ANNOUNCEMENT MANAGEMENT */
+/* ══════════════════════════════════════════════════════════════════ */
+const adminTab = ref('submissions') // 'submissions' | 'announcements'
+
+const announcements = ref([
+  { id: 1, category: 'System Announcements/Messages', type: 'info', title: 'System Update', message: 'Grade Amendment System has been updated with new features and improvements.', date: '2026-03-10' },
+  { id: 2, category: 'Latest Policy Updates', type: 'warning', title: 'Grade Amendment Policy Update', message: 'New deadline for grade amendments: 30 days from course end date.', date: '2026-03-07' },
+  { id: 3, category: 'System Maintenance Notification', type: 'danger', title: 'Scheduled Maintenance', message: 'System maintenance every Sunday 23:00-24:00 (HKT). Please plan accordingly.', date: '2026-03-10' }
+])
+
+const announcementForm = ref({
+  category: 'System Announcements/Messages',
+  type: 'info',
+  title: '',
+  message: ''
+})
+
+const announcementCategories = ['System Announcements/Messages', 'Latest Policy Updates', 'System Maintenance Notification']
+
+function resetAnnouncementForm() {
+  announcementForm.value = {
+    category: 'System Announcements/Messages',
+    type: 'info',
+    title: '',
+    message: ''
+  }
+}
+
+function createAnnouncement() {
+  if (!announcementForm.value.title || !announcementForm.value.message) {
+    errorMsg.value = 'Please fill in title and message'
+    return
+  }
+
+  const newAnnouncement = {
+    id: Math.max(...announcements.value.map(a => a.id), 0) + 1,
+    category: announcementForm.value.category,
+    type: announcementForm.value.type,
+    title: announcementForm.value.title,
+    message: announcementForm.value.message,
+    date: new Date().toISOString().split('T')[0]
+  }
+
+  announcements.value.unshift(newAnnouncement)
+  successMsg.value = 'Announcement created successfully'
+  resetAnnouncementForm()
+}
+
+function deleteAnnouncement(id) {
+  if (!confirm('Delete this announcement?')) return
+  announcements.value = announcements.value.filter(a => a.id !== id)
+  successMsg.value = 'Announcement deleted'
+}
+
+function getAnnouncementBadgeClass(type) {
+  const map = { 'info': 'bg-info', 'warning': 'bg-warning text-dark', 'danger': 'bg-danger' }
+  return map[type] || 'bg-secondary'
+}
+
 /* ── Filter & batch selection ──────────────────────────────────── */
 const statusFilter = ref('All')
+const searchQuery = ref('')
 const selectedIds = reactive([])
 
 const filteredSubmissions = computed(() => {
-  if (statusFilter.value === 'All') return subStore.submissions
+  let result = subStore.submissions
+
+  // Filter by status (including Printed)
   if (statusFilter.value === 'Printed') {
-    return subStore.submissions.filter(s => s.printed === true)
+    result = result.filter(s => s.printed === true)
+  } else if (statusFilter.value !== 'All') {
+    result = result.filter(s => s.status === statusFilter.value)
   }
-  return subStore.submissions.filter(s => s.status === statusFilter.value)
+
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(s =>
+      s.title.toLowerCase().includes(q) ||
+      s.submitted_by_name.toLowerCase().includes(q) ||
+      s._id.toLowerCase().includes(q)
+    )
+  }
+
+  return result
+})
+
+const stats = computed(() => {
+  const all = subStore.submissions
+  return {
+    total: all.length,
+    submitted: all.filter(s => s.status === 'Submitted').length,
+    approved: all.filter(s => s.status === 'Approved').length,
+    rejected: all.filter(s => s.status === 'Rejected').length,
+    draft: all.filter(s => s.status === 'Draft').length,
+    printed: all.filter(s => s.printed).length
+  }
 })
 
 const allVisibleSelected = computed(() => {
@@ -269,78 +357,123 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container py-4">
-    <h3 class="fw-bold mb-3"><i class="bi bi-shield-lock"></i> Admin Panel</h3>
+  <div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h2 class="fw-bold mb-1">Submissions Management</h2>
+        <small class="text-muted">Review, approve, and manage grade amendment submissions</small>
+      </div>
+      <div class="badge bg-primary px-3 py-2 rounded-pill" style="font-size:0.85rem">
+        <i class="bi bi-shield-lock me-1"></i>Admin Panel
+      </div>
+    </div>
 
+    <!-- Alerts -->
     <div v-if="successMsg" class="alert alert-success alert-dismissible fade show">
-      {{ successMsg }}<button class="btn-close" @click="successMsg = ''"></button>
+      <i class="bi bi-check-circle me-2"></i>{{ successMsg }}<button class="btn-close" @click="successMsg = ''"></button>
     </div>
     <div v-if="errorMsg" class="alert alert-danger alert-dismissible fade show">
-      {{ errorMsg }}<button class="btn-close" @click="errorMsg = ''"></button>
+      <i class="bi bi-exclamation-circle me-2"></i>{{ errorMsg }}<button class="btn-close" @click="errorMsg = ''"></button>
     </div>
 
-    <!-- Stats -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
-        <div class="card text-center shadow-sm">
-          <div class="card-body">
-            <div class="fs-3 fw-bold text-primary">{{ subStore.submissions.length }}</div>
-            <div class="small text-muted">Total</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card text-center shadow-sm">
-          <div class="card-body">
-            <div class="fs-3 fw-bold text-info">{{ subStore.submissions.filter(s => s.status === 'Submitted').length }}</div>
-            <div class="small text-muted">Pending Review</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card text-center shadow-sm">
-          <div class="card-body">
-            <div class="fs-3 fw-bold text-success">{{ subStore.submissions.filter(s => s.status === 'Approved').length }}</div>
-            <div class="small text-muted">Approved</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card text-center shadow-sm">
-          <div class="card-body">
-            <div class="fs-3 fw-bold text-danger">{{ subStore.submissions.filter(s => s.status === 'Rejected').length }}</div>
-            <div class="small text-muted">Rejected</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" role="tablist" style="border-bottom:2px solid #e9ecef">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" :class="{ active: adminTab === 'submissions' }" @click="adminTab = 'submissions'">
+          <i class="bi bi-table me-2"></i>Submissions <span class="badge bg-secondary ms-2">{{ stats.total }}</span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" :class="{ active: adminTab === 'announcements' }" @click="adminTab = 'announcements'">
+          <i class="bi bi-megaphone me-2"></i>System Announcements <span class="badge bg-secondary ms-2">{{ announcements.length }}</span>
+        </button>
+      </li>
+    </ul>
 
-    <!-- Filter toolbar -->
-    <div class="card shadow-sm mb-3 border-0" style="background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%)">
-      <div class="card-body py-3">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-          <!-- Status filter pills -->
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="text-muted fw-semibold small me-1"><i class="bi bi-funnel"></i> Filter:</span>
-            <button
-              v-for="opt in ['All','Submitted','Approved','Draft','Rejected','Printed']"
-              :key="opt"
-              class="btn btn-sm rounded-pill px-3"
-              :class="statusFilter === opt ? filterBtnClass(opt) : 'btn-outline-secondary'"
-              @click="statusFilter = opt"
-            >
-              {{ opt }}
-              <span v-if="opt !== 'All'" class="badge rounded-pill ms-1" :class="statusFilter === opt ? 'bg-white text-dark' : 'bg-secondary bg-opacity-25'">
-                {{ opt === 'Printed' ? subStore.submissions.filter(s => s.printed === true).length : subStore.submissions.filter(s => s.status === opt).length }}
-              </span>
-              <span v-else class="badge rounded-pill ms-1" :class="statusFilter === 'All' ? 'bg-white text-dark' : 'bg-secondary bg-opacity-25'">
-                {{ subStore.submissions.length }}
-              </span>
-            </button>
+    <!-- SUBMISSIONS TAB -->
+    <div v-if="adminTab === 'submissions'">
+
+      <!-- Statistics Cards -->
+      <div class="row g-2 mb-4">
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-primary">{{ stats.total }}</div>
+              <div class="stat-label">Total</div>
+            </div>
           </div>
-          <!-- Batch actions -->
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span v-if="selectedIds.length > 0" class="badge bg-dark rounded-pill px-3 py-2">
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-info">{{ stats.submitted }}</div>
+              <div class="stat-label">Pending</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-success">{{ stats.approved }}</div>
+              <div class="stat-label">Approved</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-danger">{{ stats.rejected }}</div>
+              <div class="stat-label">Rejected</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-warning">{{ stats.draft }}</div>
+              <div class="stat-label">Draft</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-4 col-lg-2">
+          <div class="card text-center stat-card">
+            <div class="card-body">
+              <div class="stat-number text-secondary">{{ stats.printed }}</div>
+              <div class="stat-label">Printed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search & Filter Toolbar -->
+      <div class="card shadow-sm mb-3 border-0">
+        <div class="card-body py-3">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input v-model="searchQuery" type="text" class="form-control border-0" placeholder="Search by title, contact, or ID..." />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-muted fw-semibold small"><i class="bi bi-funnel"></i> Filter:</span>
+                <button
+                  v-for="opt in ['All','Submitted','Approved','Draft','Rejected','Printed']"
+                  :key="opt"
+                  class="btn btn-sm rounded-pill px-3"
+                  :class="statusFilter === opt ? filterBtnClass(opt) : 'btn-outline-secondary'"
+                  @click="statusFilter = opt"
+                >
+                  {{ opt }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Batch Actions -->
+          <div v-if="selectedIds.length > 0" class="mt-3 pt-3 border-top">
+            <span class="badge bg-dark rounded-pill px-3 py-2 me-2">
               <i class="bi bi-check2-square me-1"></i>{{ selectedIds.length }} selected
             </span>
             <button
@@ -360,17 +493,23 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold">
-        <i class="bi bi-table me-1"></i> Submissions for Review
-        <span class="badge bg-primary ms-2">{{ filteredSubmissions.length }}</span>
       </div>
-      <div class="card-body p-0">
-        <div v-if="subStore.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
-        <div v-else-if="filteredSubmissions.length === 0" class="text-center text-muted py-4">No submissions</div>
-        <div v-else class="table-responsive">
+      <!-- Submissions Table -->
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold d-flex align-items-center justify-content-between">
+          <div>
+            <i class="bi bi-table me-1"></i>Submissions for Review
+            <span class="badge bg-primary ms-2">{{ filteredSubmissions.length }}</span>
+          </div>
+          <small class="fw-normal text-muted">Showing {{ filteredSubmissions.length }} of {{ subStore.submissions.length }}</small>
+        </div>
+        <div class="card-body p-0">
+          <div v-if="subStore.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+          <div v-else-if="filteredSubmissions.length === 0" class="text-center text-muted py-4">
+            <i class="bi bi-inbox" style="font-size:2rem;opacity:0.3"></i>
+            <p class="mt-2">No submissions found</p>
+          </div>
+          <div v-else class="table-responsive">
           <table class="table table-hover mb-0 align-middle">
             <thead>
               <tr>
@@ -473,5 +612,410 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- ANNOUNCEMENTS TAB -->
+    <div v-if="adminTab === 'announcements'">
+      <div class="row g-3">
+        <!-- Create Announcement Form -->
+        <div class="col-lg-5">
+          <div class="card shadow-sm">
+            <div class="card-header fw-bold">
+              <i class="bi bi-pencil-square me-2"></i>Create New Announcement
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Category</label>
+                <select v-model="announcementForm.category" class="form-select form-select-sm">
+                  <option v-for="cat in announcementCategories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Type</label>
+                <select v-model="announcementForm.type" class="form-select form-select-sm">
+                  <option value="info">✓ System Announcements/Messages</option>
+                  <option value="warning">⚠ Latest Policy Updates</option>
+                  <option value="danger">⛔ System Maintenance Notification</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Title</label>
+                <input v-model="announcementForm.title" type="text" class="form-control form-control-sm" placeholder="Announcement title..." />
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Message</label>
+                <textarea v-model="announcementForm.message" class="form-control form-control-sm" rows="4" placeholder="Announcement message..."></textarea>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-primary btn-sm flex-grow-1" @click="createAnnouncement">
+                  <i class="bi bi-check-circle me-1"></i>Publish
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @click="resetAnnouncementForm">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Announcements List -->
+        <div class="col-lg-7">
+          <div class="card shadow-sm">
+            <div class="card-header fw-bold">
+              <i class="bi bi-megaphone me-2"></i>Published Announcements
+              <span class="badge bg-secondary ms-2">{{ announcements.length }}</span>
+            </div>
+            <div class="card-body" style="max-height:600px;overflow-y:auto">
+              <div v-if="announcements.length === 0" class="text-center text-muted py-4">
+                No announcements yet
+              </div>
+              <div v-for="ann in announcements" :key="ann.id" class="mb-3 pb-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div>
+                    <span class="badge" :class="getAnnouncementBadgeClass(ann.type)">{{ ann.category }}</span>
+                    <div class="fw-semibold mt-2">{{ ann.title }}</div>
+                  </div>
+                  <small class="text-muted flex-shrink-0">{{ ann.date }}</small>
+                </div>
+                <p class="text-muted small mb-2">{{ ann.message }}</p>
+                <button class="btn btn-sm btn-outline-danger" @click="deleteAnnouncement(ann.id)">
+                  <i class="bi bi-trash me-1"></i>Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* === HKBU COLOR SCHEME === */
+:root {
+  --hkbu-primary: #0066CC;
+  --hkbu-secondary: #00A86B;
+  --hkbu-accent: #F0A500;
+}
+
+/* Professional Admin Panel Styling */
+
+/* === Header === */
+h2 {
+  color: var(--hkbu-primary);
+  font-weight: 700;
+}
+
+/* === Navigation Tabs === */
+.nav-tabs {
+  border-bottom-color: #e9ecef !important;
+}
+
+.nav-link {
+  color: #6c757d;
+  border: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: var(--hkbu-primary);
+  border-bottom: 2px solid var(--hkbu-primary);
+}
+
+.nav-link.active {
+  color: var(--hkbu-primary);
+  background: transparent;
+  border-bottom: 3px solid var(--hkbu-primary);
+  font-weight: 600;
+}
+
+[data-bs-theme="dark"] .nav-link {
+  color: #9ca3af;
+}
+
+[data-bs-theme="dark"] .nav-link.active {
+  color: #0099FF;
+  border-color: #0099FF;
+}
+
+/* === Stat Cards === */
+.stat-card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--hkbu-primary), var(--hkbu-secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 102, 204, 0.15);
+  border-color: var(--hkbu-primary);
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+[data-bs-theme="dark"] .stat-card {
+  background: #1e3a5f;
+  border-color: rgba(0, 102, 204, 0.2);
+}
+
+[data-bs-theme="dark"] .stat-card:hover {
+  background: #253a5f;
+  box-shadow: 0 8px 20px rgba(0, 102, 204, 0.25);
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+[data-bs-theme="dark"] .stat-label {
+  color: #9ca3af;
+}
+
+/* === Input & Form Elements === */
+.input-group-text {
+  border: 1px solid #e9ecef;
+  background: #f8f9fa !important;
+  color: #6c757d;
+}
+
+.form-control {
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--hkbu-primary);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.15);
+}
+
+[data-bs-theme="dark"] .form-control {
+  background: #0f1e30;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+}
+
+[data-bs-theme="dark"] .form-control:focus {
+  border-color: #0099FF;
+  box-shadow: 0 0 0 0.2rem rgba(0, 153, 255, 0.25);
+}
+
+[data-bs-theme="dark"] .input-group-text {
+  background: #0f1e30 !important;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+}
+
+/* === Filter Buttons === */
+.btn-sm {
+  transition: all 0.2s ease;
+}
+
+.btn-outline-secondary:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* === Table === */
+.table thead {
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--hkbu-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 0.75rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+[data-bs-theme="dark"] .table th {
+  background: #0f1e30;
+  color: #0099FF;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .table {
+  color: #e5e7eb;
+}
+
+.table tbody tr {
+  transition: all 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(0, 102, 204, 0.04);
+}
+
+[data-bs-theme="dark"] .table tbody tr:hover {
+  background: rgba(0, 153, 255, 0.08);
+}
+
+.table tbody tr.table-active {
+  background: rgba(0, 102, 204, 0.12) !important;
+  border-left: 3px solid var(--hkbu-primary);
+}
+
+[data-bs-theme="dark"] .table tbody tr.table-active {
+  background: rgba(0, 153, 255, 0.15) !important;
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 0.75rem;
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-bs-theme="dark"] .table td {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* === Badges === */
+.badge {
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.3px;
+}
+
+.bg-info {
+  background-color: #0099CC !important;
+}
+
+[data-bs-theme="dark"] .bg-info {
+  background-color: #00CCFF !important;
+}
+
+/* === Cards === */
+.card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.08);
+}
+
+[data-bs-theme="dark"] .card {
+  background: #152338;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .card:hover {
+  box-shadow: 0 4px 12px rgba(0, 153, 255, 0.1);
+}
+
+.card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+  color: var(--hkbu-primary);
+}
+
+[data-bs-theme="dark"] .card-header {
+  background: #0f1e30;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #0099FF;
+}
+
+/* === Button Styling === */
+.btn-success {
+  background: var(--hkbu-secondary);
+  border-color: var(--hkbu-secondary);
+}
+
+.btn-success:hover {
+  background: #088a4f;
+  border-color: #088a4f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 168, 107, 0.2);
+}
+
+.btn-primary {
+  background: var(--hkbu-primary);
+  border-color: var(--hkbu-primary);
+}
+
+.btn-primary:hover {
+  background: #0052a3;
+  border-color: #0052a3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
+}
+
+/* === Modal === */
+.modal {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  border: 1px solid rgba(0, 102, 204, 0.1);
+  border-radius: 10px;
+}
+
+[data-bs-theme="dark"] .modal-content {
+  background: #152338;
+  border-color: rgba(0, 102, 204, 0.2);
+}
+
+.modal-header {
+  border-bottom: 2px solid rgba(0, 102, 204, 0.1);
+  background: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .modal-header {
+  background: #0f1e30;
+  border-color: rgba(0, 102, 204, 0.2);
+}
+
+/* === Announcements === */
+.ann-row {
+  border-left-width: 3px !important;
+  padding: 0.75rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.ann-row:hover {
+  background: rgba(0, 102, 204, 0.04);
+  transform: translateX(2px);
+}
+
+[data-bs-theme="dark"] .ann-row:hover {
+  background: rgba(0, 153, 255, 0.08);
+}
+</style>
