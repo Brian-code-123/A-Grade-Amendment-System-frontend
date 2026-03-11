@@ -168,55 +168,78 @@ const performanceStats = computed(() => {
   }
 })
 
-// FAQ/Help Links
-const faqItems = [
-  {
-    icon: 'bi-question-circle',
-    title: 'How to Submit?',
-    description: 'View detailed steps and requirements',
-    link: '/help/submit-amendments'
-  },
-  {
-    icon: 'bi-search',
-    title: 'Track My Request',
-    description: 'Check your application status',
-    link: '/submissions'
-  },
-  {
-    icon: 'bi-envelope',
-    title: 'Contact Admin',
-    description: 'Get technical support and help',
-    link: '#'
-  }
-]
-
-// System Announcements
-const announcements = [
+// System Announcements/Messages grouped by category
+const systemAnnouncements = ref([
   {
     id: 1,
+    category: 'System Announcements/Messages',
+    type: 'info',
+    icon: 'bi-megaphone',
+    title: 'System Update',
+    message: 'Grade Amendment System has been updated with new features and improvements.',
+    date: '2026-03-10'
+  },
+  {
+    id: 4,
+    category: 'System Announcements/Messages',
     type: 'info',
     icon: 'bi-info-circle',
-    title: 'Latest Update',
-    message: 'Grade Amendment System updated to latest version with new features.',
-    date: '2026-03-10'
-  },
+    title: 'New Feature Available',
+    message: 'You can now track amendments in real-time with email notifications.',
+    date: '2026-03-08'
+  }
+])
+
+const policyUpdates = ref([
   {
     id: 2,
+    category: 'Latest Policy Updates',
     type: 'warning',
+    icon: 'bi-file-earmark-text',
+    title: 'Grade Amendment Policy Update',
+    message: 'New deadline for grade amendments: 30 days from course end date.',
+    date: '2026-03-07'
+  },
+  {
+    id: 5,
+    category: 'Latest Policy Updates',
+    type: 'warning',
+    icon: 'bi-pencil-square',
+    title: 'Documentation Requirements',
+    message: 'Please provide supporting documents with your amendment requests.',
+    date: '2026-03-05'
+  }
+])
+
+const maintenanceNotifications = ref([
+  {
+    id: 3,
+    category: 'System Maintenance Notification',
+    type: 'danger',
     icon: 'bi-exclamation-triangle',
-    title: 'System Maintenance',
-    message: 'Regular system maintenance every Sunday 23:00-24:00.',
+    title: 'Scheduled Maintenance',
+    message: 'System maintenance every Sunday 23:00-24:00 (HKT). Please plan accordingly.',
     date: '2026-03-10'
   },
   {
-    id: 3,
+    id: 6,
+    category: 'System Maintenance Notification',
     type: 'danger',
-    icon: 'bi-exclamation-circle',
-    title: 'Important Notice',
-    message: 'Please submit your applications before the deadline. Late submissions will not be accepted.',
+    icon: 'bi-tools',
+    title: 'Database Migration',
+    message: 'Database upgrade scheduled for 2026-03-15. Expected downtime: 2 hours.',
     date: '2026-03-09'
   }
-]
+])
+
+// Combine all announcements for display
+const allAnnouncements = computed(() => {
+  return [
+    ...systemAnnouncements.value,
+    ...policyUpdates.value,
+    ...maintenanceNotifications.value
+  ].sort((a, b) => new Date(b.date) - new Date(a.date))
+})
 
 const getAnnouncementBadgeClass = (type) => {
   const map = {
@@ -350,115 +373,59 @@ onMounted(() => {
 
       <!-- Sidebar -->
       <div class="home-col-side anim-in-d3">
-
-        <!-- Quick Actions + Admin performance stats -->
-        <div v-if="auth.isLoggedIn" class="card">
+        <!-- System Announcements & Notifications -->
+        <div class="card card-announcements">
           <div class="card-header-plain d-flex align-items-center gap-2">
-            <i class="bi bi-lightning-charge text-warning" style="font-size:0.9rem"></i>
-            <span class="fw-semibold small">Quick Actions</span>
+            <i class="bi bi-megaphone text-info" style="font-size:0.9rem"></i>
+            <span class="fw-semibold small">System Announcements</span>
           </div>
-          <!-- Admin mini-stats (only for admin role) -->
-          <div v-if="auth.isAdmin" class="admin-stats-row">
-            <div class="admin-stat-item text-center">
-              <div class="admin-stat-val text-danger">{{ performanceStats.pending }}</div>
-              <div class="admin-stat-label">Pending</div>
-            </div>
-            <div class="admin-stat-item text-center">
-              <div class="admin-stat-val text-success">{{ performanceStats.processed }}</div>
-              <div class="admin-stat-label">Done</div>
-            </div>
-            <div class="admin-stat-item text-center">
-              <div class="admin-stat-val text-info">{{ performanceStats.avgProcessingDays }}</div>
-              <div class="admin-stat-label">Avg Days</div>
-            </div>
-            <div class="admin-stat-item text-center">
-              <div class="admin-stat-val text-primary">{{ performanceStats.approvalRate }}%</div>
-              <div class="admin-stat-label">Approval</div>
-            </div>
-          </div>
-          <div class="d-grid gap-2 p-3">
-            <router-link to="/amendments" class="btn btn-primary btn-sm"><i class="bi bi-pencil-square me-1"></i>New Amendment</router-link>
-            <router-link to="/excel-upload" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Excel Upload</router-link>
-            <router-link to="/submissions" class="btn btn-outline-secondary btn-sm"><i class="bi bi-send me-1"></i>View Submissions</router-link>
-            <router-link v-if="auth.isAdmin" to="/admin" class="btn btn-outline-dark btn-sm"><i class="bi bi-shield-lock me-1"></i>Admin Panel</router-link>
-          </div>
-        </div>
-
-        <!-- Activity: Notifications + Recent Submissions merged -->
-        <div v-if="auth.isLoggedIn" class="card">
-          <div class="card-header-plain d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-bell text-primary" style="font-size:0.9rem"></i>
-              <span class="fw-semibold small">Notifications</span>
-            </div>
-            <span v-if="notif.unreadCount > 0" class="badge bg-danger rounded-pill" style="font-size:0.65rem">{{ notif.unreadCount }}</span>
-          </div>
-          <div v-if="notif.notifications.length === 0" class="text-center text-muted py-3 small">No notifications</div>
-          <div
-            v-for="n in notif.notifications.slice(0, 3)"
-            :key="n._id"
-            class="activity-item d-flex align-items-start gap-2"
-            :class="{ 'activity-unread': !n.read }"
-          >
-            <i class="bi flex-shrink-0 mt-1" :class="n.read ? 'bi-envelope-open text-muted' : 'bi-envelope-fill text-primary'" style="font-size:0.8rem"></i>
-            <div class="min-w-0 flex-grow-1">
-              <div class="small fw-semibold text-truncate">{{ n.title }}</div>
-              <div class="text-muted small text-truncate">{{ n.message }}</div>
-            </div>
-          </div>
-          <div class="section-divider mx-3">
-            <i class="bi bi-clock-history text-secondary me-1" style="font-size:0.78rem"></i>
-            <span class="text-muted" style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Recent</span>
-          </div>
-          <div v-if="subStore.submissions.length === 0" class="text-center text-muted py-2 small">No submissions</div>
-          <div v-for="s in subStore.submissions.slice(0, 3)" :key="s._id" class="activity-item d-flex justify-content-between align-items-start gap-2">
-            <div class="min-w-0 flex-grow-1">
-              <div class="small fw-semibold text-truncate">{{ s.title }}</div>
-              <div class="text-muted" style="font-size:0.7rem">{{ s.amendment_count }} amendment(s) · {{ new Date(s.created_at).toLocaleDateString() }}</div>
-            </div>
-            <span
-              class="badge flex-shrink-0"
-              style="font-size:0.65rem"
-              :class="{ 'bg-warning text-dark': s.status==='Draft', 'bg-info': s.status==='Submitted', 'bg-success': s.status==='Approved', 'bg-danger': s.status==='Rejected' }"
-            >{{ s.status }}</span>
-          </div>
-          <div style="height:6px"></div>
-        </div>
-
-        <!-- Help & Announcements merged -->
-        <div class="card">
-          <div class="card-header-plain d-flex align-items-center gap-2">
-            <i class="bi bi-question-circle text-info" style="font-size:0.9rem"></i>
-            <span class="fw-semibold small">Help & Updates</span>
-          </div>
-          <div class="px-3 pt-2 pb-1">
-            <div
-              v-for="(item, idx) in faqItems"
-              :key="idx"
-              class="help-row d-flex align-items-center gap-2 py-2"
-              :class="{ 'border-bottom': idx < faqItems.length - 1 }"
-            >
-              <i class="bi flex-shrink-0" :class="item.icon" style="color:#0c8eeb;font-size:0.95rem"></i>
-              <div class="min-w-0">
-                <router-link :to="item.link === '#' ? '/submissions' : item.link" class="text-decoration-none">
-                  <div class="small fw-semibold">{{ item.title }}</div>
-                </router-link>
-                <div class="text-muted" style="font-size:0.72rem">{{ item.description }}</div>
+          <div class="announcement-content">
+            
+            <!-- System Announcements/Messages -->
+            <div v-if="systemAnnouncements.length > 0" class="announce-section">
+              <div class="section-divider">
+                <i class="bi bi-chat-dots text-secondary me-1" style="font-size:0.78rem"></i>
+                <span class="text-muted announce-label">System Announcements/Messages</span>
+              </div>
+              <div v-for="ann in systemAnnouncements.slice(0, 1)" :key="ann.id" class="ann-row border-start border-info ps-2 mb-1">
+                <div class="d-flex justify-content-between align-items-start gap-1">
+                  <div class="small fw-semibold">{{ ann.title }}</div>
+                  <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>
+                </div>
+                <div class="text-muted" style="font-size:0.7rem;line-height:1.3">{{ ann.message }}</div>
               </div>
             </div>
-          </div>
-          <div class="section-divider mx-3">
-            <i class="bi bi-megaphone text-secondary me-1" style="font-size:0.78rem"></i>
-            <span class="text-muted" style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px">Announcements</span>
-          </div>
-          <div class="px-3 pb-3 pt-1">
-            <div v-for="ann in announcements.slice(0, 2)" :key="ann.id" class="ann-row border-start ps-2 mb-2" :class="'border-' + ann.type">
-              <div class="d-flex justify-content-between align-items-start gap-1">
-                <div class="small fw-semibold">{{ ann.title }}</div>
-                <small class="text-muted flex-shrink-0">{{ ann.date }}</small>
+
+            <!-- Latest Policy Updates -->
+            <div v-if="policyUpdates.length > 0" class="announce-section">
+              <div class="section-divider">
+                <i class="bi bi-file-earmark-text text-secondary me-1" style="font-size:0.78rem"></i>
+                <span class="text-muted announce-label">Latest Policy Updates</span>
               </div>
-              <div class="text-muted small">{{ ann.message }}</div>
+              <div v-for="ann in policyUpdates.slice(0, 1)" :key="ann.id" class="ann-row border-start border-warning ps-2 mb-1">
+                <div class="d-flex justify-content-between align-items-start gap-1">
+                  <div class="small fw-semibold">{{ ann.title }}</div>
+                  <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>
+                </div>
+                <div class="text-muted" style="font-size:0.7rem;line-height:1.3">{{ ann.message }}</div>
+              </div>
             </div>
+
+            <!-- System Maintenance Notification -->
+            <div v-if="maintenanceNotifications.length > 0" class="announce-section">
+              <div class="section-divider">
+                <i class="bi bi-tools text-secondary me-1" style="font-size:0.78rem"></i>
+                <span class="text-muted announce-label">System Maintenance</span>
+              </div>
+              <div v-for="ann in maintenanceNotifications.slice(0, 1)" :key="ann.id" class="ann-row border-start border-danger ps-2 mb-1">
+                <div class="d-flex justify-content-between align-items-start gap-1">
+                  <div class="small fw-semibold">{{ ann.title }}</div>
+                  <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>
+                </div>
+                <div class="text-muted" style="font-size:0.7rem;line-height:1.3">{{ ann.message }}</div>
+              </div>
+            </div>
+            
           </div>
         </div>
 
@@ -476,6 +443,15 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* === HKBU COLOR SCHEME === */
+:root {
+  --hkbu-primary: #0066CC;
+  --hkbu-secondary: #00A86B;
+  --hkbu-accent: #F0A500;
+  --hkbu-dark: #1a1a1a;
+  --hkbu-light: #f8f9fa;
+}
+
 /* === VIEWPORT LAYOUT === */
 .home-panel {
   height: calc(100vh - 56px);
@@ -485,6 +461,8 @@ onMounted(() => {
   gap: 10px;
   overflow: hidden;
   box-sizing: border-box;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
 .home-hdr { flex-shrink: 0; }
@@ -502,10 +480,20 @@ onMounted(() => {
   padding: 10px 12px;
   text-align: center;
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+}
+.stat-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: var(--hkbu-primary);
 }
 [data-bs-theme="dark"] .stat-card-item {
   background: #152338;
   border-color: rgba(255,255,255,0.08);
+}
+[data-bs-theme="dark"] .stat-card-item:hover {
+  border-color: var(--hkbu-primary);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
 }
 
 .home-body {
@@ -532,21 +520,27 @@ onMounted(() => {
 .stat-number { font-size: 1.6rem; font-weight: 700; line-height: 1; }
 .stat-label  { font-size: 0.72rem; color: var(--bs-secondary); font-weight: 500; margin-top: 3px; }
 
-/* === CARDS — clean white, minimal shadow === */
+/* === CARDS === */
 .card {
   border: 1px solid rgba(0,0,0,0.08);
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.05);
   overflow: hidden;
+  transition: all 0.2s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 [data-bs-theme="dark"] .card {
   background: #152338;
   border-color: rgba(255,255,255,0.08);
   box-shadow: 0 1px 8px rgba(0,0,0,0.3);
 }
+[data-bs-theme="dark"] .card:hover {
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+}
 
-/* Bootstrap .card-header already has bg — override for consistency */
 .card-header {
   background: #f8fafd;
   border-bottom: 1px solid rgba(0,0,0,0.07);
@@ -557,7 +551,6 @@ onMounted(() => {
   border-color: rgba(255,255,255,0.06);
 }
 
-/* Custom plain header used in sidebar cards */
 .card-header-plain {
   padding: 10px 14px;
   background: #f8fafd;
@@ -647,9 +640,99 @@ onMounted(() => {
 .help-row:hover { background: rgba(12,142,235,0.05); }
 [data-bs-theme="dark"] .help-row:hover { background: rgba(0,180,216,0.07); }
 
+/* Activity items – compact spacing */
+.activity-item {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  font-size: 0.85rem;
+  transition: background 0.1s;
+}
+[data-bs-theme="dark"] .activity-item {
+  border-color: rgba(255,255,255,0.04);
+}
+.activity-item:hover {
+  background: rgba(12,142,235,0.04);
+}
+[data-bs-theme="dark"] .activity-item:hover {
+  background: rgba(0,180,216,0.05);
+}
+.activity-unread {
+  background: rgba(12,142,235,0.07);
+}
+[data-bs-theme="dark"] .activity-unread {
+  background: rgba(0,180,216,0.08);
+}
+
 /* Announcement rows */
 .ann-row { border-left-width: 3px !important; }
 .border-info    { border-color: var(--bs-info)    !important; }
 .border-warning { border-color: var(--bs-warning) !important; }
 .border-danger  { border-color: var(--bs-danger)  !important; }
+
+/* Card height limits for sidebar */
+.card-quick-actions {
+  flex-shrink: 0;
+}
+
+.card-activity {
+  flex: 0 0 auto;
+  max-height: 240px;
+}
+.activity-content {
+  overflow-y: auto;
+  max-height: 200px;
+  padding: 0.5rem 0;
+}
+
+.card-announcements {
+  flex: 0 0 auto;
+  max-height: 250px;
+}
+.announcement-content {
+  overflow-y: auto;
+  max-height: 210px;
+  padding: 0.4rem;
+}
+
+.announce-section {
+  margin-bottom: 0.4rem;
+}
+
+.announce-label {
+  font-size: 0.65rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+}
+
+/* Admin stats row – compact */
+.admin-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(12,142,235,0.04);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+[data-bs-theme="dark"] .admin-stats-row {
+  background: rgba(0,180,216,0.05);
+  border-color: rgba(255,255,255,0.06);
+}
+
+.admin-stat-item {
+  padding: 0.4rem;
+}
+
+.admin-stat-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-stat-label {
+  font-size: 0.6rem;
+  color: var(--bs-secondary);
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
 </style>
