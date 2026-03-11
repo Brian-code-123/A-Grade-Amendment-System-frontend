@@ -69,6 +69,12 @@ const router = createRouter({
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/pd-approvals',
+      name: 'pd-approvals',
+      component: () => import('@/views/PDApprovalView.vue'),
+      meta: { requiresAuth: true, requiresHead: true }
     }
   ]
 })
@@ -85,6 +91,12 @@ router.beforeEach((to, from, next) => {
 
   // 如果需要admin但用戶不是admin，重定向到首頁
   if (to.meta.requiresAdmin && user?.role !== 'admin') {
+    next('/')
+    return
+  }
+
+  // 如果需要Head但用戶不是Head，重定向到首頁
+  if (to.meta.requiresHead && user?.role !== 'Head') {
     next('/')
     return
   }

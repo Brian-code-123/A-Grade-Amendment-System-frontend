@@ -229,7 +229,7 @@ onMounted(async () => {
       <h3 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> Grade Amendments</h3>
       <div>
         <button type="button" @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
-        <button type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
+        <button v-if="!auth.isHead" type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
           <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
         </button>
       </div>
