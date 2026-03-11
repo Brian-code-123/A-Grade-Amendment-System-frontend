@@ -117,7 +117,7 @@ async function createAndSubmit() {
 }
 
 async function submitToAdmin(id) {
-  if (!confirm('Submit to admin for review? An email notification will be sent to the administrator.')) return
+  if (!confirm('Submit to Program Director for review? An email notification will be sent to the Program Director.')) return
   submitting[id] = true
   errorMsg.value = ''
   try {
@@ -273,7 +273,7 @@ onMounted(() => {
                 <td>
                   <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
                     <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="bi bi-send"></i> Submit to Admin
+                    <i v-else class="bi bi-send"></i> Submit to Program Director
                   </button>
                   <span v-else-if="s.status === 'Submitted'" class="text-muted small">Awaiting review</span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
