@@ -76,8 +76,8 @@ function handleLogout() {
               </router-link>
             </li>
 
-            <!-- 2. Amendments (dropdown) -->
-            <li class="nav-item dropdown">
+            <!-- 2. Amendments (dropdown) — hidden for Programme Director (Head) -->
+            <li class="nav-item dropdown" v-if="!auth.isHead">
               <button
                 class="nav-link nav-tab dropdown-toggle btn btn-link"
                 type="button"
@@ -115,6 +115,13 @@ function handleLogout() {
             <li class="nav-item">
               <router-link class="nav-link nav-tab" to="/pdf-editor" active-class="active">
                 <i class="bi bi-pencil-square me-1"></i>PDF Editor
+              </router-link>
+            </li>
+
+            <!-- 4. Approvals (Programme Director / Head role only) -->
+            <li class="nav-item" v-if="auth.isHead">
+              <router-link class="nav-link nav-tab" to="/pd-approvals" active-class="active">
+                <i class="bi bi-check2-circle me-1"></i>Approvals
               </router-link>
             </li>
 
@@ -212,7 +219,7 @@ function handleLogout() {
                 <li v-if="auth.isDemoUser">
                   <a class="dropdown-item" href="#" @click.prevent="auth.switchRole()">
                     <i class="bi bi-arrow-left-right me-2 text-warning"></i>
-                    Switch to {{ auth.user?.role === 'admin' ? 'Programme Director' : 'Admin' }}
+                    Switch to {{ auth.user?.role === 'admin' ? 'Teacher' : auth.user?.role === 'Head' ? 'Teacher' : 'Admin' }}
                   </a>
                 </li>
                 <li><hr class="dropdown-divider my-1" /></li>

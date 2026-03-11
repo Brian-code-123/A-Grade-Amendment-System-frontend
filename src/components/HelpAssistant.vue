@@ -72,8 +72,8 @@ const helpContent = computed(() => {
       title: 'Login / Register',
       tips: [
         'Use your HKBU email to login or register.',
-        'Choose your role: Programme Director or Admin.',
-        'Programme Directors can create and submit amendments.',
+        'Choose your role: Teacher or Admin.',
+        'Teachers can create and submit amendments.',
         'Admins can review, approve, and print submissions.'
       ]
     }

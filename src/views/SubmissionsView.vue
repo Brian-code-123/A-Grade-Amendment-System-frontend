@@ -247,7 +247,7 @@ onMounted(() => {
                 <th style="width:40px"></th>
                 <th>Title</th>
                 <th>Status</th>
-                <th>Amendments</th>
+                <th>Number of Cases</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
