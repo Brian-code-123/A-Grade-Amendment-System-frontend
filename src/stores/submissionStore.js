@@ -15,7 +15,8 @@ const DEMO_SUBMISSIONS = [
     created_at: new Date(Date.now() - 6*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
     approved_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
-    printed: true
+    printed: true,
+    printed_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
   },
   {
     _id: 'ds2',
@@ -345,7 +346,10 @@ export const useSubmissionStore = defineStore('submission', () => {
   async function markPrinted(id) {
     if (isDemoUser()) {
       const s = submissions.value.find(s => s._id === id)
-      if (s) s.printed = true
+      if (s) {
+        s.printed = true
+        s.printed_at = new Date().toISOString()
+      }
       return s
     }
 

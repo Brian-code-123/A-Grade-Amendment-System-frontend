@@ -75,6 +75,12 @@ const router = createRouter({
       name: 'pd-approvals',
       component: () => import('@/views/PDApprovalView.vue'),
       meta: { requiresAuth: true, requiresHead: true }
+    },
+    {
+      path: '/admin/archive',
+      name: 'admin-archive',
+      component: () => import('@/views/ArchiveView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })

@@ -27,7 +27,7 @@ async function send({ to, subject, htmlBody, plainBody }) {
 
 /**
  * Notify admin that a new submission is ready for review.
- * Called automatically when the user clicks "Submit to Admin".
+ * Called automatically when the user clicks "Submit to Program Director".
  */
 export async function sendSubmissionEmail(submission, amendments = [], user = {}) {
   const date = new Date().toLocaleDateString('en-GB', {

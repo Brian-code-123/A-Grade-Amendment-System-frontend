@@ -49,7 +49,7 @@ const helpContent = computed(() => {
       tips: [
         'Create a submission by selecting pending amendments.',
         'Give your submission a descriptive title.',
-        'Click "Submit to Admin" to send for review.',
+        'Click "Submit to Program Director" to send for review.',
         'The admin will receive an email notification.',
         'Track the status: Draft > Submitted > Approved/Rejected.'
       ]
