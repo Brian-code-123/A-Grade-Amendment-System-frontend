@@ -1,14 +1,18 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useArchiveStore } from '@/stores/archiveStore'
 import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
+const vueRouter = useRouter()
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
+const archiveStore = useArchiveStore()
 
 const successMsg = ref('')
 const errorMsg = ref('')
@@ -23,6 +27,41 @@ const detailAmendments = ref([])
 /* AD HOC ANNOUNCEMENT MANAGEMENT */
 /* ══════════════════════════════════════════════════════════════════ */
 const adminTab = ref('submissions') // 'submissions' | 'announcements'
+
+/* ══════════════════════════════════════════════════════════════════ */
+/* SEMESTER & ARCHIVE MANAGEMENT */
+/* ══════════════════════════════════════════════════════════════════ */
+const showSemesterSetup = ref(false)
+const semForm = ref({ name: '', startDate: '', endDate: '' })
+const archiveSemId = ref('')
+
+function addSemester() {
+  if (!semForm.value.name || !semForm.value.startDate || !semForm.value.endDate) {
+    errorMsg.value = 'Please fill in semester name, start date & end date'
+    return
+  }
+  archiveStore.addSemester(semForm.value.name, semForm.value.startDate, semForm.value.endDate)
+  successMsg.value = `Semester "${semForm.value.name}" created`
+  semForm.value = { name: '', startDate: '', endDate: '' }
+}
+
+function deleteSemester(id) {
+  const sem = archiveStore.semesters.find(s => s.id === id)
+  if (!confirm(`Delete semester "${sem?.name}"? Archived records under this semester will be unarchived.`)) return
+  archiveStore.removeSemester(id)
+  successMsg.value = 'Semester deleted'
+}
+
+function archiveSelectedSemester() {
+  if (!archiveSemId.value) { errorMsg.value = 'Please select a semester to archive'; return }
+  const count = archiveStore.archiveBySemester(archiveSemId.value, subStore.submissions)
+  if (count === 0) {
+    errorMsg.value = 'No matching submissions found in that semester date range (or already archived)'
+  } else {
+    successMsg.value = `${count} submission(s) archived`
+  }
+  archiveSemId.value = ''
+}
 
 const announcements = ref([
   { id: 1, category: 'System Announcements/Messages', type: 'info', title: 'System Update', message: 'Grade Amendment System has been updated with new features and improvements.', date: '2026-03-10' },
@@ -85,7 +124,8 @@ const searchQuery = ref('')
 const selectedIds = reactive([])
 
 const filteredSubmissions = computed(() => {
-  let result = subStore.submissions
+  // Exclude archived submissions
+  let result = subStore.submissions.filter(s => !archiveStore.isArchived(s._id))
 
   // Filter by status (including Printed)
   if (statusFilter.value === 'Printed') {
@@ -113,7 +153,7 @@ const filteredSubmissions = computed(() => {
 })
 
 const stats = computed(() => {
-  const all = subStore.submissions
+  const all = subStore.submissions.filter(s => !archiveStore.isArchived(s._id))
   return {
     total: all.length,
     submitted: all.filter(s => s.status === 'Submitted').length,
@@ -457,6 +497,76 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Archive & Semester Management -->
+      <div class="card shadow-sm mb-3 border-0" style="background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%)">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-archive text-primary"></i>
+              <span class="fw-semibold">Semester Archive</span>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" @click="showSemesterSetup = !showSemesterSetup">
+                <i class="bi bi-gear me-1"></i>{{ showSemesterSetup ? 'Hide' : 'Manage' }} Semesters
+              </button>
+              <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="vueRouter.push('/admin/archive')">
+                <i class="bi bi-archive me-1"></i>View Archived Records
+              </button>
+            </div>
+          </div>
+
+          <!-- Semester Setup (toggle) -->
+          <div v-if="showSemesterSetup" class="mt-3 pt-3 border-top">
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Semester Name</label>
+                <input v-model="semForm.name" type="text" class="form-control form-control-sm" placeholder="e.g. Sem 1 2025-2026" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Start Date</label>
+                <input v-model="semForm.startDate" type="date" class="form-control form-control-sm" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">End Date</label>
+                <input v-model="semForm.endDate" type="date" class="form-control form-control-sm" />
+              </div>
+              <div class="col-md-3">
+                <button class="btn btn-sm btn-primary w-100" @click="addSemester">
+                  <i class="bi bi-plus-circle me-1"></i>Add Semester
+                </button>
+              </div>
+            </div>
+            <div v-if="archiveStore.semesters.length > 0" class="table-responsive">
+              <table class="table table-sm table-bordered mb-0">
+                <thead><tr><th>Name</th><th>Start</th><th>End</th><th style="width:80px"></th></tr></thead>
+                <tbody>
+                  <tr v-for="sem in archiveStore.semesters" :key="sem.id">
+                    <td>{{ sem.name }}</td>
+                    <td>{{ sem.startDate }}</td>
+                    <td>{{ sem.endDate }}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" @click="deleteSemester(sem.id)"><i class="bi bi-trash"></i></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="text-muted small mb-0">No semesters defined yet.</p>
+          </div>
+
+          <!-- Archive Action -->
+          <div v-if="archiveStore.semesters.length > 0" class="d-flex align-items-center gap-2 mt-2">
+            <select v-model="archiveSemId" class="form-select form-select-sm" style="max-width:350px">
+              <option value="">Select semester to archive...</option>
+              <option v-for="sem in archiveStore.semesters" :key="sem.id" :value="sem.id">
+                {{ sem.name }} ({{ sem.startDate }} — {{ sem.endDate }})
+              </option>
+            </select>
+            <button class="btn btn-sm btn-warning rounded-pill px-3" :disabled="!archiveSemId" @click="archiveSelectedSemester">
+              <i class="bi bi-archive me-1"></i>Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Search & Filter Toolbar -->
       <div class="card shadow-sm mb-3 border-0">
         <div class="card-body py-3">
@@ -531,8 +641,9 @@ onMounted(() => {
                 <th>Submitted By</th>
                 <th>Status</th>
                 <th>Amendments</th>
-                <th>Date</th>
-                <th>Printed</th>
+                <th>Created</th>
+                <th>PD Approved</th>
+                <th>Admin Printed</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -546,9 +657,8 @@ onMounted(() => {
                 <td><span class="badge" :class="statusBadge(s.status, s.printed)">{{ displayStatus(s.status, s.printed) }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
-                <td>
-                  <i class="bi" :class="s.printed ? 'bi-check-circle text-success' : 'bi-x-circle text-muted'"></i>
-                </td>
+                <td class="small">{{ s.approved_at ? new Date(s.approved_at).toLocaleDateString() : '—' }}</td>
+                <td class="small">{{ s.printed_at ? new Date(s.printed_at).toLocaleDateString() : '—' }}</td>
                 <td>
                   <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary" @click="viewDetail(s._id)" title="View Details"><i class="bi bi-eye"></i></button>
