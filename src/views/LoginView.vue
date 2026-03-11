@@ -71,6 +71,17 @@ function demoLoginPD() {
   router.push('/')
 }
 
+function demoLoginHead() {
+  const demoToken = 'demo_token_head_' + Date.now()
+  const demoUser = {
+    email: 'head.dept@hkbu.edu.hk',
+    name: 'Prof. David Wong',
+    role: 'Head'
+  }
+  auth.setAuth(demoToken, demoUser)
+  router.push('/')
+}
+
 async function handleLogin() {
   error.value = ''
   if (!loginForm.value.email || !loginForm.value.password) {
@@ -174,8 +185,16 @@ async function handleRegister() {
             <button class="lp-demo-btn lp-demo-pd" @click="demoLoginPD">
               <span class="lp-demo-icon"><i class="bi bi-person-badge-fill"></i></span>
               <span class="lp-demo-text">
-                <strong>Programme Director</strong>
+                <strong>Teacher</strong>
                 <small>Submit &amp; track amendments</small>
+              </span>
+              <i class="bi bi-arrow-right lp-demo-arrow"></i>
+            </button>
+            <button class="lp-demo-btn lp-demo-head" @click="demoLoginHead">
+              <span class="lp-demo-icon"><i class="bi bi-person-check-fill"></i></span>
+              <span class="lp-demo-text">
+                <strong>Programme Director</strong>
+                <small>Review &amp; approve cases</small>
               </span>
               <i class="bi bi-arrow-right lp-demo-arrow"></i>
             </button>
@@ -256,7 +275,8 @@ async function handleRegister() {
             <div class="lp-input-wrap">
               <i class="bi bi-person-gear lp-field-icon"></i>
               <select v-model="regForm.role">
-                <option>Programme Director</option>
+                <option value="Programme Director">Teacher</option>
+                <option value="Head">Programme Director</option>
                 <option>admin</option>
               </select>
             </div>
@@ -521,6 +541,10 @@ async function handleRegister() {
 .lp-demo-pd .lp-demo-icon { background: rgba(25,135,84,0.10); color: #198754; }
 .lp-demo-pd { border-color: rgba(25,135,84,0.18); }
 .lp-demo-pd:hover { border-color: rgba(25,135,84,0.35); }
+
+.lp-demo-head .lp-demo-icon { background: rgba(111,66,193,0.10); color: #6f42c1; }
+.lp-demo-head { border-color: rgba(111,66,193,0.18); }
+.lp-demo-head:hover { border-color: rgba(111,66,193,0.35); }
 
 .lp-demo-text { flex: 1; }
 .lp-demo-text strong { display: block; font-size: 0.86rem; font-weight: 600; color: #1a2d3d; line-height: 1.3; }
