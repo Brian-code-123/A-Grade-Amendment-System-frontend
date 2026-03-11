@@ -40,7 +40,9 @@ async function sendVerificationCode() {
         password: loginForm.value.password 
       })
     })
-    const data = await res.json()
+    const text = await res.text()
+    let data = {}
+    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
     if (!res.ok) throw new Error(data.message || 'Failed to send verification code')
     
     codeSent.value = true
@@ -98,6 +100,10 @@ async function handleRegister() {
   error.value = ''
   if (!regForm.value.name || !regForm.value.email || !regForm.value.password) {
     error.value = 'Please fill in all fields.'
+    return
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regForm.value.email)) {
+    error.value = 'Please enter a valid email address.'
     return
   }
   if (regForm.value.password !== regForm.value.confirm) {

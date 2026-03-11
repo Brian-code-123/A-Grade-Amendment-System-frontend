@@ -90,7 +90,12 @@ const filteredSubmissions = computed(() => {
   // Filter by status (including Printed)
   if (statusFilter.value === 'Printed') {
     result = result.filter(s => s.printed === true)
-  } else if (statusFilter.value !== 'All') {
+  } else if (statusFilter.value === 'Approved') {
+    // Approved filter: only show approved but NOT yet printed
+    result = result.filter(s => s.status === 'Approved' && !s.printed)
+  } else if (statusFilter.value === 'All') {
+    // All filter: exclude nothing, but printed ones show as Printed
+  } else {
     result = result.filter(s => s.status === statusFilter.value)
   }
 
@@ -340,9 +345,15 @@ async function viewDetail(id) {
   detailModal.value = true
 }
 
-const statusBadge = (status) => {
+const statusBadge = (status, printed = false) => {
+  if (printed) return 'bg-secondary text-white'
   const map = { Draft: 'bg-warning text-dark', Submitted: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
   return map[status] || 'bg-secondary'
+}
+
+const displayStatus = (status, printed = false) => {
+  if (printed) return 'Printed'
+  return status === 'Submitted' ? 'Pending' : status
 }
 
 const filterBtnClass = (opt) => {
@@ -466,7 +477,7 @@ onMounted(() => {
                   :class="statusFilter === opt ? filterBtnClass(opt) : 'btn-outline-secondary'"
                   @click="statusFilter = opt"
                 >
-                  {{ opt }}
+                  {{ displayStatus(opt) }}
                 </button>
               </div>
             </div>
@@ -532,7 +543,7 @@ onMounted(() => {
                 </td>
                 <td class="fw-semibold">{{ s.title }}</td>
                 <td>{{ s.submitted_by_name }}</td>
-                <td><span class="badge" :class="statusBadge(s.status)">{{ s.status }}</span></td>
+                <td><span class="badge" :class="statusBadge(s.status, s.printed)">{{ displayStatus(s.status, s.printed) }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
@@ -540,10 +551,8 @@ onMounted(() => {
                 </td>
                 <td>
                   <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary" @click="viewDetail(s._id)"><i class="bi bi-eye"></i></button>
-                    <button v-if="s.status === 'Submitted'" class="btn btn-outline-success" @click="handleApprove(s._id)"><i class="bi bi-check"></i> Approve</button>
-                    <button v-if="s.status === 'Submitted'" class="btn btn-outline-danger" @click="openReject(s._id)"><i class="bi bi-x"></i> Reject</button>
-                    <button v-if="s.status === 'Approved'" class="btn btn-outline-primary" @click="handlePrint(s._id)"><i class="bi bi-printer"></i> Print</button>
+                    <button class="btn btn-outline-secondary" @click="viewDetail(s._id)" title="View Details"><i class="bi bi-eye"></i></button>
+                    <button v-if="s.status === 'Approved'" class="btn btn-outline-primary" @click="handlePrint(s._id)" title="Print"><i class="bi bi-printer"></i></button>
                   </div>
                 </td>
               </tr>
@@ -582,7 +591,7 @@ onMounted(() => {
             <button type="button" class="btn-close" @click="detailModal = false"></button>
           </div>
           <div class="modal-body" v-if="detailSubmission">
-            <p><strong>Status:</strong> <span class="badge" :class="statusBadge(detailSubmission.status)">{{ detailSubmission.status }}</span></p>
+            <p><strong>Status:</strong> <span class="badge" :class="statusBadge(detailSubmission.status, detailSubmission.printed)">{{ displayStatus(detailSubmission.status, detailSubmission.printed) }}</span></p>
             <p><strong>Submitted by:</strong> {{ detailSubmission.submitted_by_name }}</p>
             <p><strong>Description:</strong> {{ detailSubmission.description || 'N/A' }}</p>
             <p v-if="detailSubmission.rejection_reason"><strong>Rejection Reason:</strong> <span class="text-danger">{{ detailSubmission.rejection_reason }}</span></p>
@@ -604,6 +613,20 @@ onMounted(() => {
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <!-- Action buttons inside modal-body so detailSubmission reactivity is guaranteed -->
+            <div v-if="detailSubmission.status === 'Submitted'" class="d-flex gap-2 mt-3 pt-3 border-top">
+              <button class="btn btn-danger" @click="openReject(detailSubmission._id); detailModal = false">
+                <i class="bi bi-x-circle me-1"></i>Reject
+              </button>
+              <button class="btn btn-success ms-auto" @click="handleApprove(detailSubmission._id); detailModal = false">
+                <i class="bi bi-check-circle me-1"></i>Approve
+              </button>
+            </div>
+            <div v-if="detailSubmission.status === 'Approved'" class="d-flex gap-2 mt-3 pt-3 border-top">
+              <button class="btn btn-primary ms-auto" @click="handlePrint(detailSubmission._id); detailModal = false">
+                <i class="bi bi-printer me-1"></i>Print
+              </button>
             </div>
           </div>
           <div class="modal-footer">
@@ -954,13 +977,15 @@ h2 {
 
 /* === Button Styling === */
 .btn-success {
-  background: var(--hkbu-secondary);
-  border-color: var(--hkbu-secondary);
+  background: #00A86B;
+  border-color: #00A86B;
+  color: #fff;
 }
 
 .btn-success:hover {
   background: #088a4f;
   border-color: #088a4f;
+  color: #fff;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 168, 107, 0.2);
 }

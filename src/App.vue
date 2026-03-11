@@ -118,13 +118,6 @@ function handleLogout() {
               </router-link>
             </li>
 
-            <!-- 4. Feedback -->
-            <li class="nav-item">
-              <router-link class="nav-link nav-tab" to="/feedback" active-class="active">
-                <i class="bi bi-chat-dots me-1"></i>Feedback
-              </router-link>
-            </li>
-
             <!-- 5. Admin (admin role only) -->
             <li class="nav-item" v-if="auth.isAdmin">
               <router-link class="nav-link nav-tab" to="/admin" active-class="active">

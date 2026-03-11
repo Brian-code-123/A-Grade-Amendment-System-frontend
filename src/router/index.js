@@ -59,12 +59,6 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/feedback',
-      name: 'feedback',
-      component: () => import('@/views/FeedbackView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/signature-setup',
       name: 'signature-setup',
       component: () => import('@/views/SignatureSetupView.vue'),
