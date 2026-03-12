@@ -407,6 +407,24 @@ export const useAmendmentStore = defineStore('amendment', () => {
       department: 'COMP',
       status: 'Draft',
       created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
+    },
+    {
+      _id: 'pd_rej_1',
+      academic_year: '2024-2025',
+      term: '2',
+      student_no: '22241010',
+      student_name: 'Mary Wong',
+      course_code: 'COMP3090',
+      course_title: 'Compiler Design',
+      original_grade: 'B',
+      new_grade: 'A-',
+      reason_type: 'appeal',
+      appeal_grounds: 'Technical errors',
+      appeal_details: 'Final exam re-marking revealed +8 marks scoring error in question 4',
+      instructor_name: 'Dr. Martin Choy',
+      department: 'COMP',
+      status: 'Rejected',
+      created_at: new Date(Date.now() - 8*24*60*60*1000).toISOString()
     }
   ]
 

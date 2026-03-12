@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useSubmissionStore } from '@/stores/submissionStore'
@@ -9,6 +10,7 @@ const auth = useAuthStore()
 const notif = useNotificationStore()
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
+const router = useRouter()
 
 const currentMonth = ref(new Date().getMonth())
 const currentYear = ref(new Date().getFullYear())
@@ -150,6 +152,17 @@ const stats = computed(() => {
     totalSubmissions: subs.length,
     draftSubmissions: subs.filter(s => s.status === 'Draft').length,
     submittedSubmissions: subs.filter(s => s.status === 'Submitted').length
+  }
+})
+
+// Stats for Programme Director (Head) — based on submissions, not amendments
+const headStats = computed(() => {
+  const subs = subStore.submissions.filter(s => s.status !== 'Draft')
+  return {
+    total: subs.length,
+    pending: subs.filter(s => s.status === 'Submitted').length,
+    approved: subs.filter(s => s.status === 'Approved').length,
+    rejected: subs.filter(s => s.status === 'Rejected').length
   }
 })
 
@@ -300,23 +313,47 @@ onMounted(() => {
       </span>
     </div>
 
-    <!-- Stats -->
-    <div v-if="auth.isLoggedIn" class="home-stats anim-in-d1">
+    <!-- Stats — Head (Programme Director) role -->
+    <div v-if="auth.isLoggedIn && auth.isHead" class="home-stats anim-in-d1">
       <div class="stat-card-item">
-        <div class="stat-number text-primary count-num">{{ stats.totalAmendments }}</div>
-        <div class="stat-label">Amendments</div>
+        <div class="stat-number text-primary count-num">{{ headStats.total }}</div>
+        <div class="stat-label">Total Cases</div>
+      </div>
+      <div class="stat-card-item stat-card-clickable" @click="router.push('/pd-approvals')">
+        <div class="stat-number text-warning count-num">{{ headStats.pending }}</div>
+        <div class="stat-label">
+          Pending <i class="bi bi-arrow-right-circle ms-1" style="font-size:0.7rem"></i>
+        </div>
       </div>
       <div class="stat-card-item">
+        <div class="stat-number text-success count-num">{{ headStats.approved }}</div>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-card-item">
+        <div class="stat-number text-danger count-num">{{ headStats.rejected }}</div>
+        <div class="stat-label">Rejected</div>
+      </div>
+    </div>
+
+    <!-- Stats — Teacher / Admin roles -->
+    <div v-if="auth.isLoggedIn && !auth.isHead" class="home-stats anim-in-d1">
+      <div class="stat-card-item">
+        <div class="stat-number text-primary count-num">{{ stats.totalAmendments }}</div>
+        <div class="stat-label">Total Amendment Cases</div>
+      </div>
+      <div class="stat-card-item stat-card-clickable" @click="router.push('/amendments')">
         <div class="stat-number text-warning count-num">{{ stats.pending }}</div>
-        <div class="stat-label">Pending</div>
+        <div class="stat-label">
+          Submission <i class="bi bi-arrow-right-circle ms-1" style="font-size:0.7rem"></i>
+        </div>
       </div>
       <div class="stat-card-item">
         <div class="stat-number text-success count-num">{{ stats.approved }}</div>
         <div class="stat-label">Approved</div>
       </div>
       <div class="stat-card-item">
-        <div class="stat-number text-info count-num">{{ stats.totalSubmissions }}</div>
-        <div class="stat-label">Submissions</div>
+        <div class="stat-number text-danger count-num">{{ stats.rejected }}</div>
+        <div class="stat-label">Rejected</div>
       </div>
     </div>
 
@@ -450,6 +487,19 @@ onMounted(() => {
   --hkbu-accent: #F0A500;
   --hkbu-dark: #1a1a1a;
   --hkbu-light: #f8f9fa;
+}
+
+/* === CLICKABLE STAT CARD === */
+.stat-card-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-card-clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 102, 204, 0.15);
+}
+.stat-card-clickable:hover .stat-label {
+  color: #0066CC;
 }
 
 /* === VIEWPORT LAYOUT === */

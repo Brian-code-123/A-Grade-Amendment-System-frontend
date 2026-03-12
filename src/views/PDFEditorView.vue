@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="pdf-editor-container">
     <!-- Header Navigation -->
     <div class="header-nav">
@@ -111,50 +111,6 @@
 
         <!-- Right Sidebar -->
         <div class="right-sidebar">
-          <div class="sidebar-section">
-            <h3>� Form Data</h3>
-            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-size: 12px;">
-              <div class="mb-2">
-                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Academic Year:</label>
-                <input v-model="formDataInputs.academicYear" type="text" placeholder="e.g., 25" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" maxlength="2">
-              </div>
-              <div class="mb-2">
-                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Term:</label>
-                <input v-model="formDataInputs.term" type="text" placeholder="e.g., 1" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-              </div>
-              <div class="mb-2">
-                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Grade:</label>
-                <input v-model="formDataInputs.newGrade" type="text" placeholder="e.g., A" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-              </div>
-              <hr style="margin: 8px 0;">
-              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">
-                Page 2 - Approval Status:
-                <span v-if="currentAmendment" style="display: block; font-size: 11px; font-weight: normal; color: #999; margin-top: 2px;">
-                  (from amendment: {{ currentAmendment.status }})
-                </span>
-              </div>
-              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
-                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
-                  <input :checked="formDataInputs.approved === true" @change="formDataInputs.approved = $event.target.checked ? true : null" type="checkbox" style="cursor: pointer;">
-                  <span>Approved</span>
-                </label>
-              </div>
-              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
-                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
-                  <input :checked="formDataInputs.approved === false" @change="formDataInputs.approved = $event.target.checked ? false : null" type="checkbox" style="cursor: pointer;">
-                  <span>Not Approved</span>
-                </label>
-              </div>
-              <div class="mb-2">
-                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Approval Date:</label>
-                <input v-model="formDataInputs.approvalDate" type="date" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" :disabled="formDataInputs.approved === null">
-              </div>
-              <div class="mb-2">
-                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Remarks:</label>
-                <textarea v-model="formDataInputs.approvalRemarks" placeholder="Add remarks..." style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px;" rows="2" :disabled="formDataInputs.approved === null"></textarea>
-              </div>
-            </div>
-          </div>
 
           <div class="sidebar-section">
             <h3>�📥 Download</h3>
