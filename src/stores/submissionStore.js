@@ -180,6 +180,20 @@ const PD_DEMO_SUBMISSIONS = [
     submitted_by: 'Dr. Martin Choy',
     submitted_by_name: 'Dr. Martin Choy',
     created_at: new Date(Date.now() - 1*24*60*60*1000).toISOString()
+  },
+  {
+    _id: 'pds_rej1',
+    title: 'Compiler Design Appeal — Mary Wong',
+    description: 'Grade appeal for COMP3090 Compiler Design',
+    status: 'Rejected',
+    amendment_ids: ['pd_rej_1'],
+    amendment_count: 1,
+    submitted_by: 'Dr. Martin Choy',
+    submitted_by_name: 'Dr. Martin Choy',
+    rejection_reason: 'Missing supporting documentation. Please attach the original exam paper and resubmit with complete evidence.',
+    created_at: new Date(Date.now() - 8*24*60*60*1000).toISOString(),
+    submitted_at: new Date(Date.now() - 7*24*60*60*1000).toISOString(),
+    rejected_at: new Date(Date.now() - 5*24*60*60*1000).toISOString()
   }
 ]
 
@@ -343,6 +357,29 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
+  async function resubmitSubmission(id) {
+    if (isDemoUser()) {
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.status = 'Submitted'
+        s.submitted_at = new Date().toISOString()
+        delete s.rejection_reason
+        delete s.rejected_at
+      }
+      return s
+    }
+
+    const auth = useAuthStore()
+    const res = await fetch('/api/submissions/' + id + '/resubmit', {
+      method: 'POST',
+      headers: auth.authHeaders()
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.message || 'Resubmit failed')
+    await fetchSubmissions()
+    return result
+  }
+
   async function markPrinted(id) {
     if (isDemoUser()) {
       const s = submissions.value.find(s => s._id === id)
@@ -364,5 +401,5 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
-  return { submissions, currentSubmission, loading, error, fetchSubmissions, fetchSubmission, createSubmission, submitToAdmin, approveSubmission, rejectSubmission, markPrinted }
+  return { submissions, currentSubmission, loading, error, fetchSubmissions, fetchSubmission, createSubmission, submitToAdmin, approveSubmission, rejectSubmission, resubmitSubmission, markPrinted }
 })
