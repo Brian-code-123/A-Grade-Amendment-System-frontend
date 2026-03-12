@@ -1,10 +1,12 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { sendSubmissionEmail } from '@/services/emailService'
 
+const router = useRouter()
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
@@ -151,6 +153,20 @@ async function submitToAdmin(id) {
   }
 }
 
+async function resubmitToPD(id) {
+  if (!confirm('Resubmit this to the Program Director for review?')) return
+  submitting[id] = true
+  errorMsg.value = ''
+  try {
+    await subStore.resubmitSubmission(id)
+    successMsg.value = 'Submission resubmitted successfully! The Program Director will review it shortly.'
+  } catch (e) {
+    errorMsg.value = e.message
+  } finally {
+    submitting[id] = false
+  }
+}
+
 const statusBadge = (status) => {
   const map = { Draft: 'bg-warning text-dark', Submitted: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
   return map[status] || 'bg-secondary'
@@ -253,7 +269,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in subStore.submissions" :key="s._id" :class="{ 'table-active': selectedSubIds.includes(s._id) }">
+              <tr v-for="s in subStore.submissions" :key="s._id" :class="{ 'table-active': selectedSubIds.includes(s._id), 'table-danger': s.status === 'Rejected' }">
                 <td>
                   <input
                     v-if="s.status === 'Draft'"
@@ -266,6 +282,10 @@ onMounted(() => {
                 <td>
                   <div class="fw-semibold">{{ s.title }}</div>
                   <div class="text-muted small">{{ s.description }}</div>
+                  <div v-if="s.status === 'Rejected' && s.rejection_reason" class="d-flex align-items-start gap-1 mt-1">
+                    <i class="bi bi-exclamation-circle-fill text-danger mt-1 flex-shrink-0"></i>
+                    <span class="text-danger small"><strong>Reason:</strong> {{ s.rejection_reason }}</span>
+                  </div>
                 </td>
                 <td><span class="badge" :class="statusBadge(s.status)">{{ s.status }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
@@ -277,7 +297,15 @@ onMounted(() => {
                   </button>
                   <span v-else-if="s.status === 'Submitted'" class="text-muted small">Awaiting review</span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
-                  <span v-else-if="s.status === 'Rejected'" class="text-danger small"><i class="bi bi-x-circle"></i> Rejected</span>
+                  <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
+                    <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
+                      <i class="bi bi-pencil me-1"></i>Edit Amendments
+                    </button>
+                    <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
+                      <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
+                      <i v-else class="bi bi-arrow-counterclockwise me-1"></i>Resubmit
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>

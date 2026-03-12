@@ -11,7 +11,9 @@ const auth = useAuthStore()
 const showForm = ref(false)
 const editingId = ref(null)
 const courseCodeFilter = ref('')
+const termFilter = ref('')
 const statusFilter = ref('')
+const sortOrder = ref('oldest') // 'oldest' or 'newest'
 
 const VALID_GRADES = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','I','NR','PR','YR','W','P','NP']
 
@@ -182,7 +184,7 @@ const statusOptions = computed(() => {
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
-  return courseCodeFilter.value || statusFilter.value
+  return courseCodeFilter.value || statusFilter.value || termFilter.value
 })
 
 // Filter amendments based on user role and search filters
@@ -205,6 +207,18 @@ const filteredAmendments = computed(() => {
   if (statusFilter.value) {
     amendmentList = amendmentList.filter(amendment => amendment.status === statusFilter.value)
   }
+
+  // Apply term filter if selected (non-admin only)
+  if (termFilter.value) {
+    amendmentList = amendmentList.filter(amendment => String(amendment.term) === termFilter.value)
+  }
+  
+  // Sort by creation date
+  amendmentList.sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime()
+    const dateB = new Date(b.created_at || 0).getTime()
+    return sortOrder.value === 'oldest' ? dateA - dateB : dateB - dateA
+  })
   
   return amendmentList
 })
@@ -237,7 +251,7 @@ onMounted(async () => {
 
     <!-- Search and Filter Bar -->
     <div class="row mb-3">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label small fw-semibold text-muted">Search by Course Code</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
@@ -257,7 +271,26 @@ onMounted(async () => {
           </button>
         </div>
       </div>
-      <div class="col-md-3">
+      <div v-if="auth.user?.role !== 'admin'" class="col-md-2">
+        <label class="form-label small fw-semibold text-muted">Filter by Term</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar2-week"></i></span>
+          <select v-model="termFilter" class="form-select">
+            <option value="">All Terms</option>
+            <option value="1">Term 1</option>
+            <option value="2">Term 2</option>
+          </select>
+          <button
+            v-if="termFilter"
+            @click="termFilter = ''"
+            class="btn btn-outline-secondary"
+            type="button"
+          >
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-md-2">
         <label class="form-label small fw-semibold text-muted">Filter by Status</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-funnel"></i></span>
@@ -275,13 +308,30 @@ onMounted(async () => {
           </button>
         </div>
       </div>
-      <div v-if="hasActiveFilters" class="col-md-5 d-flex align-items-end">
-        <div class="alert alert-info mb-0 py-2 px-3 flex-grow-1">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted">Sort by Date</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" id="sort-oldest" value="oldest" v-model="sortOrder" />
+          <label class="btn btn-outline-secondary" for="sort-oldest" style="flex:1">
+            <i class="bi bi-arrow-up"></i> Oldest First
+          </label>
+          <input type="radio" class="btn-check" id="sort-newest" value="newest" v-model="sortOrder" />
+          <label class="btn btn-outline-secondary" for="sort-newest" style="flex:1">
+            <i class="bi bi-arrow-down"></i> Newest First
+          </label>
+        </div>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button v-if="hasActiveFilters" @click="courseCodeFilter = ''; statusFilter = ''; termFilter = ''" class="btn btn-sm btn-outline-primary w-100">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Clear All
+        </button>
+      </div>
+    </div>
+    <div v-if="hasActiveFilters" class="row mb-3">
+      <div class="col-12">
+        <div class="alert alert-info mb-0 py-2 px-3">
           <i class="bi bi-info-circle me-1"></i>
           Showing {{ filteredAmendments.length }} of {{ store.amendments.length }} amendments
-          <button @click="courseCodeFilter = ''; statusFilter = ''" class="btn btn-sm btn-outline-primary ms-2">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Clear All
-          </button>
         </div>
       </div>
     </div>
@@ -645,7 +695,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in filteredAmendments" :key="a._id">
+              <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-danger': a.status === 'Rejected' && auth.user?.role !== 'admin' }">
                 <td class="small text-nowrap">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>
@@ -675,7 +725,12 @@ onMounted(async () => {
                 <td>
                   <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
-                    <button class="btn btn-outline-primary" @click="startEdit(a)" :disabled="a.status === 'Approved'"><i class="bi bi-pencil"></i></button>
+                    <button
+                      :class="['btn', a.status === 'Rejected' ? 'btn-warning' : 'btn-outline-primary']"
+                      @click="startEdit(a)"
+                      :disabled="a.status === 'Approved'"
+                      :title="a.status === 'Rejected' ? 'Edit and resubmit via Submissions' : 'Edit'"
+                    ><i class="bi bi-pencil"></i></button>
                     <button class="btn btn-outline-danger" @click="handleDelete(a._id)" :disabled="a.status === 'Approved'"><i class="bi bi-trash"></i></button>
                   </div>
                 </td>
