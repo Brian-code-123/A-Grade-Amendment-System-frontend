@@ -5,7 +5,9 @@
  * All emails are sent automatically — no mailto: popups.
  */
 
-const API = '/api/send-email'
+import { buildApiUrl } from '@/utils/api'
+
+const API = buildApiUrl('/api/send-email')
 const ADMIN_EMAIL = '22240802@life.hkbu.edu.hk' // admin inbox — not displayed in UI
 
 /**
