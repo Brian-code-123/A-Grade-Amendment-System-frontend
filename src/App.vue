@@ -111,8 +111,8 @@ function handleLogout() {
               </ul>
             </li>
 
-            <!-- 3. PDF Editor -->
-            <li class="nav-item">
+            <!-- 3. PDF Editor (hidden for admin) -->
+            <li class="nav-item" v-if="!auth.isAdmin">
               <router-link class="nav-link nav-tab" to="/pdf-editor" active-class="active">
                 <i class="bi bi-pencil-square me-1"></i>PDF Editor
               </router-link>
