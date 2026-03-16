@@ -56,7 +56,7 @@ const router = createRouter({
       path: '/pdf-editor',
       name: 'pdf-editor',
       component: () => import('@/views/PDFEditorView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, blockedForAdmin: true }
     },
     {
       path: '/signature-setup',
@@ -97,6 +97,12 @@ router.beforeEach((to, from, next) => {
 
   // 如果需要admin但用戶不是admin，重定向到首頁
   if (to.meta.requiresAdmin && user?.role !== 'admin') {
+    next('/')
+    return
+  }
+
+  // Admin 不可進入 PDF Editor
+  if (to.meta.blockedForAdmin && user?.role === 'admin') {
     next('/')
     return
   }
