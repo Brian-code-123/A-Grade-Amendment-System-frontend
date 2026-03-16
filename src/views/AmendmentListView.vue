@@ -45,6 +45,23 @@ const blankForm = () => ({
   department: ''
 })
 
+const mapAmendmentToForm = (a = {}) => ({
+  academicYear: a.academic_year || blankForm().academicYear,
+  term: a.term || '1',
+  studentNo: a.student_no || a.student_id || '',
+  studentName: a.student_name || '',
+  courseCode: a.course_code || '',
+  courseTitle: a.course_title || '',
+  originalGrade: a.original_grade || '',
+  newGrade: a.new_grade || '',
+  reasonType: a.reason_type || '',
+  reasonDetails: a.reason_details || a.reason || '',
+  appealGrounds: a.appeal_grounds || '',
+  appealDetails: a.appeal_details || '',
+  instructorName: a.instructor_name || '',
+  department: a.department || ''
+})
+
 const form = ref(blankForm())
 const formErrors = ref({})
 const successMsg = ref('')
@@ -113,16 +130,27 @@ async function submitForm() {
 async function confirmAndSubmit() {
   isSubmitting.value = true
   try {
+    const payload = toPayload(form.value)
     if (editingId.value) {
-      await store.updateAmendment(editingId.value, toPayload(form.value))
-      successMsg.value = '✓ Amendment updated successfully. Data cannot be changed.'
+      const updated = await store.updateAmendment(editingId.value, payload)
+      successMsg.value = '✓ Amendment updated successfully. You can continue editing until it is approved.'
+      if (updated && typeof updated === 'object') {
+        form.value = mapAmendmentToForm(updated)
+      }
+        const localAmendment = store.amendments.find(a => a._id === editingId.value)
+        if (localAmendment) {
+          localAmendment.status = 'Pending'
+        }
+        showForm.value = false
+        editingId.value = null
+      showPreview.value = false
     } else {
-      await store.createAmendment(toPayload(form.value))
-      successMsg.value = '✓ Amendment submitted successfully. Submitted data cannot be modified.'
+      await store.createAmendment(payload)
+      successMsg.value = '✓ Amendment submitted successfully. You can still edit it from the list until approval.'
+      resetForm()
+      showForm.value = false
+      showPreview.value = false
     }
-    resetForm()
-    showForm.value = false
-    showPreview.value = false
   } catch (err) {
     errorMsg.value = err.message
   } finally {
@@ -136,22 +164,7 @@ function cancelPreview() {
 
 function startEdit(a) {
   editingId.value = a._id
-  form.value = {
-    academicYear: a.academic_year || '',
-    term: a.term || '1',
-    studentNo: a.student_no || a.student_id || '',
-    studentName: a.student_name || '',
-    courseCode: a.course_code || '',
-    courseTitle: a.course_title || '',
-    originalGrade: a.original_grade || '',
-    newGrade: a.new_grade || '',
-    reasonType: a.reason_type || '',
-    reasonDetails: a.reason_details || a.reason || '',
-    appealGrounds: a.appeal_grounds || '',
-    appealDetails: a.appeal_details || '',
-    instructorName: a.instructor_name || '',
-    department: a.department || ''
-  }
+  form.value = mapAmendmentToForm(a)
   showForm.value = true
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -508,7 +521,7 @@ onMounted(async () => {
           <div class="modal-body">
             <div class="alert alert-info" role="alert">
               <i class="bi bi-info-circle me-2"></i>
-              <strong>Please review the information below carefully.</strong> Once submitted, the data cannot be modified.
+              <strong>Please review the information below carefully.</strong> You can still reopen and edit this amendment until it is approved.
             </div>
 
             <!-- 預覽內容按區塊分組 -->
@@ -645,7 +658,7 @@ onMounted(async () => {
             <!-- 警告訊息 -->
             <div class="alert alert-warning" role="alert">
               <i class="bi bi-exclamation-triangle me-2"></i>
-              <strong>Important:</strong> Once submitted, this amendment cannot be modified. Please ensure all information is correct.
+              <strong>Important:</strong> You can revisit and edit this amendment later from the list until it has been approved.
             </div>
           </div>
 
