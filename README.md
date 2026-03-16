@@ -2,6 +2,10 @@
 
 Vue3 frontend for A Grade Amendment System.
 
+## Production API
+
+Production builds use the Azure backend at https://grade-amendment-evaddtdmcxhfgvb4.eastasia-01.azurewebsites.net via VITE_API_BASE_URL in .env.production.
+
 ## Setup
 
 ```bash
