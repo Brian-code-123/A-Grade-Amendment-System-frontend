@@ -377,6 +377,14 @@ export const useSubmissionStore = defineStore('submission', () => {
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Resubmit failed')
     await fetchSubmissions()
+
+    const updated = submissions.value.find(s => s._id === id)
+    if (updated) {
+      updated.status = 'Submitted'
+      updated.submitted_at = result.submitted_at || new Date().toISOString()
+      delete updated.rejection_reason
+      delete updated.rejected_at
+    }
     return result
   }
 

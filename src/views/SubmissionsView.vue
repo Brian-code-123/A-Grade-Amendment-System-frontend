@@ -158,7 +158,24 @@ async function resubmitToPD(id) {
   submitting[id] = true
   errorMsg.value = ''
   try {
+    const submission = subStore.submissions.find(s => s._id === id)
+    if (!submission) throw new Error('Submission not found')
+
+    const relatedAmendments = [...(submission.amendment_ids || [])]
     await subStore.resubmitSubmission(id)
+
+    if (relatedAmendments.length) {
+      relatedAmendments.forEach(aid => {
+        const amendment = amStore.amendments.find(a => a._id === aid)
+        if (amendment) amendment.status = 'Pending'
+      })
+    }
+
+    try {
+      await amStore.fetchAmendments()
+    } catch (refreshErr) {
+      console.warn('Failed to refresh amendments after resubmit', refreshErr)
+    }
     successMsg.value = 'Submission resubmitted successfully! The Program Director will review it shortly.'
   } catch (e) {
     errorMsg.value = e.message
@@ -167,9 +184,12 @@ async function resubmitToPD(id) {
   }
 }
 
+const statusLabel = (status) => status === 'Submitted' ? 'Pending' : status
+
 const statusBadge = (status) => {
-  const map = { Draft: 'bg-warning text-dark', Submitted: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
-  return map[status] || 'bg-secondary'
+  const normalized = statusLabel(status)
+  const map = { Draft: 'bg-warning text-dark', Pending: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
+  return map[normalized] || 'bg-secondary'
 }
 
 onMounted(() => {
@@ -287,7 +307,7 @@ onMounted(() => {
                     <span class="text-danger small"><strong>Reason:</strong> {{ s.rejection_reason }}</span>
                   </div>
                 </td>
-                <td><span class="badge" :class="statusBadge(s.status)">{{ s.status }}</span></td>
+                <td><span class="badge" :class="statusBadge(s.status)">{{ statusLabel(s.status) }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
@@ -295,7 +315,7 @@ onMounted(() => {
                     <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="bi bi-send"></i> Submit to Program Director
                   </button>
-                  <span v-else-if="s.status === 'Submitted'" class="text-muted small">Awaiting review</span>
+                  <span v-else-if="s.status === 'Submitted'" class="text-muted small">Pending review</span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
                   <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
                     <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
