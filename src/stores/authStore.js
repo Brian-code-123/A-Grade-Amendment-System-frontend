@@ -1,9 +1,33 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { apiFetch } from '@/utils/api'
+
+function normalizeRole(role) {
+  if (!role) return role
+
+  const normalizedRole = String(role).trim().toLowerCase().replace(/[_\s]+/g, '_')
+  if (normalizedRole === 'admin') {
+    return 'admin'
+  }
+
+  if (normalizedRole === 'programme_director') {
+    return 'Programme Director'
+  }
+
+  return role
+}
+
+function normalizeUser(user) {
+  if (!user) return user
+  return {
+    ...user,
+    role: normalizeRole(user.role)
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const user = ref(normalizeUser(JSON.parse(localStorage.getItem('user') || 'null')))
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -13,9 +37,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setAuth(tokenVal, userVal) {
     token.value = tokenVal
-    user.value = userVal
+    user.value = normalizeUser(userVal)
     localStorage.setItem('token', tokenVal)
-    localStorage.setItem('user', JSON.stringify(userVal))
+    localStorage.setItem('user', JSON.stringify(user.value))
   }
 
   function clearAuth() {
@@ -26,7 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(email, password) {
-    const res = await fetch('/api/auth/login', {
+    const res = await apiFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -40,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function loginWithCode(email, password, verificationCode) {
-    const res = await fetch('/api/auth/login', {
+    const res = await apiFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, verificationCode })
@@ -54,7 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(name, email, password, role) {
-    const res = await fetch('/api/auth/register', {
+    const res = await apiFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, role })
@@ -84,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
     try {
-      await fetch('/api/auth/logout', {
+      await apiFetch('/api/auth/logout', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token.value }
       })
@@ -97,7 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Demo users don't need to fetch from API
     if (token.value.startsWith('demo_token_')) return
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await apiFetch('/api/auth/me', {
         headers: { 'Authorization': 'Bearer ' + token.value }
       })
       if (res.ok) {
@@ -105,8 +129,8 @@ export const useAuthStore = defineStore('auth', () => {
         let data = {}
         try { data = text ? JSON.parse(text) : {} } catch { data = {} }
         if (data && Object.keys(data).length) {
-          user.value = data
-          localStorage.setItem('user', JSON.stringify(data))
+          user.value = normalizeUser(data)
+          localStorage.setItem('user', JSON.stringify(user.value))
         }
       } else {
         clearAuth()

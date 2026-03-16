@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
+import { apiFetch } from '@/utils/api'
 
 const DEMO_NOTIFICATIONS = [
   { _id: 'dn1', title: 'Grade Amendment Required', message: 'COMP3047 Software Engineering — Student John Smith has an incomplete (I) grade that needs to be resolved.', read: false, created_at: new Date(Date.now() - 1*60*60*1000).toISOString() },
@@ -34,7 +35,7 @@ export const useNotificationStore = defineStore('notification', () => {
     }
 
     try {
-      const res = await fetch('/api/notifications', { headers: auth.authHeaders() })
+      const res = await apiFetch('/api/notifications', { headers: auth.authHeaders() })
       if (res.ok) notifications.value = await res.json()
     } catch (e) { /* ignore */ } finally {
       loading.value = false
@@ -51,7 +52,7 @@ export const useNotificationStore = defineStore('notification', () => {
     }
 
     try {
-      const res = await fetch('/api/notifications/unread-count', { headers: auth.authHeaders() })
+      const res = await apiFetch('/api/notifications/unread-count', { headers: auth.authHeaders() })
       if (res.ok) {
         const data = await res.json()
         unreadCount.value = data.count
@@ -68,7 +69,7 @@ export const useNotificationStore = defineStore('notification', () => {
     }
 
     const auth = useAuthStore()
-    await fetch('/api/notifications/' + id + '/read', { method: 'POST', headers: auth.authHeaders() })
+    await apiFetch('/api/notifications/' + id + '/read', { method: 'POST', headers: auth.authHeaders() })
     const n = notifications.value.find(n => n._id === id)
     if (n) n.read = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
@@ -82,7 +83,7 @@ export const useNotificationStore = defineStore('notification', () => {
     }
 
     const auth = useAuthStore()
-    await fetch('/api/notifications/read-all', { method: 'POST', headers: auth.authHeaders() })
+    await apiFetch('/api/notifications/read-all', { method: 'POST', headers: auth.authHeaders() })
     notifications.value.forEach(n => n.read = true)
     unreadCount.value = 0
   }

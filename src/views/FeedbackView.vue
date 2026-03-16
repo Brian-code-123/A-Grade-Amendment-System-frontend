@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
+import { apiFetch } from '@/utils/api'
 
 const auth = useAuthStore()
 const feedbacks = ref([])
@@ -46,7 +47,7 @@ async function submitFeedback() {
   }
 
   try {
-    const res = await fetch('/api/feedback', {
+    const res = await apiFetch('/api/feedback', {
       method: 'POST',
       headers: auth.authHeaders(),
       body: JSON.stringify(form.value)
@@ -69,7 +70,7 @@ async function fetchFeedbacks() {
     return
   }
   try {
-    const res = await fetch('/api/feedback', { headers: auth.authHeaders() })
+    const res = await apiFetch('/api/feedback', { headers: auth.authHeaders() })
     if (res.ok) feedbacks.value = await res.json()
   } catch (e) { /* ignore */ } finally {
     loading.value = false

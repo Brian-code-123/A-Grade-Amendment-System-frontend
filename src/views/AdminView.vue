@@ -123,9 +123,12 @@ const statusFilter = ref('All')
 const searchQuery = ref('')
 const selectedIds = reactive([])
 
+const reviewableSubmissions = computed(() => {
+  return subStore.submissions.filter(s => s.status !== 'Draft' && !archiveStore.isArchived(s._id))
+})
+
 const filteredSubmissions = computed(() => {
-  // Exclude archived submissions
-  let result = subStore.submissions.filter(s => !archiveStore.isArchived(s._id))
+  let result = reviewableSubmissions.value
 
   // Filter by status (including Printed)
   if (statusFilter.value === 'Printed') {
@@ -153,13 +156,12 @@ const filteredSubmissions = computed(() => {
 })
 
 const stats = computed(() => {
-  const all = subStore.submissions.filter(s => !archiveStore.isArchived(s._id))
+  const all = reviewableSubmissions.value
   return {
     total: all.length,
     submitted: all.filter(s => s.status === 'Submitted').length,
     approved: all.filter(s => s.status === 'Approved').length,
     rejected: all.filter(s => s.status === 'Rejected').length,
-    draft: all.filter(s => s.status === 'Draft').length,
     printed: all.filter(s => s.printed).length
   }
 })
@@ -397,7 +399,7 @@ const displayStatus = (status, printed = false) => {
 }
 
 const filterBtnClass = (opt) => {
-  const map = { All: 'btn-dark', Submitted: 'btn-info', Approved: 'btn-success', Draft: 'btn-warning', Rejected: 'btn-danger', Printed: 'btn-purple' }
+  const map = { All: 'btn-dark', Submitted: 'btn-info', Approved: 'btn-success', Rejected: 'btn-danger', Printed: 'btn-purple' }
   return map[opt] || 'btn-dark'
 }
 
@@ -476,14 +478,6 @@ onMounted(() => {
             <div class="card-body">
               <div class="stat-number text-danger">{{ stats.rejected }}</div>
               <div class="stat-label">Rejected</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-6 col-sm-4 col-lg-2">
-          <div class="card text-center stat-card">
-            <div class="card-body">
-              <div class="stat-number text-warning">{{ stats.draft }}</div>
-              <div class="stat-label">Draft</div>
             </div>
           </div>
         </div>
@@ -581,7 +575,7 @@ onMounted(() => {
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="text-muted fw-semibold small"><i class="bi bi-funnel"></i> Filter:</span>
                 <button
-                  v-for="opt in ['All','Submitted','Approved','Draft','Rejected','Printed']"
+                  v-for="opt in ['All','Submitted','Approved','Rejected','Printed']"
                   :key="opt"
                   class="btn btn-sm rounded-pill px-3"
                   :class="statusFilter === opt ? filterBtnClass(opt) : 'btn-outline-secondary'"

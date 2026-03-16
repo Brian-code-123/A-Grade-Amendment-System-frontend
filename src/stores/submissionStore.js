@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
+import { apiFetch } from '@/utils/api'
 
 const DEMO_SUBMISSIONS = [
   {
@@ -230,7 +231,7 @@ export const useSubmissionStore = defineStore('submission', () => {
       const queryString = params.toString()
       if (queryString) url += '?' + queryString
       
-      const res = await fetch(url, { headers: auth.authHeaders() })
+      const res = await apiFetch(url, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch submissions')
       submissions.value = await res.json()
     } catch (e) {
@@ -249,7 +250,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     const auth = useAuthStore()
     loading.value = true
     try {
-      const res = await fetch('/api/submissions/' + id, { headers: auth.authHeaders() })
+      const res = await apiFetch('/api/submissions/' + id, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Not found')
       currentSubmission.value = await res.json()
     } catch (e) {
@@ -276,7 +277,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions', {
+    const res = await apiFetch('/api/submissions', {
       method: 'POST',
       headers: auth.authHeaders(),
       body: JSON.stringify(data)
@@ -303,7 +304,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions/' + id + '/submit', {
+    const res = await apiFetch('/api/submissions/' + id + '/submit', {
       method: 'POST',
       headers: auth.authHeaders()
     })
@@ -324,7 +325,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions/' + id + '/approve', {
+    const res = await apiFetch('/api/submissions/' + id + '/approve', {
       method: 'POST',
       headers: auth.authHeaders()
     })
@@ -346,7 +347,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions/' + id + '/reject', {
+    const res = await apiFetch('/api/submissions/' + id + '/reject', {
       method: 'POST',
       headers: auth.authHeaders(),
       body: JSON.stringify({ reason })
@@ -399,7 +400,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions/' + id + '/print', {
+    const res = await apiFetch('/api/submissions/' + id + '/print', {
       method: 'POST',
       headers: auth.authHeaders()
     })

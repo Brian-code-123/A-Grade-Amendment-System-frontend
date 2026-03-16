@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
+import { apiFetch } from '@/utils/api'
 
 export const useAmendmentStore = defineStore('amendment', () => {
   const amendments = ref([])
@@ -457,7 +458,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
       const queryString = params.toString()
       if (queryString) url += '?' + queryString
       
-      const res = await fetch(url, { headers: auth.authHeaders() })
+      const res = await apiFetch(url, { headers: auth.authHeaders() })
       if (!res.ok) throw new Error('Failed to fetch amendments')
       amendments.value = await res.json()
     } catch (e) {
@@ -483,7 +484,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
 
     // For real users, post to API
-    const res = await fetch('/api/amendments', {
+    const res = await apiFetch('/api/amendments', {
       method: 'POST',
       headers: auth.authHeaders(),
       body: JSON.stringify(data)
@@ -510,7 +511,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
 
     // For real users, put to API
-    const res = await fetch('/api/amendments/' + id, {
+    const res = await apiFetch('/api/amendments/' + id, {
       method: 'PUT',
       headers: auth.authHeaders(),
       body: JSON.stringify(data)
@@ -531,7 +532,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
 
     // For real users, delete via API
-    const res = await fetch('/api/amendments/' + id, {
+    const res = await apiFetch('/api/amendments/' + id, {
       method: 'DELETE',
       headers: auth.authHeaders()
     })
@@ -550,7 +551,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
     // For real users, import via API
     const formData = new FormData()
     formData.append('excelFile', file)
-    const res = await fetch('/api/amendments/import', {
+    const res = await apiFetch('/api/amendments/import', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + auth.token },
       body: formData
