@@ -1,7 +1,7 @@
 <template>
   <main class="container my-5">
     <!-- 簽名未設定的警告 -->
-    <div v-if="!auth.user?.signature" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <div v-if="requiresSignature && !auth.user?.signature" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
       <i class="bi bi-exclamation-triangle me-2"></i>
       <strong>Signature Setup Required!</strong> 
       You must set up your digital signature before you can use all features. Please complete the signature setup below.
@@ -99,11 +99,16 @@
                 <div class="col-md-6">
                   <div class="info-group">
                     <label class="info-label">Signature</label>
-                    <p v-if="auth.user?.signature" class="info-value text-success">
-                      <i class="bi bi-check-circle me-1"></i>Set
-                    </p>
-                    <p v-else class="info-value text-warning">
-                      <i class="bi bi-exclamation-circle me-1"></i>Not Set
+                    <template v-if="requiresSignature">
+                      <p v-if="auth.user?.signature" class="info-value text-success">
+                        <i class="bi bi-check-circle me-1"></i>Set
+                      </p>
+                      <p v-else class="info-value text-warning">
+                        <i class="bi bi-exclamation-circle me-1"></i>Not Set
+                      </p>
+                    </template>
+                    <p v-else class="info-value text-muted">
+                      <i class="bi bi-info-circle me-1"></i>Not required for admins
                     </p>
                   </div>
                 </div>
@@ -121,7 +126,7 @@
               </h6>
 
               <!-- 簽名預覽 -->
-              <div v-if="auth.user?.signature" class="mb-3">
+              <div v-if="auth.user?.signature && requiresSignature" class="mb-3">
                 <div class="p-3 border rounded bg-light d-flex align-items-center justify-content-center" 
                      style="min-height: 120px;">
                   <img :src="auth.user.signature" :alt="auth.user.name + ' signature'" 
@@ -131,18 +136,21 @@
               <div v-else class="p-3 mb-3 border rounded-2 bg-light d-flex align-items-center justify-content-center" 
                    style="min-height: 120px;">
                 <div class="text-center">
-                  <i class="bi bi-exclamation-lg text-warning" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
-                  <small class="text-muted">No signature set</small>
+                  <i class="bi" :class="requiresSignature ? 'bi-exclamation-lg text-warning' : 'bi-info-circle text-primary'" style="font-size: 2rem; display: block; margin-bottom: 0.5rem;"></i>
+                  <small class="text-muted">{{ requiresSignature ? 'No signature set' : 'Admins do not need digital signatures' }}</small>
                 </div>
               </div>
 
               <!-- 簽名狀態標籤 -->
               <p class="small mb-0">
-                <span v-if="auth.user?.signature" class="badge bg-success">
+                <span v-if="requiresSignature && auth.user?.signature" class="badge bg-success">
                   <i class="bi bi-check-circle me-1"></i>Signature Active
                 </span>
-                <span v-else class="badge bg-warning">
+                <span v-else-if="requiresSignature" class="badge bg-warning">
                   <i class="bi bi-exclamation-circle me-1"></i>Setup Required
+                </span>
+                <span v-else class="badge bg-info text-dark">
+                  <i class="bi bi-info-circle me-1"></i>Not Required
                 </span>
               </p>
             </div>
@@ -181,11 +189,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import ProfileForm from '@/components/ProfileForm.vue'
 
 const auth = useAuthStore()
+const isAdmin = computed(() => auth.user?.role === 'admin')
+const requiresSignature = computed(() => !isAdmin.value)
 
 // 狀態
 const isEditMode = ref(false)

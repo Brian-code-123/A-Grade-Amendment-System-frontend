@@ -167,7 +167,10 @@ async function resubmitToPD(id) {
     if (relatedAmendments.length) {
       relatedAmendments.forEach(aid => {
         const amendment = amStore.amendments.find(a => a._id === aid)
-        if (amendment) amendment.status = 'Pending'
+          if (amendment) {
+            amendment.status = 'Pending'
+            amendment.created_at = new Date().toISOString()
+          }
       })
     }
 
@@ -184,7 +187,11 @@ async function resubmitToPD(id) {
   }
 }
 
-const statusLabel = (status) => status === 'Submitted' ? 'Pending' : status
+const statusLabel = (status) => {
+  if (status !== 'Submitted') return status
+  if (auth.user?.role === 'Teacher') return 'Approved'
+  return 'Pending'
+}
 
 const statusBadge = (status) => {
   const normalized = statusLabel(status)
@@ -315,7 +322,9 @@ onMounted(() => {
                     <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="bi bi-send"></i> Submit to Program Director
                   </button>
-                  <span v-else-if="s.status === 'Submitted'" class="text-muted small">Pending review</span>
+                  <span v-else-if="s.status === 'Submitted'" class="text-muted small">
+                    {{ auth.user?.role === 'Teacher' ? 'Approved' : 'Pending review' }}
+                  </span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
                   <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
                     <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
