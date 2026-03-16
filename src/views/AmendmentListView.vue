@@ -204,10 +204,7 @@ const hasActiveFilters = computed(() => {
 const filteredAmendments = computed(() => {
   let amendmentList = store.amendments
   
-  // For admin users, exclude draft status amendments
-  if (auth.user?.role === 'admin') {
-    amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
-  }
+  amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
   
   // Apply course code filter if search term exists
   if (courseCodeFilter.value) {

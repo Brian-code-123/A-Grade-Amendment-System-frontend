@@ -140,17 +140,20 @@ const monthEvents = computed(() => {
     .sort((a, b) => a.date.localeCompare(b.date))
 })
 
+const visibleSubmissions = computed(() => {
+  return subStore.submissions.filter(s => s.status !== 'Draft')
+})
+
 // Stats
 const stats = computed(() => {
   const ams = amStore.amendments
-  const subs = subStore.submissions
+  const subs = visibleSubmissions.value
   return {
     totalAmendments: ams.length,
     pending: ams.filter(a => a.status === 'Pending').length,
     approved: ams.filter(a => a.status === 'Approved').length,
     rejected: ams.filter(a => a.status === 'Rejected').length,
     totalSubmissions: subs.length,
-    draftSubmissions: subs.filter(s => s.status === 'Draft').length,
     submittedSubmissions: subs.filter(s => s.status === 'Submitted').length
   }
 })
