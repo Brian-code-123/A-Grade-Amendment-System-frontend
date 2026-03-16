@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
+import { apiFetch } from '@/utils/api'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -32,7 +33,7 @@ async function sendVerificationCode() {
   
   sendingCode.value = true
   try {
-    const res = await fetch('/api/auth/send-verification-code', {
+    const res = await apiFetch('/api/auth/send-verification-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
