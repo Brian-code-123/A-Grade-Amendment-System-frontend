@@ -490,7 +490,12 @@ export const useAmendmentStore = defineStore('amendment', () => {
       body: JSON.stringify(data)
     })
     const result = await res.json()
-    if (!res.ok) throw new Error(result.message || 'Failed to create amendment')
+    if (!res.ok) {
+      const detail = Array.isArray(result.errors) && result.errors.length > 0
+        ? ': ' + result.errors.join(', ')
+        : ''
+      throw new Error((result.message || 'Failed to create amendment') + detail)
+    }
     
     // Add newly created amendment to the store immediately
     amendments.value.unshift(result)
