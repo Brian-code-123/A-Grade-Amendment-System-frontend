@@ -60,6 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
     try { data = text ? JSON.parse(text) : {} } catch { data = {} }
     if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
     setAuth(data.token, data.user || data)
+    await fetchMe()
     return data
   }
 
@@ -74,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
     try { data = text ? JSON.parse(text) : {} } catch { data = {} }
     if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
     setAuth(data.token, data.user || data)
+    await fetchMe()
     return data
   }
 
@@ -144,5 +146,55 @@ export const useAuthStore = defineStore('auth', () => {
     return { 'Authorization': 'Bearer ' + token.value, 'Content-Type': 'application/json' }
   }
 
-  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth }
+  async function saveSignature(signatureImage) {
+    const normalizedSignature = String(signatureImage || '').trim()
+    if (!normalizedSignature) {
+      throw new Error('Signature data is required')
+    }
+
+    if (!token.value) {
+      throw new Error('Please login before saving signature')
+    }
+
+    const previousUser = user.value ? { ...user.value } : null
+
+    if (user.value) {
+      user.value = {
+        ...user.value,
+        signature: normalizedSignature
+      }
+      localStorage.setItem('user', JSON.stringify(user.value))
+    }
+
+    if (token.value.startsWith('demo_token_')) {
+      return { message: 'Signature saved locally for demo account' }
+    }
+
+    try {
+      const res = await apiFetch('/api/auth/signature', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ signature: normalizedSignature })
+      })
+
+      const text = await res.text()
+      let data = {}
+      try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+
+      if (!res.ok) {
+        throw new Error(data.message || `Failed to save signature (${res.status})`)
+      }
+
+      await fetchMe()
+      return data
+    } catch (error) {
+      if (previousUser) {
+        user.value = previousUser
+        localStorage.setItem('user', JSON.stringify(previousUser))
+      }
+      throw error
+    }
+  }
+
+  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth, saveSignature }
 })
