@@ -10,7 +10,7 @@ const forceUpdate = ref(0)
 // Force re-evaluation when user changes
 const needsSignature = computed(() => {
   forceUpdate.value // Trigger reactivity
-  return auth.isLoggedIn && !auth.user?.signature
+  return auth.isLoggedIn && auth.user?.role !== 'admin' && !auth.user?.signature
 })
 
 // Watch user object for changes

@@ -8,7 +8,7 @@
 
     <div class="card-body">
       <!-- 簽名強制設定提示 -->
-      <div v-if="!formData.signature" class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+      <div v-if="requiresSignature && !formData.signature" class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
         <i class="bi bi-exclamation-triangle me-2"></i>
         <strong>Signature Required!</strong> You must set up your digital signature to proceed.
       </div>
@@ -71,8 +71,8 @@
           </small>
         </div>
 
-        <!-- 簽名 (強制設定) -->
-        <div class="mb-4">
+        <!-- 簽名 (非Admin強制設定) -->
+        <div v-if="requiresSignature" class="mb-4">
           <label class="form-label">
             Digital Signature <span class="text-danger">*</span>
           </label>
@@ -113,6 +113,12 @@
           <!-- 錯誤提示 -->
           <div v-if="errors.signature" class="invalid-feedback d-block mt-2">
             <i class="bi bi-exclamation-circle me-1"></i>{{ errors.signature }}
+          </div>
+        </div>
+        <div v-else class="mb-4">
+          <label class="form-label">Digital Signature</label>
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>Admins do not need a stored digital signature. PDF downloads will use Programme Director records.
           </div>
         </div>
 
@@ -216,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import SignatureBoard from '@/components/SignatureBoard.vue'
 
@@ -254,15 +260,38 @@ const showSignatureBoard = ref(false)
 const errors = ref({})
 
 // 計算屬性
+const isAdminUser = computed(() => auth.user?.role === 'admin')
+const requiresSignature = computed(() => !isAdminUser.value)
+
 const hasChanges = computed(() => {
   return formData.value.name !== originalData.value.name ||
          formData.value.email !== originalData.value.email ||
-         formData.value.signature !== originalData.value.signature
+         (requiresSignature.value && formData.value.signature !== originalData.value.signature)
 })
 
 const hasErrors = computed(() => {
   // Only check for validation errors, not missing signature since signature is handled separately
   return Object.keys(errors.value).some(key => key !== 'signature' && errors.value[key])
+})
+
+const stripAdminSignature = () => {
+  if (!isAdminUser.value) return
+  if (formData.value.signature || originalData.value.signature || auth.user?.signature) {
+    formData.value.signature = null
+    originalData.value.signature = null
+    if (auth.user) {
+      auth.user.signature = null
+      localStorage.setItem('user', JSON.stringify(auth.user))
+    }
+  }
+}
+
+onMounted(() => {
+  stripAdminSignature()
+})
+
+watch(isAdminUser, () => {
+  stripAdminSignature()
 })
 
 // 監聽props變化
@@ -280,6 +309,7 @@ watch(() => props.user, (newUser) => {
       role: newUser.role || '',
       signature: newUser.signature || null
     }
+    stripAdminSignature()
   }
 }, { deep: true })
 
@@ -315,7 +345,7 @@ const getChanges = () => {
   return {
     displayName: formData.value.name !== originalData.value.name,
     email: formData.value.email !== originalData.value.email,
-    signature: formData.value.signature !== originalData.value.signature
+    signature: requiresSignature.value && formData.value.signature !== originalData.value.signature
   }
 }
 
@@ -343,11 +373,13 @@ const handleSave = () => {
   validateField('name')
   validateField('email')
   
-  if (!formData.value.signature) {
+  if (requiresSignature.value && !formData.value.signature) {
     errors.value.signature = 'Signature is required'
     return
-  } else {
+  } else if (requiresSignature.value) {
     delete errors.value.signature // Clear signature error if signature exists
+  } else {
+    delete errors.value.signature
   }
   
   if (Object.keys(errors.value).length === 0) {
@@ -360,23 +392,25 @@ const confirmAndSave = async () => {
   
   try {
     // 更新用戶數據到auth store
+    const signatureValue = requiresSignature.value ? formData.value.signature : null
+
     const updatedUser = {
       ...auth.user,
       name: formData.value.name,
       email: formData.value.email,
-      signature: formData.value.signature
+      signature: signatureValue
     }
 
     // 直接更新
     auth.user.name = formData.value.name
     auth.user.email = formData.value.email
-    auth.user.signature = formData.value.signature
+    auth.user.signature = signatureValue
     
     // 保存到localStorage
     localStorage.setItem('user', JSON.stringify(auth.user))
 
     // 嘗試保存簽名到後端
-    if (formData.value.signature && !originalData.value.signature) {
+    if (requiresSignature.value && formData.value.signature && !originalData.value.signature) {
       try {
         await auth.saveSignature(formData.value.signature)
       } catch (e) {
@@ -386,7 +420,8 @@ const confirmAndSave = async () => {
 
     // 更新原始數據
     originalData.value = {
-      ...formData.value
+      ...formData.value,
+      signature: requiresSignature.value ? formData.value.signature : null
     }
 
     showConfirmDialog.value = false

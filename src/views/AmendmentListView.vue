@@ -140,6 +140,7 @@ async function confirmAndSubmit() {
         const localAmendment = store.amendments.find(a => a._id === editingId.value)
         if (localAmendment) {
           localAmendment.status = 'Pending'
+          localAmendment.created_at = new Date().toISOString()
         }
         showForm.value = false
         editingId.value = null

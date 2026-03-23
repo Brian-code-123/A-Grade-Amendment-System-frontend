@@ -240,7 +240,88 @@ function resolveAmendmentsForSubmission(submission) {
   return submission?.amendments || []
 }
 
-function buildPdfData(a, cleanSig) {
+const pickFieldValue = (sources, keys) => {
+  for (const src of sources) {
+    if (!src) continue
+    for (const key of keys) {
+      if (!key) continue
+      const value = src[key]
+      if (value !== undefined && value !== null && value !== '') {
+        return value
+      }
+    }
+  }
+  return null
+}
+
+const formatDateValue = (value, fallback) => {
+  if (!value) return fallback
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleDateString()
+  return typeof value === 'string' ? value : fallback
+}
+
+function buildPdfData(a, cleanSig, submission) {
+  const sources = submission ? [a, submission] : [a]
+  const instructorSignature = pickFieldValue(sources, [
+    'instructor_signature',
+    'instructorSignature',
+    'teacher_signature',
+    'teacherSignature',
+    'faculty_signature',
+    'facultySignature',
+    'signature'
+  ]) || cleanSig || null
+  const endorsementSignature = pickFieldValue(sources, [
+    'endorsement_signature',
+    'endorsementSignature',
+    'programme_director_signature',
+    'programmeDirectorSignature',
+    'director_signature',
+    'directorSignature',
+    'pd_signature',
+    'pdSignature',
+    'approver_signature',
+    'approverSignature'
+  ]) || cleanSig || null
+  const instructorDateRaw = pickFieldValue(sources, [
+    'instructor_date',
+    'instructorDate',
+    'submitted_at',
+    'amendmentDate',
+    'submissionDate'
+  ])
+  const endorsementDateRaw = pickFieldValue(sources, [
+    'endorsement_date',
+    'endorsementDate',
+    'programme_director_date',
+    'programmeDirectorDate',
+    'directorDate',
+    'pd_date',
+    'pdDate',
+    'approved_at'
+  ])
+  const instructorName = pickFieldValue(sources, [
+    'instructor_name',
+    'instructorName',
+    'course_instructor',
+    'teacherName',
+    'submitted_by_name'
+  ]) || a.instructor_name || ''
+  const endorserName = pickFieldValue(sources, [
+    'endorser_name',
+    'endorserName',
+    'programme_director_name',
+    'programmeDirectorName',
+    'directorName',
+    'pd_name',
+    'pdName',
+    'approved_by_name',
+    'approvedByName'
+  ]) || auth.user?.name || ''
+  const instructorDate = formatDateValue(instructorDateRaw, new Date().toLocaleDateString())
+  const endorsementDate = formatDateValue(endorsementDateRaw, new Date().toLocaleDateString())
+
   return {
     academicYear: a.academic_year || '',
     term: a.term || '',
@@ -254,13 +335,13 @@ function buildPdfData(a, cleanSig) {
     reasonDetails: a.reason_details || '',
     appealGrounds: a.appeal_grounds || '',
     appealDetails: a.appeal_details || '',
-    instructorName: a.instructor_name || '',
-    instructorSignature: cleanSig || null,
-    instructorDate: new Date().toLocaleDateString(),
+    instructorName,
+    instructorSignature,
+    instructorDate,
     department: a.department || '',
-    endorsementSignature: cleanSig || null,
-    endorserName: auth.user?.name || '',
-    endorsementDate: new Date().toLocaleDateString()
+    endorsementSignature,
+    endorserName,
+    endorsementDate
   }
 }
 
@@ -276,7 +357,7 @@ async function handlePrint(id) {
       : null
 
     if (amendments.length === 1) {
-      const pdfData = buildPdfData(amendments[0], cleanSig)
+      const pdfData = buildPdfData(amendments[0], cleanSig, submission)
       let doc
       try {
         const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
@@ -292,7 +373,7 @@ async function handlePrint(id) {
       if (w) w.addEventListener('load', () => w.print())
     } else {
       for (const a of amendments) {
-        const pdfData = buildPdfData(a, cleanSig)
+        const pdfData = buildPdfData(a, cleanSig, submission)
         let doc
         try {
           const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
@@ -355,7 +436,7 @@ async function batchPrint() {
       const sub = subStore.submissions.find(s => s._id === id)
       const amendments = resolveAmendmentsForSubmission(sub)
       for (const a of amendments) {
-        const pdfData = buildPdfData(a, cleanSig)
+        const pdfData = buildPdfData(a, cleanSig, sub)
         let doc
         try {
           const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
