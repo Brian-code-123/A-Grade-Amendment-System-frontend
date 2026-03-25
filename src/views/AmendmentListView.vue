@@ -201,9 +201,31 @@ const hasActiveFilters = computed(() => {
   return courseCodeFilter.value || statusFilter.value || termFilter.value
 })
 
+const totalAmendmentCount = computed(() => store.amendments.length)
+
+const getCreatedTimestamp = (amendment) => {
+  const rawDate = amendment.created_at || amendment.create_date || amendment.createdAt
+  if (rawDate) {
+    const timestamp = new Date(rawDate).getTime()
+    if (Number.isFinite(timestamp)) {
+      return timestamp
+    }
+  }
+
+  if (amendment._id) {
+    try {
+      return parseInt(String(amendment._id).substring(0, 8), 16) * 1000
+    } catch {
+      return 0
+    }
+  }
+
+  return 0
+}
+
 // Filter amendments based on user role and search filters
 const filteredAmendments = computed(() => {
-  let amendmentList = store.amendments
+  let amendmentList = [...store.amendments]
   
   amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
   
@@ -226,8 +248,8 @@ const filteredAmendments = computed(() => {
   
   // Sort by creation date
   amendmentList.sort((a, b) => {
-    const dateA = new Date(a.created_at || 0).getTime()
-    const dateB = new Date(b.created_at || 0).getTime()
+    const dateA = getCreatedTimestamp(a)
+    const dateB = getCreatedTimestamp(b)
     return sortOrder.value === 'oldest' ? dateA - dateB : dateB - dateA
   })
   
@@ -338,11 +360,16 @@ onMounted(async () => {
         </button>
       </div>
     </div>
-    <div v-if="hasActiveFilters" class="row mb-3">
+    <div class="row mb-3">
       <div class="col-12">
-        <div class="alert alert-info mb-0 py-2 px-3">
+        <div class="alert alert-info mb-0 py-2 px-3 d-flex justify-content-between align-items-center">
           <i class="bi bi-info-circle me-1"></i>
-          Showing {{ filteredAmendments.length }} of {{ store.amendments.length }} amendments
+          <span>
+            Total amendments: <strong>{{ totalAmendmentCount }}</strong>
+          </span>
+          <span>
+            Showing <strong>{{ filteredAmendments.length }}</strong>
+          </span>
         </div>
       </div>
     </div>
