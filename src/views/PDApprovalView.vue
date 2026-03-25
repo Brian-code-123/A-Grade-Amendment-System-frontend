@@ -48,9 +48,23 @@ const stats = computed(() => {
 
 function resolveAmendments(submission) {
   if (submission?.amendment_ids && amStore.amendments.length) {
-    return submission.amendment_ids.map(aid => amStore.amendments.find(a => a._id === aid)).filter(Boolean)
+    const mapped = submission.amendment_ids
+      .map(aid => amStore.amendments.find(a => a._id === aid))
+      .filter(Boolean)
+
+    if (mapped.length > 0) {
+      return mapped
+    }
   }
   return submission?.amendments || []
+}
+
+function amendmentReasonLabel(amendment) {
+  return amendment?.reason_type || amendment?.reason || '-'
+}
+
+function amendmentDetails(amendment) {
+  return amendment?.appeal_details || amendment?.reason_details || amendment?.details || '-'
 }
 
 async function handleApprove(id) {
@@ -277,7 +291,7 @@ onMounted(() => {
             <div class="table-responsive">
               <table class="table table-sm">
                 <thead>
-                  <tr><th>Student No.</th><th>Name</th><th>Course</th><th>Original</th><th>New</th><th>Reason</th></tr>
+                  <tr><th>Student No.</th><th>Name</th><th>Course</th><th>Original</th><th>New</th><th>Reason</th><th>Details</th></tr>
                 </thead>
                 <tbody>
                   <tr v-for="a in detailAmendments" :key="a._id">
@@ -286,10 +300,11 @@ onMounted(() => {
                     <td>{{ a.course_code }}</td>
                     <td><span class="badge bg-secondary">{{ a.original_grade }}</span></td>
                     <td><span class="badge bg-primary">{{ a.new_grade }}</span></td>
-                    <td>{{ a.reason_type || a.reason || '-' }}</td>
+                    <td>{{ amendmentReasonLabel(a) }}</td>
+                    <td class="small">{{ amendmentDetails(a) }}</td>
                   </tr>
                   <tr v-if="detailAmendments.length === 0">
-                    <td colspan="6" class="text-center text-muted">No amendment details available</td>
+                    <td colspan="7" class="text-center text-muted">No amendment details available</td>
                   </tr>
                 </tbody>
               </table>

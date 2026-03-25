@@ -7,6 +7,7 @@ import SignaturePrompt from '@/components/SignaturePrompt.vue'
 
 const store = useAmendmentStore()
 const auth = useAuthStore()
+const canModifyAmendments = computed(() => !auth.isAdmin)
 
 const showForm = ref(false)
 const editingId = ref(null)
@@ -119,6 +120,10 @@ function toPayload(f) {
 }
 
 async function submitForm() {
+  if (!canModifyAmendments.value) {
+    errorMsg.value = 'Admin accounts can view amendment requests only.'
+    return
+  }
   if (!validateForm()) return
   successMsg.value = ''
   errorMsg.value = ''
@@ -128,6 +133,10 @@ async function submitForm() {
 }
 
 async function confirmAndSubmit() {
+  if (!canModifyAmendments.value) {
+    errorMsg.value = 'Admin accounts can view amendment requests only.'
+    return
+  }
   isSubmitting.value = true
   try {
     const payload = toPayload(form.value)
@@ -164,6 +173,10 @@ function cancelPreview() {
 }
 
 function startEdit(a) {
+  if (!canModifyAmendments.value) {
+    errorMsg.value = 'Admin accounts can view amendment requests only.'
+    return
+  }
   editingId.value = a._id
   form.value = mapAmendmentToForm(a)
   showForm.value = true
@@ -171,6 +184,10 @@ function startEdit(a) {
 }
 
 async function handleDelete(id) {
+  if (!canModifyAmendments.value) {
+    errorMsg.value = 'Admin accounts can view amendment requests only.'
+    return
+  }
   if (!confirm('Delete this amendment?')) return
   try {
     await store.deleteAmendment(id)
@@ -188,6 +205,14 @@ const statusBadge = (status) => {
 const reasonLabel = (type) => {
   const found = REASON_OPTIONS.find(r => r.value === type)
   return found ? found.label : type || '-'
+}
+
+const amendmentDetailsText = (amendment) => {
+  if (!amendment) return '-'
+  if (amendment.appeal_details) return amendment.appeal_details
+  if (amendment.reason_details) return amendment.reason_details
+  if (amendment.details) return amendment.details
+  return '-'
 }
 
 // Get unique status options for filter dropdown
@@ -276,10 +301,15 @@ onMounted(async () => {
       <h3 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> Grade Amendments</h3>
       <div>
         <button type="button" @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
-        <button v-if="!auth.isHead" type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
+        <button v-if="canModifyAmendments && !auth.isHead" type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
           <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
         </button>
       </div>
+    </div>
+
+    <div v-if="!canModifyAmendments" class="alert alert-info" role="alert">
+      <i class="bi bi-info-circle me-2"></i>
+      Admin accounts are in read-only mode on this page.
     </div>
 
     <!-- Search and Filter Bar -->
@@ -386,7 +416,7 @@ onMounted(async () => {
     </div>
 
     <!-- ===== Amendment Form ===== -->
-    <div v-if="showForm" class="card mb-4">
+    <div v-if="showForm && canModifyAmendments" class="card mb-4">
       <div class="card-header fw-bold">
         <i class="bi bi-file-earmark-text"></i>
         {{ editingId ? 'Edit Amendment' : 'Request for Grade Amendment' }}
@@ -533,7 +563,7 @@ onMounted(async () => {
     </div>
 
     <!-- ===== Preview Modal ===== -->
-    <div v-if="showPreview" class="modal d-block" style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
+    <div v-if="showPreview && canModifyAmendments" class="modal d-block" style="background-color: rgba(0, 0, 0, 0.5); z-index: 1050;">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white border-0">
@@ -727,6 +757,7 @@ onMounted(async () => {
                 <th>Course</th>
                 <th>Grade</th>
                 <th>Reason</th>
+                <th>Details</th>
                 <th>Instructor</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -755,6 +786,9 @@ onMounted(async () => {
                   {{ reasonLabel(a.reason_type) }}
                   <span v-if="a.reason && !a.reason_type" class="text-muted">{{ a.reason }}</span>
                 </td>
+                <td class="small" style="max-width:260px; white-space:normal; word-break:break-word;">
+                  {{ amendmentDetailsText(a) }}
+                </td>
                 <td class="small text-nowrap">
                   {{ a.instructor_name || '-' }}<br/>
                   <span class="text-muted">{{ a.department || '' }}</span>
@@ -764,12 +798,13 @@ onMounted(async () => {
                   <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
                     <button
+                      v-if="canModifyAmendments"
                       :class="['btn', a.status === 'Rejected' ? 'btn-warning' : 'btn-outline-primary']"
                       @click="startEdit(a)"
                       :disabled="a.status === 'Approved'"
                       :title="a.status === 'Rejected' ? 'Edit and resubmit via Submissions' : 'Edit'"
                     ><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-outline-danger" @click="handleDelete(a._id)" :disabled="a.status === 'Approved'"><i class="bi bi-trash"></i></button>
+                    <button v-if="canModifyAmendments" class="btn btn-outline-danger" @click="handleDelete(a._id)" :disabled="a.status === 'Approved'"><i class="bi bi-trash"></i></button>
                   </div>
                 </td>
               </tr>
