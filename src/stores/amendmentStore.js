@@ -434,6 +434,13 @@ export const useAmendmentStore = defineStore('amendment', () => {
     return auth.token?.startsWith('demo_token_')
   }
 
+  const assertCanModifyAmendments = () => {
+    const auth = useAuthStore()
+    if (auth.user?.role === 'admin') {
+      throw new Error('Admin accounts cannot modify amendment requests')
+    }
+  }
+
   async function fetchAmendments(query) {
     const auth = useAuthStore()
     loading.value = true
@@ -469,6 +476,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
   }
 
   async function createAmendment(data) {
+    assertCanModifyAmendments()
     const auth = useAuthStore()
 
     // For demo users, add to local list only
@@ -503,6 +511,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
   }
 
   async function updateAmendment(id, data) {
+    assertCanModifyAmendments()
     const auth = useAuthStore()
 
     // For demo users, update local list only
@@ -528,6 +537,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
   }
 
   async function deleteAmendment(id) {
+    assertCanModifyAmendments()
     const auth = useAuthStore()
 
     // For demo users, delete from local list only
@@ -546,6 +556,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
   }
 
   async function importExcel(file) {
+    assertCanModifyAmendments()
     const auth = useAuthStore()
 
     // Demo users cannot import Excel (warning)

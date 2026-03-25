@@ -13,6 +13,8 @@ const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
 const archiveStore = useArchiveStore()
+const canApproveSubmissions = computed(() => auth.user?.role !== 'admin')
+const canRejectSubmissions = computed(() => auth.user?.role !== 'admin')
 
 const successMsg = ref('')
 const errorMsg = ref('')
@@ -208,6 +210,10 @@ const selectedApprovedCount = computed(() => {
 
 /* ── Single actions ────────────────────────────────────────────── */
 async function handleApprove(id) {
+  if (!canApproveSubmissions.value) {
+    errorMsg.value = 'Admin accounts cannot approve amendment submissions'
+    return
+  }
   if (!confirm('Approve this submission?')) return
   try {
     const s = subStore.submissions.find(s => s._id === id)
@@ -218,12 +224,20 @@ async function handleApprove(id) {
 }
 
 function openReject(id) {
+  if (!canRejectSubmissions.value) {
+    errorMsg.value = 'Admin accounts cannot reject amendment submissions'
+    return
+  }
   rejectId.value = id
   rejectReason.value = ''
   rejectModal.value = true
 }
 
 async function confirmReject() {
+  if (!canRejectSubmissions.value) {
+    errorMsg.value = 'Admin accounts cannot reject amendment submissions'
+    return
+  }
   try {
     const s = subStore.submissions.find(s => s._id === rejectId.value)
     await subStore.rejectSubmission(rejectId.value, rejectReason.value)
@@ -398,6 +412,10 @@ async function handlePrint(id) {
 
 /* ── Batch actions ─────────────────────────────────────────────── */
 async function batchApprove() {
+  if (!canApproveSubmissions.value) {
+    errorMsg.value = 'Admin accounts cannot approve amendment submissions'
+    return
+  }
   const ids = selectedIds.filter(id => {
     const s = subStore.submissions.find(s => s._id === id)
     return s && s.status === 'Submitted'
@@ -673,7 +691,7 @@ onMounted(() => {
               <i class="bi bi-check2-square me-1"></i>{{ selectedIds.length }} selected
             </span>
             <button
-              v-if="selectedSubmittedCount > 0"
+              v-if="canApproveSubmissions && selectedSubmittedCount > 0"
               class="btn btn-sm btn-success rounded-pill px-3"
               @click="batchApprove"
             >
@@ -801,10 +819,10 @@ onMounted(() => {
             </div>
             <!-- Action buttons inside modal-body so detailSubmission reactivity is guaranteed -->
             <div v-if="detailSubmission.status === 'Submitted'" class="d-flex gap-2 mt-3 pt-3 border-top">
-              <button class="btn btn-danger" @click="openReject(detailSubmission._id); detailModal = false">
+              <button v-if="canRejectSubmissions" class="btn btn-danger" @click="openReject(detailSubmission._id); detailModal = false">
                 <i class="bi bi-x-circle me-1"></i>Reject
               </button>
-              <button class="btn btn-success ms-auto" @click="handleApprove(detailSubmission._id); detailModal = false">
+              <button v-if="canApproveSubmissions" class="btn btn-success ms-auto" @click="handleApprove(detailSubmission._id); detailModal = false">
                 <i class="bi bi-check-circle me-1"></i>Approve
               </button>
             </div>

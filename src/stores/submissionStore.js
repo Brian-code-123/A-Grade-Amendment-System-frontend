@@ -315,6 +315,11 @@ export const useSubmissionStore = defineStore('submission', () => {
   }
 
   async function approveSubmission(id) {
+    const auth = useAuthStore()
+    if (auth.user?.role === 'admin') {
+      throw new Error('Admin accounts cannot approve amendment submissions')
+    }
+
     if (isDemoUser()) {
       const s = submissions.value.find(s => s._id === id)
       if (s) {
@@ -324,7 +329,6 @@ export const useSubmissionStore = defineStore('submission', () => {
       return s
     }
 
-    const auth = useAuthStore()
     const res = await apiFetch('/api/submissions/' + id + '/approve', {
       method: 'POST',
       headers: auth.authHeaders()
@@ -336,6 +340,11 @@ export const useSubmissionStore = defineStore('submission', () => {
   }
 
   async function rejectSubmission(id, reason) {
+    const auth = useAuthStore()
+    if (auth.user?.role === 'admin') {
+      throw new Error('Admin accounts cannot reject amendment submissions')
+    }
+
     if (isDemoUser()) {
       const s = submissions.value.find(s => s._id === id)
       if (s) {
@@ -346,7 +355,6 @@ export const useSubmissionStore = defineStore('submission', () => {
       return s
     }
 
-    const auth = useAuthStore()
     const res = await apiFetch('/api/submissions/' + id + '/reject', {
       method: 'POST',
       headers: auth.authHeaders(),
