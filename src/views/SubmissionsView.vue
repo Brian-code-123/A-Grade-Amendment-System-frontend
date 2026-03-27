@@ -138,7 +138,7 @@ async function submitToAdmin(id) {
     // Send automated noreply email to admin
     try {
       const emailResult = await sendSubmissionEmail(submission, amendments, auth.user)
-      if (emailResult.demo) {
+      if (emailResult?.result?.simulated || emailResult?.simulated) {
         successMsg.value = 'Submitted to admin successfully! (Email logged — Azure not configured yet)'
       } else {
         successMsg.value = 'Submitted successfully. The Program Director has been notified.'
