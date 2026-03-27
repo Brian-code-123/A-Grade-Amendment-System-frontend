@@ -141,10 +141,10 @@ async function submitToAdmin(id) {
       if (emailResult.demo) {
         successMsg.value = 'Submitted to admin successfully! (Email logged — Azure not configured yet)'
       } else {
-        successMsg.value = 'Submitted successfully. The administrator has been notified.'
+        successMsg.value = 'Submitted successfully. The Program Director has been notified.'
       }
     } catch {
-      successMsg.value = 'Submitted to admin successfully. (Email notification failed — please notify admin manually)'
+      successMsg.value = 'Submitted to Program Director successfully. (Email notification failed — please notify Program Director manually)'
     }
   } catch (e) {
     errorMsg.value = e.message
