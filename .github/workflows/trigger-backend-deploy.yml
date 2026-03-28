@@ -1,0 +1,37 @@
+name: Trigger Backend Auto Deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate dispatch token
+        env:
+          BACKEND_REPO_DISPATCH_TOKEN: ${{ secrets.BACKEND_REPO_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$BACKEND_REPO_DISPATCH_TOKEN" ]; then
+            echo "Missing required secret BACKEND_REPO_DISPATCH_TOKEN."
+            echo "Create a PAT with access to Brian-code-123/A-Grade-Amendment-System and store it as this secret."
+            exit 1
+          fi
+
+      - name: Dispatch backend deployment workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BACKEND_REPO_DISPATCH_TOKEN }}
+          repository: Brian-code-123/A-Grade-Amendment-System
+          event-type: frontend-updated
+          client-payload: |
+            {
+              "frontend_repository": "${{ github.repository }}",
+              "frontend_ref": "${{ github.ref }}",
+              "frontend_sha": "${{ github.sha }}"
+            }
