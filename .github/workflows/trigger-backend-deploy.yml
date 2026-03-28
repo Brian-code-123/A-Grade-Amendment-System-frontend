@@ -13,17 +13,20 @@ jobs:
   dispatch-backend:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate dispatch token
+      - name: Resolve dispatch readiness
         env:
           BACKEND_REPO_DISPATCH_TOKEN: ${{ secrets.BACKEND_REPO_DISPATCH_TOKEN }}
         run: |
           if [ -z "$BACKEND_REPO_DISPATCH_TOKEN" ]; then
-            echo "Missing required secret BACKEND_REPO_DISPATCH_TOKEN."
+            echo "DISPATCH_READY=false" >> "$GITHUB_ENV"
+            echo "Skipping cross-repo dispatch: missing secret BACKEND_REPO_DISPATCH_TOKEN."
             echo "Create a PAT with access to Brian-code-123/A-Grade-Amendment-System and store it as this secret."
-            exit 1
+          else
+            echo "DISPATCH_READY=true" >> "$GITHUB_ENV"
           fi
 
       - name: Dispatch backend deployment workflow
+        if: env.DISPATCH_READY == 'true'
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.BACKEND_REPO_DISPATCH_TOKEN }}
@@ -35,3 +38,8 @@ jobs:
               "frontend_ref": "${{ github.ref }}",
               "frontend_sha": "${{ github.sha }}"
             }
+
+      - name: Dispatch skip notice
+        if: env.DISPATCH_READY != 'true'
+        run: |
+          echo "Workflow completed without dispatch because BACKEND_REPO_DISPATCH_TOKEN is not configured."
