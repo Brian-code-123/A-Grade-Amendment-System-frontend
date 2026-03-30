@@ -25,15 +25,19 @@ Type them in your terminal after opening this project folder:
 
 `/home/runner/work/A-Grade-Amendment-System-frontend/A-Grade-Amendment-System-frontend`
 
-For Windows users, `cp` is not a Command Prompt command. Use one of these instead:
+For Windows users, `cp` is not a Command Prompt command. Also make sure `screenshots/` exists first (run `npm run screenshots` once).
 
 ```bat
 :: Command Prompt (cmd)
-xcopy screenshots "%USERPROFILE%\Desktop\screenshots\" /E /I /Y
+cd /d C:\Users\kassie\OneDrive\桌面\A-Grade-Amendment-System-frontend
+dir screenshots
+xcopy .\screenshots "%USERPROFILE%\Desktop\screenshots\" /E /I /Y
 ```
 
 ```powershell
 # PowerShell
+Set-Location "C:\Users\kassie\OneDrive\桌面\A-Grade-Amendment-System-frontend"
+Get-ChildItem .\screenshots
 Copy-Item -Path .\screenshots\* -Destination "$HOME\Desktop\screenshots" -Recurse -Force
 ```
 
