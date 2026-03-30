@@ -25,6 +25,35 @@ function normalizeUser(user) {
   }
 }
 
+function getApiConfigHint() {
+  if (typeof window !== 'undefined' && window.location?.hostname?.endsWith('azurestaticapps.net')) {
+    return ' This site is running on Azure Static Web Apps. Set VITE_API_BASE_URL to your backend App Service URL.'
+  }
+  return ''
+}
+
+async function parseJsonResponse(res, fallbackMessage) {
+  const contentType = (res.headers.get('content-type') || '').toLowerCase()
+  const text = await res.text()
+
+  if (!contentType.includes('application/json')) {
+    throw new Error(`API returned a non-JSON response.${getApiConfigHint()}`)
+  }
+
+  let data = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(`API returned invalid JSON.${getApiConfigHint()}`)
+  }
+
+  if (!res.ok) {
+    throw new Error(data.message || `${fallbackMessage} (${res.status})`)
+  }
+
+  return data
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
   const user = ref(normalizeUser(JSON.parse(localStorage.getItem('user') || 'null')))
@@ -55,10 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     })
-    const text = await res.text()
-    let data = {}
-    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
-    if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
+    const data = await parseJsonResponse(res, 'Login failed')
+    if (!data.token) throw new Error('Login response is missing token.')
     setAuth(data.token, data.user || data)
     await fetchMe()
     return data
@@ -70,10 +97,8 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, verificationCode })
     })
-    const text = await res.text()
-    let data = {}
-    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
-    if (!res.ok) throw new Error(data.message || `Login failed (${res.status})`)
+    const data = await parseJsonResponse(res, 'Login failed')
+    if (!data.token) throw new Error('Login response is missing token.')
     setAuth(data.token, data.user || data)
     await fetchMe()
     return data
@@ -85,10 +110,12 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, role })
     })
+    const contentType = (res.headers.get('content-type') || '').toLowerCase()
     const text = await res.text()
     let data = {}
-    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
-    console.log('[register] status:', res.status, 'body:', text)
+    if (contentType.includes('application/json')) {
+      try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    }
     if (!res.ok) {
       // 409 Conflict = explicit duplicate email from server
       // 500 with no message = likely duplicate email / DB unique constraint crash
@@ -98,6 +125,9 @@ export const useAuthStore = defineStore('auth', () => {
         /duplicate|already exist|already registered|unique/i.test(text || '')
       if (isDuplicate) throw new Error('This email is already registered. Please log in instead.')
       throw new Error(data.message || `Registration failed (${res.status})`)
+    }
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Registration returned a non-JSON response.${getApiConfigHint()}`)
     }
     if (data.token) setAuth(data.token, data.user || data)
     return data
