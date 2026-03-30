@@ -45,6 +45,9 @@ async function sendVerificationCode() {
     let data = {}
     try { data = text ? JSON.parse(text) : {} } catch { data = {} }
     if (!res.ok) throw new Error(data.message || 'Failed to send verification code')
+    if (data?.simulated) {
+      throw new Error('Verification email is in fallback mode. Check Azure email configuration and retry.')
+    }
     
     codeSent.value = true
     countdown.value = 60
