@@ -69,11 +69,28 @@ const successMsg = ref('')
 const errorMsg = ref('')
 const showPreview = ref(false)
 const isSubmitting = ref(false)
+const editingRejectContext = ref({
+  status: '',
+  reason: '',
+  remarks: ''
+})
+
+const isEditingRejected = computed(() => editingRejectContext.value.status === 'Rejected')
+
+function firstNonEmptyField(obj, keys) {
+  if (!obj) return ''
+  for (const key of keys) {
+    const value = obj[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
 
 function resetForm() {
   form.value = blankForm()
   formErrors.value = {}
   editingId.value = null
+  editingRejectContext.value = { status: '', reason: '', remarks: '' }
 }
 
 function validateForm() {
@@ -179,6 +196,11 @@ function startEdit(a) {
   }
   editingId.value = a._id
   form.value = mapAmendmentToForm(a)
+  editingRejectContext.value = {
+    status: a.status || '',
+    reason: firstNonEmptyField(a, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']),
+    remarks: firstNonEmptyField(a, ['rejection_remarks', 'rejectionRemarks', 'reject_remarks', 'rejected_remarks', 'review_remarks'])
+  }
   showForm.value = true
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -426,6 +448,23 @@ onMounted(async () => {
         <div v-if="editingId" class="alert alert-info alert-dismissible fade show" role="alert">
           <i class="bi bi-info-circle me-2"></i>
           <strong>Edit Mode:</strong> You are editing an existing amendment. Review your changes carefully before confirming.
+        </div>
+
+        <div v-if="isEditingRejected" class="mb-3">
+          <div class="alert alert-danger" role="alert">
+            <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Rejected Reason</div>
+            <div>{{ editingRejectContext.reason || 'No rejection reason was provided.' }}</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Rejected Remarks</label>
+            <textarea
+              class="form-control"
+              rows="3"
+              :value="editingRejectContext.remarks"
+              placeholder="No rejected remarks were provided."
+              readonly
+            ></textarea>
+          </div>
         </div>
 
         <form @submit.prevent="submitForm">
