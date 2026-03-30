@@ -9,11 +9,32 @@ Screenshots were captured at **1440 × 900** (desktop) and **390 × 844** (mobil
 ## How to Re-capture
 
 ```bash
+# Run these commands in a terminal (Command Prompt / PowerShell / macOS Terminal),
+# from the project root folder.
+
 # 1. Start the dev server (keep it running in the background)
 npm run dev
 
 # 2. In a separate terminal, run the capture script
 npm run screenshots
+```
+
+### Where should I type these commands?
+
+Type them in your terminal after opening this project folder:
+
+`/home/runner/work/A-Grade-Amendment-System-frontend/A-Grade-Amendment-System-frontend`
+
+For Windows users, `cp` is not a Command Prompt command. Use one of these instead:
+
+```bat
+:: Command Prompt (cmd)
+xcopy screenshots "%USERPROFILE%\Desktop\screenshots\" /E /I /Y
+```
+
+```powershell
+# PowerShell
+Copy-Item -Path .\screenshots\* -Destination "$HOME\Desktop\screenshots" -Recurse -Force
 ```
 
 ---
