@@ -89,25 +89,25 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || 'null')
 
-  // 如果需要認證但沒有token，重定向到登入
+  // If authentication is required but no token exists, redirect to login
   if (to.meta.requiresAuth && !token) {
     next('/login')
     return
   }
 
-  // 如果需要admin但用戶不是admin，重定向到首頁
+  // If admin role is required but user is not admin, redirect to home page
   if (to.meta.requiresAdmin && user?.role !== 'admin') {
     next('/')
     return
   }
 
-  // Admin 不可進入 PDF Editor
+  // Admin users cannot access PDF Editor
   if (to.meta.blockedForAdmin && user?.role === 'admin') {
     next('/')
     return
   }
 
-  // 如果需要Head但用戶不是Head，重定向到首頁
+  // If Head role is required but user is not Head, redirect to home page
   if (to.meta.requiresHead && user?.role !== 'Head') {
     next('/')
     return
@@ -119,7 +119,8 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 檢查簽名設定 - 如果用戶已登入但未設定簽名，且不在profile頁面或login頁面，則導向profile
+  // Check signature setup - if user is logged in but hasn't set up signature,
+  // and not on profile or login page, redirect to profile page
   // Demo users (demo_token_) skip signature check
   if (
     token &&
