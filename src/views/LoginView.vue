@@ -44,6 +44,15 @@ async function sendVerificationCode() {
     const text = await res.text()
     let data = {}
     try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    
+    // Check for service unavailable (Azure not configured)
+    if (res.status === 503) {
+      const msg = data.instructions 
+        ? `Email service not configured.\n${data.instructions}`
+        : 'Email service is temporarily unavailable. Please contact IT support.'
+      throw new Error(msg)
+    }
+    
     if (!res.ok) throw new Error(data.message || 'Failed to send verification code')
     if (data?.simulated) {
       throw new Error('Verification email is in fallback mode. Check Azure email configuration and retry.')

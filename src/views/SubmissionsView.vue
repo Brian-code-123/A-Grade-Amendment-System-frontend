@@ -138,13 +138,14 @@ async function submitToAdmin(id) {
     // Send automated noreply email to admin
     try {
       const emailResult = await sendSubmissionEmail(submission, amendments, auth.user)
-      if (emailResult?.result?.simulated || emailResult?.simulated) {
-        successMsg.value = 'Submitted to Program Director. (Email queued in fallback mode — check Azure email configuration)'
+      successMsg.value = 'Submitted successfully. Email sent to Program Director.'
+    } catch (emailErr) {
+      // Check if it's a configuration error
+      if (emailErr.message && emailErr.message.includes('not configured')) {
+        errorMsg.value = emailErr.message + ' However, submission has been saved.'
       } else {
-        successMsg.value = 'Submitted successfully. Email sent to Program Director.'
+        successMsg.value = 'Submitted to Program Director successfully. (Email notification failed — please notify Program Director manually)'
       }
-    } catch {
-      successMsg.value = 'Submitted to Program Director successfully. (Email notification failed — please notify Program Director manually)'
     }
   } catch (e) {
     errorMsg.value = e.message

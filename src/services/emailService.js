@@ -10,6 +10,15 @@ async function send(payload) {
   })
 
   const json = await res.json()
+  
+  // Check for service unavailable (Azure not configured)
+  if (res.status === 503) {
+    const msg = json.instructions 
+      ? `${json.error || 'Email service not configured'}\n${json.instructions}`
+      : 'Email service is temporarily unavailable. Please contact IT support.'
+    throw new Error(msg)
+  }
+  
   if (!res.ok) throw new Error(json.error || 'Email send failed')
   return json
 }
