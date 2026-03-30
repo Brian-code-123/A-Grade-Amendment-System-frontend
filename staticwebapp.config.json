@@ -1,7 +1,7 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/favicon.ico", "*.js", "*.css", "*.png", "*.jpg", "*.svg", "*.woff2"]
+    "exclude": ["/api/*", "/assets/*", "/favicon.ico", "*.js", "*.css", "*.png", "*.jpg", "*.svg", "*.woff2"]
   },
   "routes": [
     {
@@ -9,12 +9,6 @@
       "allowedRoles": ["anonymous"]
     }
   ],
-  "responseOverrides": {
-    "404": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    }
-  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",
