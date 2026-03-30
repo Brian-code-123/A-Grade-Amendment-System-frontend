@@ -139,9 +139,9 @@ async function submitToAdmin(id) {
     try {
       const emailResult = await sendSubmissionEmail(submission, amendments, auth.user)
       if (emailResult?.result?.simulated || emailResult?.simulated) {
-        successMsg.value = 'Submitted to admin successfully! (Email logged — Azure not configured yet)'
+        successMsg.value = 'Submitted to Program Director. (Email queued in fallback mode — check Azure email configuration)'
       } else {
-        successMsg.value = 'Submitted successfully. The Program Director has been notified.'
+        successMsg.value = 'Submitted successfully. Email sent to Program Director.'
       }
     } catch {
       successMsg.value = 'Submitted to Program Director successfully. (Email notification failed — please notify Program Director manually)'
