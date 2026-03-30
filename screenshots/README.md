@@ -25,6 +25,19 @@ Type them in your terminal after opening this project folder:
 
 `/home/runner/work/A-Grade-Amendment-System-frontend/A-Grade-Amendment-System-frontend`
 
+### Troubleshooting: `npm error Missing script: "screenshots"`
+
+This error usually means you are not in this project root folder when running the command.
+
+1. Change to project root first:
+   - Windows cmd: `cd /d C:\Users\kassie\OneDrive\桌面\A-Grade-Amendment-System-frontend`
+   - PowerShell: `Set-Location "C:\Users\kassie\OneDrive\桌面\A-Grade-Amendment-System-frontend"`
+2. Confirm the script exists: `npm run`
+3. If `screenshots` still does not appear, update your local repo and check this file:
+   - `A-Grade-Amendment-System-frontend/package.json` (it should contain `"screenshots": "node scripts/capture-screenshots.js"`)
+4. You can also run the command directly from project root:
+   - `node scripts/capture-screenshots.js`
+
 For Windows users, `cp` is not a Command Prompt command. Also make sure `screenshots/` exists first (run `npm run screenshots` once).
 
 ```bat
