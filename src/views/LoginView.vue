@@ -41,9 +41,22 @@ async function sendVerificationCode() {
         password: loginForm.value.password 
       })
     })
+    const contentType = (res.headers.get('content-type') || '').toLowerCase()
     const text = await res.text()
+
+    if (!contentType.includes('application/json')) {
+      const hostHint = window.location?.hostname?.endsWith('azurestaticapps.net')
+        ? ' Set VITE_API_BASE_URL to your backend App Service URL and redeploy.'
+        : ''
+      throw new Error(`Verification API returned a non-JSON response.${hostHint}`)
+    }
+
     let data = {}
-    try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      throw new Error('Verification API returned invalid JSON response.')
+    }
     
     // Check for service unavailable (Azure not configured)
     if (res.status === 503) {
