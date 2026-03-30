@@ -4,7 +4,10 @@ Vue3 frontend for A Grade Amendment System.
 
 ## Production API
 
-Production builds use same-origin API routing (`/api`) for merged frontend/backend deployment on a single Azure App Service. Keep `VITE_API_BASE_URL` empty in `.env.production`.
+Choose the API mode based on where frontend is deployed:
+
+- Azure Static Web Apps: set `VITE_API_BASE_URL` in `.env.production` to your backend App Service URL (for example `https://your-api.azurewebsites.net`).
+- Single Azure App Service (frontend + backend together): keep `VITE_API_BASE_URL` empty to use same-origin `/api`.
 
 ## Setup
 
