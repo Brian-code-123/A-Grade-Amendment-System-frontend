@@ -218,8 +218,15 @@ async function handleApprove(id) {
   try {
     const s = subStore.submissions.find(s => s._id === id)
     await subStore.approveSubmission(id)
-    successMsg.value = 'Submission approved'
-    if (s) sendApprovalEmail(s, auth.user).catch(() => {})
+    let emailWarning = ''
+    if (s) {
+      try {
+        await sendApprovalEmail(s, auth.user)
+      } catch {
+        emailWarning = '. Email notification failed — please notify submitter manually.'
+      }
+    }
+    successMsg.value = `Submission approved${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
 }
 
@@ -241,9 +248,16 @@ async function confirmReject() {
   try {
     const s = subStore.submissions.find(s => s._id === rejectId.value)
     await subStore.rejectSubmission(rejectId.value, rejectReason.value)
-    successMsg.value = 'Submission rejected'
     rejectModal.value = false
-    if (s) sendRejectionEmail(s, rejectReason.value, auth.user).catch(() => {})
+    let emailWarning = ''
+    if (s) {
+      try {
+        await sendRejectionEmail(s, rejectReason.value, auth.user)
+      } catch {
+        emailWarning = '. Email notification failed — please notify submitter manually.'
+      }
+    }
+    successMsg.value = `Submission rejected${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
 }
 
@@ -424,16 +438,26 @@ async function batchApprove() {
   if (!confirm(`Approve ${ids.length} submission(s)?`)) return
 
   let count = 0
+  let emailFailedCount = 0
   for (const id of ids) {
     try {
       const s = subStore.submissions.find(s => s._id === id)
       await subStore.approveSubmission(id)
-      if (s) sendApprovalEmail(s, auth.user).catch(() => {})
+      if (s) {
+        try {
+          await sendApprovalEmail(s, auth.user)
+        } catch {
+          emailFailedCount++
+        }
+      }
       count++
     } catch { /* continue */ }
   }
   selectedIds.splice(0)
   successMsg.value = `${count} submission(s) approved`
+  if (emailFailedCount > 0) {
+    errorMsg.value = `${emailFailedCount} approval email(s) failed to send. Please notify submitters manually.`
+  }
 }
 
 async function batchPrint() {

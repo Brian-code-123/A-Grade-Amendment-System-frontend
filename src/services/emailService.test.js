@@ -16,7 +16,10 @@ describe('emailService', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => mockResponse
+      headers: {
+        get: () => 'application/json; charset=utf-8'
+      },
+      text: async () => JSON.stringify(mockResponse)
     })
 
     const submission = { _id: 'sub-1', title: 'Test Submission' }
@@ -45,7 +48,10 @@ describe('emailService', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => ({
+      headers: {
+        get: () => 'application/json; charset=utf-8'
+      },
+      text: async () => JSON.stringify({
         error: 'Email service not configured',
         instructions: 'Configure Azure Communication Services in app settings'
       })
@@ -54,5 +60,20 @@ describe('emailService', () => {
     await expect(
       sendSubmissionEmail({ _id: 'sub-2' }, [], { email: 'user@example.com' })
     ).rejects.toThrow('Email service not configured')
+  })
+
+  it('throws a clear error when API responds with non-JSON', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: {
+        get: () => 'text/html'
+      },
+      text: async () => '<!doctype html><html><body>error</body></html>'
+    })
+
+    await expect(
+      sendSubmissionEmail({ _id: 'sub-3' }, [], { email: 'user@example.com' })
+    ).rejects.toThrow('Email API returned a non-JSON response')
   })
 })

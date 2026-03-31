@@ -72,8 +72,15 @@ async function handleApprove(id) {
   try {
     const s = subStore.submissions.find(s => s._id === id)
     await subStore.approveSubmission(id)
-    successMsg.value = 'Submission approved'
-    if (s) sendApprovalEmail(s, auth.user).catch(() => {})
+    let emailWarning = ''
+    if (s) {
+      try {
+        await sendApprovalEmail(s, auth.user)
+      } catch {
+        emailWarning = '. Email notification failed — please notify submitter manually.'
+      }
+    }
+    successMsg.value = `Submission approved${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
 }
 
@@ -87,9 +94,16 @@ async function confirmReject() {
   try {
     const s = subStore.submissions.find(s => s._id === rejectId.value)
     await subStore.rejectSubmission(rejectId.value, rejectReason.value)
-    successMsg.value = 'Submission rejected'
     rejectModal.value = false
-    if (s) sendRejectionEmail(s, rejectReason.value, auth.user).catch(() => {})
+    let emailWarning = ''
+    if (s) {
+      try {
+        await sendRejectionEmail(s, rejectReason.value, auth.user)
+      } catch {
+        emailWarning = '. Email notification failed — please notify submitter manually.'
+      }
+    }
+    successMsg.value = `Submission rejected${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
 }
 
