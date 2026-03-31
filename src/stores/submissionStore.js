@@ -379,7 +379,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await fetch('/api/submissions/' + id + '/resubmit', {
+    const res = await apiFetch('/api/submissions/' + id + '/resubmit', {
       method: 'POST',
       headers: auth.authHeaders()
     })
