@@ -1,9 +1,9 @@
-import { buildApiUrl } from '@/utils/api'
+import { apiFetch } from '@/utils/api'
 
-const API = buildApiUrl('/api/send-email')
+const API_PATH = '/api/send-email'
 
 async function send(payload) {
-  const res = await fetch(API, {
+  const res = await apiFetch(API_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
