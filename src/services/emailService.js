@@ -9,7 +9,22 @@ async function send(payload) {
     body: JSON.stringify(payload),
   })
 
-  const json = await res.json()
+  const contentType = (res.headers?.get?.('content-type') || '').toLowerCase()
+  const text = await res.text()
+
+  if (!contentType.includes('application/json')) {
+    const hostHint = typeof window !== 'undefined' && window.location?.hostname?.endsWith('azurestaticapps.net')
+      ? ' Set VITE_API_BASE_URL to your backend App Service URL and redeploy.'
+      : ''
+    throw new Error(`Email API returned a non-JSON response.${hostHint}`)
+  }
+
+  let json = {}
+  try {
+    json = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error('Email API returned invalid JSON response.')
+  }
   
   // Check for service unavailable (Azure not configured)
   if (res.status === 503) {

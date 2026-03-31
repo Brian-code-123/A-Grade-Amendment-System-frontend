@@ -65,6 +65,7 @@ async function batchSubmitToAdmin() {
   emailSending.value = true
   errorMsg.value = ''
   let count = 0
+  let emailFailedCount = 0
   for (const id of ids) {
     try {
       const submission = subStore.submissions.find(s => s._id === id)
@@ -78,7 +79,9 @@ async function batchSubmitToAdmin() {
 
       try {
         await sendSubmissionEmail(submission, amendments, auth.user)
-      } catch { /* email optional */ }
+      } catch {
+        emailFailedCount++
+      }
 
       count++
     } catch { /* continue */ }
@@ -87,6 +90,9 @@ async function batchSubmitToAdmin() {
   emailSending.value = false
   if (count > 0) {
     successMsg.value = `${count} submission(s) submitted to Program Director successfully!`
+    if (emailFailedCount > 0) {
+      errorMsg.value = `${emailFailedCount} email notification(s) failed to send. Please notify Program Director manually.`
+    }
   } else {
     errorMsg.value = 'Failed to submit any submissions'
   }
