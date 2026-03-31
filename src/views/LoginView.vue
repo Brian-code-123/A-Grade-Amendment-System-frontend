@@ -65,6 +65,11 @@ async function sendVerificationCode() {
         : 'Email service is temporarily unavailable. Please contact IT support.'
       throw new Error(msg)
     }
+
+    if (res.status === 429) {
+      const wait = Number(data.retryAfterSeconds || 60)
+      throw new Error(`Please wait ${wait} seconds before requesting another verification code.`)
+    }
     
     if (!res.ok) throw new Error(data.message || 'Failed to send verification code')
     if (data?.simulated) {
