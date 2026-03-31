@@ -60,7 +60,7 @@ async function batchSubmitToAdmin() {
     return s && s.status === 'Draft'
   })
   if (ids.length === 0) { errorMsg.value = 'No draft submissions selected'; return }
-  if (!confirm(`Submit ${ids.length} submission(s) to admin for review? Email notifications will be sent.`)) return
+  if (!confirm(`Submit ${ids.length} submission(s) to Program Director for review? Email notifications will be sent.`)) return
 
   emailSending.value = true
   errorMsg.value = ''
@@ -86,7 +86,7 @@ async function batchSubmitToAdmin() {
   selectedSubIds.splice(0)
   emailSending.value = false
   if (count > 0) {
-    successMsg.value = `${count} submission(s) submitted to admin successfully!`
+    successMsg.value = `${count} submission(s) submitted to Program Director successfully!`
   } else {
     errorMsg.value = 'Failed to submit any submissions'
   }
@@ -137,7 +137,7 @@ async function submitToAdmin(id) {
 
     // Send automated noreply email to admin
     try {
-      const emailResult = await sendSubmissionEmail(submission, amendments, auth.user)
+      await sendSubmissionEmail(submission, amendments, auth.user)
       successMsg.value = 'Submitted successfully. Email sent to Program Director.'
     } catch (emailErr) {
       // Check if it's a configuration error
@@ -272,7 +272,7 @@ onMounted(() => {
             >
               <span v-if="emailSending" class="spinner-border spinner-border-sm me-1"></span>
               <i v-else class="bi bi-send-fill me-1"></i>
-              Submit {{ selectedDraftCount }} to Admin
+              Submit {{ selectedDraftCount }} to Program Director
             </button>
           </div>
         </div>
