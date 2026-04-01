@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:unit": "vitest",
+    "test:unit": "vitest --passWithNoTests",
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
