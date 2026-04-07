@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,6 +9,7 @@ import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
+const route = useRoute()
 
 const successMsg = ref('')
 const errorMsg = ref('')
@@ -126,10 +128,35 @@ const filterBtnClass = (opt) => {
   return map[opt] || 'btn-secondary'
 }
 
+function applyFilterFromQuery() {
+  const raw = String(route.query.filter || route.query.status || '').trim().toLowerCase()
+  if (!raw) return
+  if (raw === 'pending' || raw === 'submitted') {
+    statusFilter.value = 'Submitted'
+    return
+  }
+  if (raw === 'approved') {
+    statusFilter.value = 'Approved'
+    return
+  }
+  if (raw === 'rejected') {
+    statusFilter.value = 'Rejected'
+    return
+  }
+  if (raw === 'all') {
+    statusFilter.value = 'All'
+  }
+}
+
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  applyFilterFromQuery()
 })
+
+watch(() => route.query, () => {
+  applyFilterFromQuery()
+}, { deep: true })
 </script>
 
 <template>

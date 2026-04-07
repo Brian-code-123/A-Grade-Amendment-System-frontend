@@ -16,6 +16,7 @@ const DEMO_SUBMISSIONS = [
     created_at: new Date(Date.now() - 6*24*60*60*1000).toISOString(),
     submitted_at: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
     approved_at: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
+    approved_by_name: 'Prof. Programme Director',
     printed: true,
     printed_at: new Date(Date.now() - 2*24*60*60*1000).toISOString()
   },
@@ -325,6 +326,7 @@ export const useSubmissionStore = defineStore('submission', () => {
       if (s) {
         s.status = 'Approved'
         s.approved_at = new Date().toISOString()
+        s.approved_by_name = auth.user?.name || 'Demo Reviewer'
       }
       return s
     }
@@ -418,5 +420,64 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
-  return { submissions, currentSubmission, loading, error, fetchSubmissions, fetchSubmission, createSubmission, submitToAdmin, approveSubmission, rejectSubmission, resubmitSubmission, markPrinted }
+  async function sendPendingReminder() {
+    const auth = useAuthStore()
+
+    if (isDemoUser()) {
+      const pendingCount = submissions.value.filter(s => s.status === 'Submitted').length
+      if (pendingCount === 0) throw new Error('No pending submissions to remind')
+      return { ok: true, pendingCount }
+    }
+
+    const res = await apiFetch('/api/submissions/reminder', {
+      method: 'POST',
+      headers: auth.authHeaders()
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.message || 'Failed to send reminder')
+    return result
+  }
+
+  async function fetchReminderSettings() {
+    const auth = useAuthStore()
+
+    if (isDemoUser()) {
+      return {
+        pendingThresholdDays: 3,
+        updated_at: null,
+        updated_by: 'System'
+      }
+    }
+
+    const res = await apiFetch('/api/settings/reminder', {
+      headers: auth.authHeaders()
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.message || 'Failed to fetch reminder settings')
+    return result
+  }
+
+  async function updateReminderSettings(payload) {
+    const auth = useAuthStore()
+
+    if (isDemoUser()) {
+      return {
+        ok: true,
+        pendingThresholdDays: Number(payload?.pendingThresholdDays) || 3,
+        updated_at: new Date().toISOString(),
+        updated_by: auth.user?.name || 'Demo Admin'
+      }
+    }
+
+    const res = await apiFetch('/api/settings/reminder', {
+      method: 'PUT',
+      headers: auth.authHeaders(),
+      body: JSON.stringify(payload || {})
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.message || 'Failed to update reminder settings')
+    return result
+  }
+
+  return { submissions, currentSubmission, loading, error, fetchSubmissions, fetchSubmission, createSubmission, submitToAdmin, approveSubmission, rejectSubmission, resubmitSubmission, markPrinted, sendPendingReminder, fetchReminderSettings, updateReminderSettings }
 })

@@ -38,7 +38,7 @@ const router = createRouter({
       path: '/excel-upload',
       name: 'excel-upload',
       component: () => import('@/views/ExcelUploadView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, blockedForAdmin: true }
     },
     {
       path: '/submissions',
@@ -74,7 +74,7 @@ const router = createRouter({
       path: '/pd-approvals',
       name: 'pd-approvals',
       component: () => import('@/views/PDApprovalView.vue'),
-      meta: { requiresAuth: true, requiresHead: true }
+      meta: { requiresAuth: true, requiresReviewer: true }
     },
     {
       path: '/admin/archive',
@@ -107,8 +107,8 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // If Head role is required but user is not Head, redirect to home page
-  if (to.meta.requiresHead && user?.role !== 'Head') {
+  // If reviewer role is required but user is not Programme Director/Head, redirect to home page
+  if (to.meta.requiresReviewer && user?.role !== 'Head' && user?.role !== 'Programme Director') {
     next('/')
     return
   }

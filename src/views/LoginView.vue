@@ -91,23 +91,23 @@ async function sendVerificationCode() {
   }
 }
 
-function demoLoginPD() {
-  const demoToken = 'demo_token_pd_' + Date.now()
+function demoLoginTeacher() {
+  const demoToken = 'demo_token_teacher_' + Date.now()
   const demoUser = {
-    email: 'martin.choy@hkbu.edu.hk',
+    email: 'teacher.demo@hkbu.edu.hk',
     name: 'Dr. Martin Choy',
-    role: 'Programme Director'
+    role: 'Teacher'
   }
   auth.setAuth(demoToken, demoUser)
   router.push('/')
 }
 
-function demoLoginHead() {
-  const demoToken = 'demo_token_head_' + Date.now()
+function demoLoginPD() {
+  const demoToken = 'demo_token_pd_' + Date.now()
   const demoUser = {
-    email: 'head.dept@hkbu.edu.hk',
+    email: 'martin.choy@hkbu.edu.hk',
     name: 'Prof. David Wong',
-    role: 'Head'
+    role: 'Programme Director'
   }
   auth.setAuth(demoToken, demoUser)
   router.push('/')
@@ -213,7 +213,7 @@ async function handleRegister() {
               </span>
               <i class="bi bi-arrow-right lp-demo-arrow"></i>
             </button>
-            <button class="lp-demo-btn lp-demo-pd" @click="demoLoginPD">
+            <button class="lp-demo-btn lp-demo-pd" @click="demoLoginTeacher">
               <span class="lp-demo-icon"><i class="bi bi-person-badge-fill"></i></span>
               <span class="lp-demo-text">
                 <strong>Teacher</strong>
@@ -221,7 +221,7 @@ async function handleRegister() {
               </span>
               <i class="bi bi-arrow-right lp-demo-arrow"></i>
             </button>
-            <button class="lp-demo-btn lp-demo-head" @click="demoLoginHead">
+            <button class="lp-demo-btn lp-demo-head" @click="demoLoginPD">
               <span class="lp-demo-icon"><i class="bi bi-person-check-fill"></i></span>
               <span class="lp-demo-text">
                 <strong>Programme Director</strong>

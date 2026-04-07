@@ -18,12 +18,26 @@ const selectedAmendments = ref([])
 const successMsg = ref('')
 const errorMsg = ref('')
 const emailSending = ref(false)
+const reminderSending = ref(false)
+const reminderThresholdDays = ref(3)
 const submitting = reactive({})
 
 /* ── Batch selection for submissions ───────────────────────────── */
 const selectedSubIds = reactive([])
 
 const draftSubmissions = computed(() => subStore.submissions.filter(s => s.status === 'Draft'))
+const pendingSubmissions = computed(() => subStore.submissions.filter(s => s.status === 'Submitted'))
+
+const overduePendingSubmissions = computed(() => {
+  const now = Date.now()
+  const thresholdMs = reminderThresholdDays.value * 24 * 60 * 60 * 1000
+  return pendingSubmissions.value.filter(s => {
+    const dateValue = s.submitted_at || s.created_at
+    const ts = new Date(dateValue).getTime()
+    if (Number.isNaN(ts)) return false
+    return now - ts >= thresholdMs
+  })
+})
 
 const allDraftsSelected = computed(() => {
   return draftSubmissions.value.length > 0 && draftSubmissions.value.every(s => selectedSubIds.includes(s._id))
@@ -95,6 +109,36 @@ async function batchSubmitToAdmin() {
     }
   } else {
     errorMsg.value = 'Failed to submit any submissions'
+  }
+}
+
+async function sendPendingReminder() {
+  if (overduePendingSubmissions.value.length === 0) {
+    errorMsg.value = `No pending submissions older than ${reminderThresholdDays.value} day(s)`
+    return
+  }
+  if (!confirm(`Send reminder to Program Director? ${overduePendingSubmissions.value.length} submission(s) are pending for ${reminderThresholdDays.value}+ day(s).`)) return
+
+  reminderSending.value = true
+  errorMsg.value = ''
+  try {
+    const result = await subStore.sendPendingReminder()
+    const count = result?.pendingCount ?? overduePendingSubmissions.value.length
+    const days = result?.thresholdDays ?? reminderThresholdDays.value
+    successMsg.value = `Reminder sent successfully. ${count} submission(s) pending for ${days}+ day(s) were included.`
+  } catch (e) {
+    errorMsg.value = e.message
+  } finally {
+    reminderSending.value = false
+  }
+}
+
+async function loadReminderSettings() {
+  try {
+    const settings = await subStore.fetchReminderSettings()
+    reminderThresholdDays.value = Number(settings?.pendingThresholdDays) || 3
+  } catch {
+    reminderThresholdDays.value = 3
   }
 }
 
@@ -209,6 +253,7 @@ const statusBadge = (status) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  loadReminderSettings()
 })
 </script>
 
@@ -216,9 +261,21 @@ onMounted(() => {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold mb-0"><i class="bi bi-send"></i> Submissions</h3>
-      <button class="btn btn-primary btn-sm" @click="showCreate = !showCreate">
-        <i class="bi" :class="showCreate ? 'bi-x' : 'bi-plus'"></i> {{ showCreate ? 'Cancel' : 'New Submission' }}
-      </button>
+      <div class="d-flex align-items-center gap-2">
+        <button
+          v-if="overduePendingSubmissions.length > 0"
+          class="btn btn-outline-warning btn-sm"
+          @click="sendPendingReminder"
+          :disabled="reminderSending"
+        >
+          <span v-if="reminderSending" class="spinner-border spinner-border-sm me-1"></span>
+          <i v-else class="bi bi-bell me-1"></i>
+          Remind Program Director ({{ overduePendingSubmissions.length }})
+        </button>
+        <button class="btn btn-primary btn-sm" @click="showCreate = !showCreate">
+          <i class="bi" :class="showCreate ? 'bi-x' : 'bi-plus'"></i> {{ showCreate ? 'Cancel' : 'New Submission' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="successMsg" class="alert alert-success alert-dismissible fade show">
@@ -299,7 +356,7 @@ onMounted(() => {
                 <th>Status</th>
                 <th>Number of Cases</th>
                 <th>Created</th>
-                <th>Actions</th>
+                <th v-if="!auth.isAdmin">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -324,7 +381,7 @@ onMounted(() => {
                 <td><span class="badge" :class="statusBadge(s.status)">{{ statusLabel(s.status) }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
-                <td>
+                <td v-if="!auth.isAdmin">
                   <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
                     <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="bi bi-send"></i> Submit to Program Director
