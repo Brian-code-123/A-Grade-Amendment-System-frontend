@@ -34,6 +34,13 @@ function handleLogout() {
   auth.logout()
   router.push('/login')
 }
+
+async function openNotification(item) {
+  await notif.markAsRead(item._id)
+  if (item?.action_path) {
+    router.push(item.action_path)
+  }
+}
 </script>
 
 <template>
@@ -76,8 +83,8 @@ function handleLogout() {
               </router-link>
             </li>
 
-            <!-- 2. Amendments (dropdown) — hidden for Programme Director (Head) -->
-            <li class="nav-item dropdown" v-if="!auth.isHead">
+            <!-- 2. Amendments (dropdown) — hidden for Programme Director/Head -->
+            <li class="nav-item dropdown" v-if="!auth.isHead && !auth.isPD">
               <button
                 class="nav-link nav-tab dropdown-toggle btn btn-link"
                 type="button"
@@ -104,7 +111,7 @@ function handleLogout() {
                   </router-link>
                 </li>
                 <li>
-                  <router-link class="dropdown-item" to="/excel-upload" active-class="active">
+                  <router-link v-if="!auth.isAdmin" class="dropdown-item" to="/excel-upload" active-class="active">
                     <i class="bi bi-file-earmark-excel me-2 text-info"></i>Excel Upload
                   </router-link>
                 </li>
@@ -119,7 +126,7 @@ function handleLogout() {
             </li>
 
             <!-- 4. Approvals (Programme Director / Head role only) -->
-            <li class="nav-item" v-if="auth.isHead">
+            <li class="nav-item" v-if="auth.isHead || auth.isPD">
               <router-link class="nav-link nav-tab" to="/pd-approvals" active-class="active">
                 <i class="bi bi-check2-circle me-1"></i>Approvals
               </router-link>
@@ -185,7 +192,7 @@ function handleLogout() {
                     class="dropdown-item py-2"
                     :class="{ 'fw-bold': !n.read }"
                     href="#"
-                    @click.prevent="notif.markAsRead(n._id)"
+                    @click.prevent="openNotification(n)"
                   >
                     <div class="fw-semibold small">{{ n.title }}</div>
                     <div class="text-muted small text-wrap">{{ n.message }}</div>

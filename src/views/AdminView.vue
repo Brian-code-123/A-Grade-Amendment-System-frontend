@@ -24,6 +24,8 @@ const rejectReason = ref('')
 const detailModal = ref(false)
 const detailSubmission = ref(null)
 const detailAmendments = ref([])
+const reminderThresholdDays = ref(3)
+const reminderSettingSaving = ref(false)
 
 /* ══════════════════════════════════════════════════════════════════ */
 /* AD HOC ANNOUNCEMENT MANAGEMENT */
@@ -118,6 +120,29 @@ function deleteAnnouncement(id) {
 function getAnnouncementBadgeClass(type) {
   const map = { 'info': 'bg-info', 'warning': 'bg-warning text-dark', 'danger': 'bg-danger' }
   return map[type] || 'bg-secondary'
+}
+
+async function loadReminderSettings() {
+  try {
+    const settings = await subStore.fetchReminderSettings()
+    reminderThresholdDays.value = Number(settings?.pendingThresholdDays) || 3
+  } catch {
+    reminderThresholdDays.value = 3
+  }
+}
+
+async function saveReminderSettings() {
+  reminderSettingSaving.value = true
+  errorMsg.value = ''
+  try {
+    const result = await subStore.updateReminderSettings({ pendingThresholdDays: reminderThresholdDays.value })
+    reminderThresholdDays.value = Number(result?.pendingThresholdDays) || reminderThresholdDays.value
+    successMsg.value = `Reminder threshold updated to ${reminderThresholdDays.value} day(s)`
+  } catch (e) {
+    errorMsg.value = e.message
+  } finally {
+    reminderSettingSaving.value = false
+  }
 }
 
 /* ── Filter & batch selection ──────────────────────────────────── */
@@ -521,6 +546,18 @@ const displayStatus = (status, printed = false) => {
   return status === 'Submitted' ? 'Pending' : status
 }
 
+const getApprovedByName = (submission) => {
+  return pickFieldValue([submission], [
+    'approvedByName',
+    'approved_by_name',
+    'approvedBy',
+    'approved_by',
+    'approverName',
+    'approver_name',
+    'approver'
+  ])
+}
+
 const filterBtnClass = (opt) => {
   const map = { All: 'btn-dark', Submitted: 'btn-info', Approved: 'btn-success', Rejected: 'btn-danger', Printed: 'btn-purple' }
   return map[opt] || 'btn-dark'
@@ -529,6 +566,7 @@ const filterBtnClass = (opt) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  loadReminderSettings()
 })
 </script>
 
@@ -569,6 +607,26 @@ onMounted(() => {
 
     <!-- SUBMISSIONS TAB -->
     <div v-if="adminTab === 'submissions'">
+
+      <!-- Reminder Threshold Setting -->
+      <div class="card shadow-sm mb-3 border-0" style="background:linear-gradient(135deg,#fff7ed 0%,#ffedd5 100%)">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <div class="fw-semibold"><i class="bi bi-bell me-1"></i>Pending Reminder Threshold</div>
+              <small class="text-muted">Only admin can set this value. Teachers can send reminder only when submission pending days reach this threshold.</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <input v-model.number="reminderThresholdDays" type="number" min="1" max="60" class="form-control form-control-sm" style="width:100px" />
+              <span class="small text-muted">day(s)</span>
+              <button class="btn btn-sm btn-warning" @click="saveReminderSettings" :disabled="reminderSettingSaving">
+                <span v-if="reminderSettingSaving" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="bi bi-save me-1"></i>Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Statistics Cards -->
       <div class="row g-2 mb-4">
@@ -820,6 +878,7 @@ onMounted(() => {
           <div class="modal-body" v-if="detailSubmission">
             <p><strong>Status:</strong> <span class="badge" :class="statusBadge(detailSubmission.status, detailSubmission.printed)">{{ displayStatus(detailSubmission.status, detailSubmission.printed) }}</span></p>
             <p><strong>Submitted by:</strong> {{ detailSubmission.submitted_by_name }}</p>
+            <p v-if="detailSubmission.status === 'Approved' || detailSubmission.printed"><strong>Approved by:</strong> {{ getApprovedByName(detailSubmission) || 'N/A' }}</p>
             <p><strong>Description:</strong> {{ detailSubmission.description || 'N/A' }}</p>
             <p v-if="detailSubmission.rejection_reason"><strong>Rejection Reason:</strong> <span class="text-danger">{{ detailSubmission.rejection_reason }}</span></p>
             <h6 class="fw-bold mt-3">Amendments ({{ detailAmendments.length }})</h6>
