@@ -15,5 +15,18 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     restoreMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{js,vue}'],
+      exclude: ['src/main.js'],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        statements: 50,
+        branches: 40,
+      },
+    },
   },
 })

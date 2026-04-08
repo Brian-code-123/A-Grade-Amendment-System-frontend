@@ -3,11 +3,12 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '@/utils/api'
+import { getPostLoginRoute } from '@/utils/authRedirect'
 
 const auth = useAuthStore()
 const router = useRouter()
 
-if (auth.isLoggedIn) router.replace('/')
+if (auth.isLoggedIn) router.replace(getPostLoginRoute(auth.user))
 
 const tab = ref('login')
 const loading = ref(false)
@@ -99,7 +100,7 @@ function demoLoginTeacher() {
     role: 'Teacher'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.push(getPostLoginRoute(demoUser))
 }
 
 function demoLoginPD() {
@@ -110,7 +111,7 @@ function demoLoginPD() {
     role: 'Programme Director'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.push(getPostLoginRoute(demoUser))
 }
 
 async function handleLogin() {
@@ -130,7 +131,7 @@ async function handleLogin() {
       loginForm.value.password, 
       loginForm.value.verificationCode
     )
-    router.push('/')
+    router.push(getPostLoginRoute(auth.user))
   } catch (e) {
     error.value = e.message
   } finally {
@@ -159,7 +160,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await auth.register(regForm.value.name, regForm.value.email, regForm.value.password, regForm.value.role)
-    router.push('/')
+    router.push(getPostLoginRoute(auth.user))
   } catch (e) {
     error.value = e.message
   } finally {

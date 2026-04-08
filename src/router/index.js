@@ -1,7 +1,13 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+
+const isAzureStaticAppsHost =
+  typeof window !== 'undefined' && window.location.hostname.endsWith('azurestaticapps.net')
+const useHashHistory = import.meta.env.VITE_ROUTER_MODE === 'hash' || isAzureStaticAppsHost
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: useHashHistory
+    ? createWebHashHistory(import.meta.env.BASE_URL)
+    : createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',

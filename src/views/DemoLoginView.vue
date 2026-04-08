@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { getPostLoginRoute } from '@/utils/authRedirect'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -15,7 +16,7 @@ onMounted(() => {
     role: 'admin'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.push(getPostLoginRoute(demoUser))
 })
 </script>
 

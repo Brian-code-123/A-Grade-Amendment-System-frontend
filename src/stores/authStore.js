@@ -144,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token.value }
       })
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     clearAuth()
   }
 
@@ -164,11 +164,11 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = normalizeUser(data)
           localStorage.setItem('user', JSON.stringify(user.value))
         }
-      } else {
+      } else if (res.status === 401 || res.status === 403) {
         clearAuth()
       }
-    } catch (e) {
-      clearAuth()
+    } catch {
+      // Keep current session during transient API/network failures.
     }
   }
 
