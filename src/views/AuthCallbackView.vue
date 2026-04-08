@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { getPostLoginRoute } from '@/utils/authRedirect'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,8 +18,8 @@ onMounted(async () => {
     try {
       const user = userParam ? JSON.parse(decodeURIComponent(userParam)) : null
       auth.setAuth(token, user)
-      router.replace('/')
-    } catch (e) {
+      router.replace(getPostLoginRoute(user || auth.user))
+    } catch {
       error.value = 'Failed to process login. Please try again.'
     }
   } else if (route.query.error) {

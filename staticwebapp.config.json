@@ -5,6 +5,46 @@
   },
   "routes": [
     {
+      "route": "/",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/login",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/amendments",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/submissions",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/admin*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/excel-upload",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/pdf-editor",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/profile",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/signature-setup",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/pd-approvals",
+      "rewrite": "/index.html"
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"]
     }

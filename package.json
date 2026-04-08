@@ -10,10 +10,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "npm run test:unit && npm run test:integration",
+    "test": "npm run test:coverage",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
+    "test:coverage": "vitest run --coverage tests/unit tests/integration",
     "test:e2e": "playwright test",
+    "test:e2e:deploy": "PLAYWRIGHT_BASE_URL=https://agreeable-pebble-0d1936800.6.azurestaticapps.net playwright test",
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
