@@ -21,7 +21,7 @@
   "dependencies": {
     "@azure/msal-browser": "^5.2.0",
     "@mdi/font": "^7.4.47",
-    "@oruga-ui/oruga-next": "^0.11.6",
+    "@oruga-ui/oruga-next": "^0.13.4",
     "@oruga-ui/theme-bootstrap": "^0.9.4",
     "bootstrap": "^5.3.8",
     "docx": "^9.6.0",
