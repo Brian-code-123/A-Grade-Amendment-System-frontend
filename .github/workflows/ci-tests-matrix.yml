@@ -1,0 +1,66 @@
+name: Cross-Platform Tests (x64)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node 22 / x64
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-13
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate runner architecture is x64
+        shell: bash
+        run: |
+          echo "RUNNER_OS=$RUNNER_OS"
+          echo "RUNNER_ARCH=$RUNNER_ARCH"
+          if [ "$RUNNER_ARCH" != "X64" ]; then
+            echo "This workflow requires x64 runners only."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright browser (Windows/macOS)
+        if: matrix.os != 'ubuntu-latest'
+        run: npx playwright install chromium
+
+      - name: Run unit + integration tests with coverage
+        run: npm run test:coverage
+
+      - name: Run E2E tests
+        run: npm run test:e2e -- --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ matrix.os }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
