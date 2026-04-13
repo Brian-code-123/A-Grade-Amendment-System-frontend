@@ -15,7 +15,7 @@ const loading = ref(false)
 const error = ref('')
 
 const loginForm = ref({ email: '', password: '', verificationCode: '' })
-const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Programme Director' })
+const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Teacher' })
 const codeSent = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
@@ -307,8 +307,9 @@ async function handleRegister() {
             <div class="lp-input-wrap">
               <i class="bi bi-person-gear lp-field-icon"></i>
               <select v-model="regForm.role">
-                <option value="Programme Director">Teacher</option>
-                <option value="Head">Programme Director</option>
+                <option value="Teacher">Teacher</option>
+                <option value="Programme Director">Programme Director</option>
+                <option value="Head">Head</option>
                 <option>admin</option>
               </select>
             </div>
