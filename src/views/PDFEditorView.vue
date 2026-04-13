@@ -206,6 +206,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { useRouter, useRoute } from 'vue-router'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import * as pdfjsLib from 'pdfjs-dist'
+import { normalizeAnnotation, materializeAnnotation } from '@/utils/pdfAnnotationCoordinates'
 
 const router = useRouter()
 const route = useRoute()
@@ -527,10 +528,11 @@ const stopDrawing = () => {
   
   isDrawing = false
   if (currentStroke) {
+    const canvas = document.getElementById('annotation-canvas')
     if (!pageAnnotations[currentPage.value]) {
       pageAnnotations[currentPage.value] = []
     }
-    pageAnnotations[currentPage.value].push(currentStroke)
+    pageAnnotations[currentPage.value].push(normalizeAnnotation(currentStroke, canvas))
     currentStroke = null
     redrawAnnotations()
   }
@@ -547,14 +549,17 @@ const addText = () => {
     pageAnnotations[currentPage.value] = []
   }
   
-  pageAnnotations[currentPage.value].push({
+  const canvas = document.getElementById('annotation-canvas')
+  const textAnnotation = {
     type: 'text',
     text: textContent.value,
     x: textX.value,
     y: textY.value,
     color: penColor.value,
     fontSize: 14
-  })
+  }
+
+  pageAnnotations[currentPage.value].push(normalizeAnnotation(textAnnotation, canvas))
   
   showTextInput.value = false
   textContent.value = ''
@@ -574,32 +579,37 @@ const redrawAnnotations = () => {
   annotCtx.clearRect(0, 0, canvas.width, canvas.height)
   
   const annotations = pageAnnotations[currentPage.value] || []
+
+  const drawSingleAnnotation = (ctx, stroke) => {
+    if (stroke.type === 'path') {
+      ctx.globalAlpha = stroke.opacity
+      ctx.strokeStyle = stroke.color
+      ctx.lineWidth = stroke.width
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      stroke.points.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y)
+        else ctx.lineTo(pt.x, pt.y)
+      })
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    } else if (stroke.type === 'rect') {
+      ctx.strokeStyle = stroke.color
+      ctx.lineWidth = stroke.width
+      ctx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
+    } else if (stroke.type === 'text') {
+      ctx.fillStyle = stroke.color
+      ctx.font = (stroke.fontSize || 16) + 'px Arial'
+      ctx.textBaseline = 'top'
+      ctx.fillText(stroke.text, stroke.x, stroke.y)
+      ctx.textBaseline = 'alphabetic'
+    }
+  }
   
   annotations.forEach(stroke => {
-    if (stroke.type === 'path') {
-      annotCtx.globalAlpha = stroke.opacity
-      annotCtx.strokeStyle = stroke.color
-      annotCtx.lineWidth = stroke.width
-      annotCtx.lineCap = 'round'
-      annotCtx.lineJoin = 'round'
-      annotCtx.beginPath()
-      stroke.points.forEach((pt, i) => {
-        if (i === 0) annotCtx.moveTo(pt.x, pt.y)
-        else annotCtx.lineTo(pt.x, pt.y)
-      })
-      annotCtx.stroke()
-      annotCtx.globalAlpha = 1
-    } else if (stroke.type === 'rect') {
-      annotCtx.strokeStyle = stroke.color
-      annotCtx.lineWidth = stroke.width
-      annotCtx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
-    } else if (stroke.type === 'text') {
-      annotCtx.fillStyle = stroke.color
-      annotCtx.font = (stroke.fontSize || 16) + 'px Arial'
-      annotCtx.textBaseline = 'top'
-      annotCtx.fillText(stroke.text, stroke.x, stroke.y)
-      annotCtx.textBaseline = 'alphabetic'
-    }
+    const renderStroke = materializeAnnotation(stroke, canvas)
+    drawSingleAnnotation(annotCtx, renderStroke)
   })
 }
 
@@ -650,31 +660,36 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
 
   // Replay annotations stored for this page
   const annotations = pageAnnotations[pageNum] || []
-  annotations.forEach(stroke => {
+  const drawSingleAnnotation = (ctx2, stroke) => {
     if (stroke.type === 'path') {
-      ctx.globalAlpha = stroke.opacity
-      ctx.strokeStyle = stroke.color
-      ctx.lineWidth = stroke.width
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.beginPath()
+      ctx2.globalAlpha = stroke.opacity
+      ctx2.strokeStyle = stroke.color
+      ctx2.lineWidth = stroke.width
+      ctx2.lineCap = 'round'
+      ctx2.lineJoin = 'round'
+      ctx2.beginPath()
       stroke.points.forEach((pt, i) => {
-        if (i === 0) ctx.moveTo(pt.x, pt.y)
-        else ctx.lineTo(pt.x, pt.y)
+        if (i === 0) ctx2.moveTo(pt.x, pt.y)
+        else ctx2.lineTo(pt.x, pt.y)
       })
-      ctx.stroke()
-      ctx.globalAlpha = 1
+      ctx2.stroke()
+      ctx2.globalAlpha = 1
     } else if (stroke.type === 'rect') {
-      ctx.strokeStyle = stroke.color
-      ctx.lineWidth = stroke.width
-      ctx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
+      ctx2.strokeStyle = stroke.color
+      ctx2.lineWidth = stroke.width
+      ctx2.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
     } else if (stroke.type === 'text') {
-      ctx.fillStyle = stroke.color
-      ctx.font = (stroke.fontSize || 16) + 'px Arial'
-      ctx.textBaseline = 'top'
-      ctx.fillText(stroke.text, stroke.x, stroke.y)
-      ctx.textBaseline = 'alphabetic'
+      ctx2.fillStyle = stroke.color
+      ctx2.font = (stroke.fontSize || 16) + 'px Arial'
+      ctx2.textBaseline = 'top'
+      ctx2.fillText(stroke.text, stroke.x, stroke.y)
+      ctx2.textBaseline = 'alphabetic'
     }
+  }
+
+  annotations.forEach(stroke => {
+    const renderStroke = materializeAnnotation(stroke, composite)
+    drawSingleAnnotation(ctx, renderStroke)
   })
 
   // Add form data if available and requested
