@@ -35,3 +35,4 @@ coverage
 
 # PDF files
 *.pdf
+!public/form.pdf
