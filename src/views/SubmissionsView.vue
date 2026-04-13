@@ -21,6 +21,10 @@ const emailSending = ref(false)
 const reminderSending = ref(false)
 const reminderThresholdDays = ref(3)
 const submitting = reactive({})
+const detailsLoading = ref(false)
+const showDetailsModal = ref(false)
+const selectedSubmission = ref(null)
+const selectedSubmissionAmendments = ref([])
 
 /* ── Batch selection for submissions ───────────────────────────── */
 const selectedSubIds = reactive([])
@@ -238,6 +242,32 @@ async function resubmitToPD(id) {
   }
 }
 
+async function openSubmissionDetails(id) {
+  detailsLoading.value = true
+  errorMsg.value = ''
+  try {
+    await subStore.fetchSubmission(id)
+    const submission = subStore.currentSubmission || subStore.submissions.find(s => s._id === id)
+    if (!submission) throw new Error('Submission not found')
+
+    selectedSubmission.value = submission
+    const amendmentIds = submission.amendment_ids || []
+    selectedSubmissionAmendments.value = amendmentIds
+      .map(aid => amStore.amendments.find(a => a._id === aid))
+      .filter(Boolean)
+
+    showDetailsModal.value = true
+  } catch (e) {
+    errorMsg.value = e.message
+  } finally {
+    detailsLoading.value = false
+  }
+}
+
+function closeSubmissionDetails() {
+  showDetailsModal.value = false
+}
+
 const statusLabel = (status) => {
   if (status !== 'Submitted') return status
   if (auth.user?.role === 'Teacher') return 'Approved'
@@ -356,7 +386,7 @@ onMounted(() => {
                 <th>Status</th>
                 <th>Number of Cases</th>
                 <th>Created</th>
-                <th v-if="!auth.isAdmin">Actions</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -381,28 +411,88 @@ onMounted(() => {
                 <td><span class="badge" :class="statusBadge(s.status)">{{ statusLabel(s.status) }}</span></td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
-                <td v-if="!auth.isAdmin">
-                  <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
-                    <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="bi bi-send"></i> Submit to Program Director
+                <td>
+                  <button
+                    v-if="auth.isAdmin"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="openSubmissionDetails(s._id)"
+                    :disabled="detailsLoading"
+                    title="View Details"
+                  >
+                    <span v-if="detailsLoading" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="bi bi-eye"></i> View Details
                   </button>
-                  <span v-else-if="s.status === 'Submitted'" class="text-muted small">
-                    {{ auth.user?.role === 'Teacher' ? 'Approved' : 'Pending review' }}
-                  </span>
-                  <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
-                  <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
-                    <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
-                      <i class="bi bi-pencil me-1"></i>Edit Amendments
-                    </button>
-                    <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
+
+                  <template v-else>
+                    <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
                       <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
-                      <i v-else class="bi bi-arrow-counterclockwise me-1"></i>Resubmit
+                      <i v-else class="bi bi-send"></i> Submit to Program Director
                     </button>
-                  </div>
+                    <span v-else-if="s.status === 'Submitted'" class="text-muted small">
+                      {{ auth.user?.role === 'Teacher' ? 'Approved' : 'Pending review' }}
+                    </span>
+                    <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
+                    <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
+                      <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
+                        <i class="bi bi-pencil me-1"></i>Edit Amendments
+                      </button>
+                      <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
+                        <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="bi bi-arrow-counterclockwise me-1"></i>Resubmit
+                      </button>
+                    </div>
+                  </template>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submission Details Modal (Admin) -->
+    <div v-if="showDetailsModal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Submission Details</h5>
+            <button type="button" class="btn-close" @click="closeSubmissionDetails"></button>
+          </div>
+          <div class="modal-body" v-if="selectedSubmission">
+            <p><strong>Title:</strong> {{ selectedSubmission.title }}</p>
+            <p><strong>Description:</strong> {{ selectedSubmission.description || 'N/A' }}</p>
+            <p><strong>Status:</strong> <span class="badge" :class="statusBadge(selectedSubmission.status)">{{ statusLabel(selectedSubmission.status) }}</span></p>
+            <p><strong>Submitted By:</strong> {{ selectedSubmission.submitted_by_name || selectedSubmission.submitted_by || 'N/A' }}</p>
+            <p><strong>Created:</strong> {{ new Date(selectedSubmission.created_at).toLocaleString() }}</p>
+
+            <h6 class="fw-bold mt-3">Included Cases ({{ selectedSubmissionAmendments.length }})</h6>
+            <div class="table-responsive" v-if="selectedSubmissionAmendments.length">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Student No.</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Original</th>
+                    <th>New</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="a in selectedSubmissionAmendments" :key="a._id">
+                    <td>{{ a.student_no || a.student_id }}</td>
+                    <td>{{ a.student_name }}</td>
+                    <td>{{ a.course_code }}</td>
+                    <td>{{ a.original_grade }}</td>
+                    <td>{{ a.new_grade }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="text-muted small">No amendment details available for this submission.</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeSubmissionDetails">Close</button>
+          </div>
         </div>
       </div>
     </div>
