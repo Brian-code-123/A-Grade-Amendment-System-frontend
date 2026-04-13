@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
-import * as XLSX from 'xlsx'
 
 const store = useAmendmentStore()
 const auth = useAuthStore()
@@ -32,66 +31,7 @@ async function doImport() {
 
   try {
     if (isDemoUser()) {
-      // Client-side Excel parsing for demo mode
-      const data = await file.value.arrayBuffer()
-      const workbook = XLSX.read(data, { type: 'array' })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(sheet)
-
-      if (rows.length === 0) {
-        throw new Error('No data rows found in Excel file')
-      }
-
-      let imported = 0
-      const errors = []
-
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i]
-        const rowErrors = []
-
-        // Map column names (flexible)
-        const studentNo = row['Student No.'] || row['Student No'] || row['student_no'] || ''
-        const studentName = row['Student Name'] || row['student_name'] || ''
-        const courseCode = row['Course Code'] || row['course_code'] || ''
-        const courseTitle = row['Course Title'] || row['course_title'] || ''
-        const originalGrade = row['Original Grade'] || row['original_grade'] || ''
-        const newGrade = row['New Grade'] || row['new_grade'] || ''
-        const reasonType = row['Reason Type'] || row['reason_type'] || 'conversion'
-        const reasonDetails = row['Reason Details'] || row['reason_details'] || ''
-        const instructorName = row['Instructor Name'] || row['instructor_name'] || ''
-        const department = row['Department'] || row['department'] || ''
-        const academicYear = row['Academic Year'] || row['academic_year'] || '2025-2026'
-        const term = String(row['Term'] || row['term'] || '1')
-
-        if (!studentNo) rowErrors.push('Student No. is required')
-        if (!studentName) rowErrors.push('Student Name is required')
-        if (!courseCode) rowErrors.push('Course Code is required')
-        if (!originalGrade) rowErrors.push('Original Grade is required')
-        if (!newGrade) rowErrors.push('New Grade is required')
-
-        if (rowErrors.length > 0) {
-          errors.push({ row: i + 2, errors: rowErrors })
-        } else {
-          await store.createAmendment({
-            academic_year: academicYear,
-            term: term,
-            student_no: studentNo,
-            student_name: studentName,
-            course_code: courseCode,
-            course_title: courseTitle,
-            original_grade: originalGrade,
-            new_grade: newGrade,
-            reason_type: reasonType,
-            reason_details: reasonDetails,
-            instructor_name: instructorName,
-            department: department
-          })
-          imported++
-        }
-      }
-
-      result.value = { imported, errors }
-      file.value = null
+      throw new Error('Excel import is disabled in demo mode for security. Please use the Amendment Form for demo data entry.')
     } else {
       const res = await store.importExcel(file.value)
       result.value = res
@@ -102,6 +42,26 @@ async function doImport() {
   } finally {
     importing.value = false
   }
+}
+
+function toCsvRow(values) {
+  return values
+    .map(v => {
+      const text = String(v ?? '')
+      const escaped = text.replace(/"/g, '""')
+      return `"${escaped}"`
+    })
+    .join(',')
+}
+
+function downloadCsv(filename, rows) {
+  const content = rows.map(toCsvRow).join('\n')
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 function downloadTemplate() {
@@ -115,12 +75,7 @@ function downloadTemplate() {
     ['2025-2026', '1', '22240803', 'Sarah Johnson', 'COMP3048', 'Database Systems', 'B-', 'B+', 'appeal', 'Grading calculation error', 'Prof. Emily Wong', 'COMP']
   ]
 
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData])
-  // Set column widths
-  ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 15) }))
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Grade Amendments')
-  XLSX.writeFile(wb, 'Grade_Amendment_Template.xlsx')
+  downloadCsv('Grade_Amendment_Template.csv', [headers, ...sampleData])
 }
 
 function exportData() {
@@ -146,10 +101,12 @@ function exportData() {
     'Status': a.status || ''
   }))
 
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Grade Amendments')
-  XLSX.writeFile(wb, 'Grade_Amendments_Export.xlsx')
+  const headers = [
+    'Academic Year', 'Term', 'Student No.', 'Student Name', 'Course Code', 'Course Title',
+    'Original Grade', 'New Grade', 'Reason Type', 'Reason Details', 'Instructor Name', 'Department', 'Status'
+  ]
+  const rows = data.map(row => headers.map(h => row[h]))
+  downloadCsv('Grade_Amendments_Export.csv', [headers, ...rows])
 }
 
 function clearFile() {
