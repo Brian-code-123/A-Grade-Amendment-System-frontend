@@ -1,22 +1,27 @@
 <script setup>
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getPostLoginRoute } from '@/utils/authRedirect'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
+const DEMO_PROFILES = {
+  admin: { email: 'admin@hkbu.edu.hk', name: 'Administrator', role: 'admin' },
+  teacher: { email: 'teacher.demo@hkbu.edu.hk', name: 'Dr. Martin Choy', role: 'Teacher' },
+  pd: { email: 'martin.choy@hkbu.edu.hk', name: 'Prof. David Wong', role: 'Programme Director' }
+}
+
+const roleParam = (route.query.role || 'admin').toLowerCase()
+const demoUser = ref(DEMO_PROFILES[roleParam] || DEMO_PROFILES.admin)
+const roleLabel = ref(demoUser.value.role === 'admin' ? 'Administrator' : demoUser.value.role)
+
 onMounted(() => {
-  // Auto-login as admin demo user
-  const demoToken = 'demo_token_' + Date.now()
-  const demoUser = {
-    email: 'admin@hkbu.edu.hk',
-    name: 'Administrator',
-    role: 'admin'
-  }
-  auth.setAuth(demoToken, demoUser)
-  router.push(getPostLoginRoute(demoUser))
+  const demoToken = 'demo_token_' + roleParam + '_' + Date.now()
+  auth.setAuth(demoToken, demoUser.value)
+  router.push(getPostLoginRoute(demoUser.value))
 })
 </script>
 
@@ -31,9 +36,9 @@ onMounted(() => {
             </div>
             <div class="demo-badge mb-4">
               <i class="bi bi-lightning-charge-fill"></i>
-              Admin Demo
+              {{ roleLabel }} Demo
             </div>
-            <h5 class="fw-bold mb-2">Entering as Administrator</h5>
+            <h5 class="fw-bold mb-2">Entering as {{ roleLabel }}</h5>
             <p class="text-muted mb-4">Redirecting to dashboard...</p>
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
