@@ -270,13 +270,12 @@ function closeSubmissionDetails() {
 
 const statusLabel = (status) => {
   if (status !== 'Submitted') return status
-  if (auth.user?.role === 'Teacher') return 'Approved'
-  return 'Pending'
+  return 'Pending Review'
 }
 
 const statusBadge = (status) => {
   const normalized = statusLabel(status)
-  const map = { Draft: 'bg-warning text-dark', Pending: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
+  const map = { Draft: 'bg-warning text-dark', 'Pending Review': 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
   return map[normalized] || 'bg-secondary'
 }
 
@@ -429,7 +428,7 @@ onMounted(() => {
                       <i v-else class="bi bi-send"></i> Submit to Program Director
                     </button>
                     <span v-else-if="s.status === 'Submitted'" class="text-muted small">
-                      {{ auth.user?.role === 'Teacher' ? 'Approved' : 'Pending review' }}
+                      <i class="bi bi-hourglass-split me-1"></i>Pending Review
                     </span>
                     <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
                     <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
