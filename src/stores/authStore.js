@@ -105,6 +105,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(name, email, password, role) {
+    const normalizedRole = String(role || '').trim().toLowerCase().replace(/[_\s]+/g, ' ')
+    if (normalizedRole === 'head') {
+      throw new Error('Head role cannot be selected during registration.')
+    }
+
     const res = await apiFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
