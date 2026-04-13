@@ -551,7 +551,21 @@ export const useAmendmentStore = defineStore('amendment', () => {
       method: 'DELETE',
       headers: auth.authHeaders()
     })
-    if (!res.ok) throw new Error('Failed to delete')
+
+    let result = {}
+    try {
+      result = await res.json()
+    } catch {
+      result = {}
+    }
+
+    // If backend no longer has this row, treat it as already deleted.
+    if (res.status === 404) {
+      amendments.value = amendments.value.filter(a => a._id !== id)
+      return { ok: true, alreadyDeleted: true }
+    }
+
+    if (!res.ok) throw new Error(result.message || 'Failed to delete')
     amendments.value = amendments.value.filter(a => a._id !== id)
   }
 

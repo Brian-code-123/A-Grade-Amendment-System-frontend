@@ -309,7 +309,6 @@ async function handleRegister() {
               <select v-model="regForm.role">
                 <option value="Teacher">Teacher</option>
                 <option value="Programme Director">Programme Director</option>
-                <option value="Head">Head</option>
                 <option>admin</option>
               </select>
             </div>
