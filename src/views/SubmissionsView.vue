@@ -420,7 +420,7 @@ onMounted(() => {
                     title="View Details"
                   >
                     <span v-if="detailsLoading" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="bi bi-eye"></i> View Details
+                    <i v-else class="bi bi-eye"></i>
                   </button>
 
                   <template v-else>
