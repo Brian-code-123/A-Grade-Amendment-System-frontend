@@ -16,7 +16,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-13
+          - macos-latest
 
     steps:
       - name: Checkout
@@ -33,8 +33,8 @@ jobs:
         run: |
           echo "RUNNER_OS=$RUNNER_OS"
           echo "RUNNER_ARCH=$RUNNER_ARCH"
-          if [ "$RUNNER_ARCH" != "X64" ]; then
-            echo "This workflow requires x64 runners only."
+          if [ "$RUNNER_ARCH" != "X64" ] && [ "$RUNNER_ARCH" != "ARM64" ]; then
+            echo "This workflow requires 64-bit runners only (X64 or ARM64)."
             exit 1
           fi
 
