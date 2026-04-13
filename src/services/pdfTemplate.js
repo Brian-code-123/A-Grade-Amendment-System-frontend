@@ -669,22 +669,14 @@ export async function downloadFilledForm(amendment) {
     registrarRemarks: amendment.registrar_remarks || ''
   }
 
-  try {
-    // Try template-based PDF first
-    const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
-    const pdfBytes = await pdfDoc.save()
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
-    link.click()
-    URL.revokeObjectURL(link.href)
-  } catch (e) {
-    console.warn('Template-based export failed, falling back to generated PDF:', e.message)
-    // Fallback to original generated PDF
-    const doc = generateGradeAmendmentPDF(data)
-    doc.save(`Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`)
-  }
+  const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
+  const pdfBytes = await pdfDoc.save()
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 /**
