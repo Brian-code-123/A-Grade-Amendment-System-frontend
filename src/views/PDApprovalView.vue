@@ -5,6 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
+import { canReviewSubmissionStatus, isPendingSubmissionStatus, normalizeSubmissionStatus } from '@/utils/submissionStatus'
 
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
@@ -26,7 +27,12 @@ const statusFilter = ref('All')
 const visibleSubmissions = computed(() => {
   let result = subStore.submissions.filter(s => s.status !== 'Draft')
   if (statusFilter.value !== 'All') {
-    result = result.filter(s => s.status === statusFilter.value)
+    result = result.filter((s) => {
+      if (statusFilter.value === 'Submitted') {
+        return isPendingSubmissionStatus(s.status)
+      }
+      return normalizeSubmissionStatus(s.status) === statusFilter.value
+    })
   }
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase()
@@ -42,7 +48,7 @@ const stats = computed(() => {
   const all = subStore.submissions.filter(s => s.status !== 'Draft')
   return {
     total: all.length,
-    pending: all.filter(s => s.status === 'Submitted').length,
+    pending: all.filter(s => isPendingSubmissionStatus(s.status)).length,
     approved: all.filter(s => s.status === 'Approved').length,
     rejected: all.filter(s => s.status === 'Rejected').length
   }
@@ -117,11 +123,12 @@ async function viewDetail(id) {
 }
 
 const statusBadge = (status) => {
-  const map = { Submitted: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
-  return map[status] || 'bg-secondary'
+  const normalized = normalizeSubmissionStatus(status)
+  const map = { Pending: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
+  return map[normalized] || 'bg-secondary'
 }
 
-const displayStatus = (status) => status === 'Submitted' ? 'Pending' : status
+const displayStatus = (status) => normalizeSubmissionStatus(status)
 
 const filterBtnClass = (opt) => {
   const map = { All: 'btn-primary', Submitted: 'btn-info', Approved: 'btn-success', Rejected: 'btn-danger' }
@@ -352,7 +359,7 @@ watch(() => route.query, () => {
             </div>
 
             <!-- Approve / Reject actions -->
-            <div v-if="detailSubmission.status === 'Submitted'" class="d-flex gap-2 mt-3 pt-3 border-top">
+            <div v-if="canReviewSubmissionStatus(detailSubmission.status)" class="d-flex gap-2 mt-3 pt-3 border-top">
               <button class="btn btn-danger" @click="openReject(detailSubmission._id); detailModal = false">
                 <i class="bi bi-x-circle me-1"></i>Reject
               </button>
