@@ -76,10 +76,12 @@ test('teacher-admin workflow covers create/read/update/delete with screenshots',
   await expect(page.getByText(/Submitted by:/i)).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('workflow-03-read-admin-detail.png'), fullPage: true })
 
-  await page.getByRole('button', { name: /^Close$/ }).click()
+  const detailModal = page.locator('.modal.d-block').last()
+  await detailModal.getByRole('button', { name: /^Close$/ }).click()
+  await expect(detailModal).toBeHidden()
   const thresholdInput = page.getByRole('spinbutton').first()
   await thresholdInput.fill('4')
-  await page.getByRole('button', { name: /^Save$/ }).click()
+  await page.locator('button.btn-warning:has-text("Save")').first().click()
   await expect(page.getByText(/Reminder threshold updated/i)).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('workflow-04-update-settings.png'), fullPage: true })
 

@@ -38,7 +38,7 @@ describe('AuthCallbackView', () => {
     setAuthMock.mockReset()
   })
 
-  it('processes token callback and redirects home', async () => {
+  it('processes token callback and redirects teacher to amendments', async () => {
     routeState = {
       query: {
         token: 'token-123',
@@ -50,7 +50,7 @@ describe('AuthCallbackView', () => {
     await nextTick()
 
     expect(setAuthMock).toHaveBeenCalledWith('token-123', { name: 'Teacher', role: 'teacher' })
-    expect(replaceMock).toHaveBeenCalledWith('/')
+    expect(replaceMock).toHaveBeenCalledWith('/amendments')
   })
 
   it('shows error and does not redirect when callback parsing fails', async () => {

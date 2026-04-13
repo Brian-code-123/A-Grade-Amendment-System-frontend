@@ -22,13 +22,13 @@ describe('DemoLoginView', () => {
     setAuthMock.mockReset()
   })
 
-  it('auto logs in demo admin and redirects home', () => {
+  it('auto logs in demo admin and redirects to admin dashboard', () => {
     const wrapper = mount(DemoLoginView)
 
     expect(wrapper.text()).toContain('Entering as Administrator')
     expect(setAuthMock).toHaveBeenCalledTimes(1)
     const [, user] = setAuthMock.mock.calls[0]
     expect(user.role).toBe('admin')
-    expect(pushMock).toHaveBeenCalledWith('/')
+    expect(pushMock).toHaveBeenCalledWith('/admin')
   })
 })
