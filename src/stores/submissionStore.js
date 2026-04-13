@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
 import { apiFetch } from '@/utils/api'
+import { isPendingSubmissionStatus } from '@/utils/submissionStatus'
 
 const DEMO_SUBMISSIONS = [
   {
@@ -424,7 +425,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     const auth = useAuthStore()
 
     if (isDemoUser()) {
-      const pendingCount = submissions.value.filter(s => s.status === 'Submitted').length
+      const pendingCount = submissions.value.filter(s => isPendingSubmissionStatus(s.status)).length
       if (pendingCount === 0) throw new Error('No pending submissions to remind')
       return { ok: true, pendingCount }
     }
