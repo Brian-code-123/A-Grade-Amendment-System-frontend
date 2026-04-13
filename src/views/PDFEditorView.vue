@@ -111,6 +111,50 @@
 
         <!-- Right Sidebar -->
         <div class="right-sidebar">
+          <div class="sidebar-section">
+            <h3>Form Data</h3>
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-size: 12px;">
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Academic Year:</label>
+                <input v-model="formDataInputs.academicYear" type="text" placeholder="e.g., 25" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" maxlength="2">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Term:</label>
+                <input v-model="formDataInputs.term" type="text" placeholder="e.g., 1" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">New Grade:</label>
+                <input v-model="formDataInputs.newGrade" type="text" placeholder="e.g., A" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
+              </div>
+              <hr style="margin: 8px 0;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">
+                Page 2 - Approval Status:
+                <span v-if="currentAmendment" style="display: block; font-size: 11px; font-weight: normal; color: #999; margin-top: 2px;">
+                  (from amendment: {{ currentAmendment.status }})
+                </span>
+              </div>
+              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                  <input :checked="formDataInputs.approved === true" @change="formDataInputs.approved = $event.target.checked ? true : null" type="checkbox" style="cursor: pointer;">
+                  <span>Approved</span>
+                </label>
+              </div>
+              <div class="mb-2" style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                  <input :checked="formDataInputs.approved === false" @change="formDataInputs.approved = $event.target.checked ? false : null" type="checkbox" style="cursor: pointer;">
+                  <span>Not Approved</span>
+                </label>
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Approval Date:</label>
+                <input v-model="formDataInputs.approvalDate" type="date" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px;" :disabled="formDataInputs.approved === null">
+              </div>
+              <div class="mb-2">
+                <label style="display: block; font-weight: 600; margin-bottom: 4px;">Remarks:</label>
+                <textarea v-model="formDataInputs.approvalRemarks" placeholder="Add remarks..." style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px;" rows="2" :disabled="formDataInputs.approved === null"></textarea>
+              </div>
+            </div>
+          </div>
 
           <div class="sidebar-section">
             <h3>�📥 Download</h3>
@@ -658,7 +702,10 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
 const addFormDataToCanvas = (ctx, pageNum, scale = 1) => {
   const s = scale
   ctx.fillStyle = '#000000'
-  ctx.textBaseline = 'top'
+  ctx.textBaseline = 'alphabetic'
+
+  const px = (x) => x * s
+  const py = (y) => ctx.canvas.height - (y * s)
 
   if (pageNum === 1) {
     ctx.font = `bold ${12 * s}px Arial`
@@ -666,67 +713,62 @@ const addFormDataToCanvas = (ctx, pageNum, scale = 1) => {
     // AY first number (338, 722)
     if (formDataInputs.academicYear) {
       const ayNum = String(formDataInputs.academicYear).padStart(2, '0')
-      ctx.fillText(ayNum, 338 * s, 722 * s)
+      ctx.fillText(ayNum, px(338), py(722))
     }
 
     // AY second number (382, 722)
     if (formDataInputs.academicYear) {
       const nextYear = String(parseInt(formDataInputs.academicYear) + 1).padStart(2, '0')
-      ctx.fillText(nextYear, 382 * s, 722 * s)
+      ctx.fillText(nextYear, px(382), py(722))
     }
 
     // Term (484, 722)
     if (formDataInputs.term) {
-      ctx.fillText(String(formDataInputs.term), 484 * s, 722 * s)
+      ctx.fillText(String(formDataInputs.term), px(484), py(722))
     }
 
-    // Grade (46, 650)
+    // New grade (415, 667)
     if (formDataInputs.newGrade) {
-      ctx.fillText(String(formDataInputs.newGrade), 46 * s, 650 * s)
+      ctx.fillText(String(formDataInputs.newGrade), px(415), py(667))
     }
   } else if (pageNum === 2) {
     ctx.font = `bold ${13 * s}px Arial`
 
-    // Debug: draw a bright red marker so we can confirm the canvas is being written to
-    ctx.fillStyle = '#FF0000'
-    ctx.fillText('● PAGE2 OVERLAY ACTIVE', 10 * s, 10 * s)
-    ctx.fillStyle = '#000000'
-
-    // Approved checkbox (44, 746)
+    // Approved checkbox
     if (formDataInputs.approved === true) {
-      ctx.fillText('V', 44 * s, 746 * s)
+      ctx.fillText('V', px(35), py(748))
     }
 
-    // Not Approved checkbox (97, 746)
+    // Not Approved checkbox
     if (formDataInputs.approved === false) {
-      ctx.fillText('V', 97 * s, 746 * s)
+      ctx.fillText('V', px(115), py(748))
     }
 
     ctx.font = `${11 * s}px Arial`
 
-    // Date (77, 712)
+    // Date (340, 728)
     if (formDataInputs.approved !== null && formDataInputs.approvalDate) {
-      ctx.fillText(String(formDataInputs.approvalDate), 77 * s, 712 * s)
+      ctx.fillText(String(formDataInputs.approvalDate), px(340), py(728))
     }
 
-    // Remarks (94, 678)
+    // Remarks (98, 712)
     if (formDataInputs.approved !== null && formDataInputs.approvalRemarks) {
-      const maxWidth = 150 * s
+      const maxWidth = 230 * s
       const lineHeight = 12 * s
       const words = String(formDataInputs.approvalRemarks).split(' ')
       let line = ''
-      let y = 678 * s
+      let y = py(712)
       for (const word of words) {
         const testLine = line + word + ' '
         if (ctx.measureText(testLine).width > maxWidth) {
-          ctx.fillText(line.trim(), 94 * s, y)
+          ctx.fillText(line.trim(), px(98), y)
           line = word + ' '
           y += lineHeight
         } else {
           line = testLine
         }
       }
-      if (line.trim()) ctx.fillText(line.trim(), 94 * s, y)
+      if (line.trim()) ctx.fillText(line.trim(), px(98), y)
     }
   }
 }
@@ -827,10 +869,8 @@ const redoAction = () => {
 }
 
 // Auto-populate form data based on amendment status
-const populateFormFromAmendment = () => {
-  if (!currentAmendment.value) return
-  
-  const amendment = currentAmendment.value
+const populateFormFromAmendment = (amendment) => {
+  if (!amendment) return
   
   // Populate basic fields
   if (amendment.academic_year) {
@@ -859,6 +899,36 @@ const populateFormFromAmendment = () => {
   console.log('Form populated from amendment:', formDataInputs)
 }
 
+const populateFormFromInput = (input) => {
+  if (!input || typeof input !== 'object') return
+
+  const ay = String(input.academicYear || input.academic_year || '').trim()
+  if (ay) {
+    const parts = ay.split('-')
+    const base = parts[0] || ay
+    formDataInputs.academicYear = base.slice(-2)
+  }
+
+  if (input.term !== undefined && input.term !== null && String(input.term).trim()) {
+    formDataInputs.term = String(input.term)
+  }
+
+  const grade = input.newGrade || input.new_grade
+  if (grade) formDataInputs.newGrade = String(grade)
+
+  if (input.approved === true || input.approved === false) {
+    formDataInputs.approved = input.approved
+  }
+
+  if (input.approvalDate || input.approval_date) {
+    formDataInputs.approvalDate = String(input.approvalDate || input.approval_date)
+  }
+
+  if (input.approvalRemarks || input.approval_remarks) {
+    formDataInputs.approvalRemarks = String(input.approvalRemarks || input.approval_remarks)
+  }
+}
+
 onMounted(() => {
   // Setup worker fallback after component is mounted
   setupWorkerFallback().catch(err => {
@@ -869,28 +939,40 @@ onMounted(() => {
   if (route.state?.formData) {
     formData.value = route.state.formData
     console.log('Form data received:', formData.value)
+    populateFormFromInput(route.state.formData)
   }
-  
-  // Try to get current amendment from store and auto-populate form
-  if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
-    currentAmendment.value = amendmentStore.amendments[0]
-    populateFormFromAmendment()
-  } else {
-    // Load amendments if not already loaded
-    amendmentStore.fetchAmendments().then(() => {
-      if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
-        currentAmendment.value = amendmentStore.amendments[0]
-        populateFormFromAmendment()
-      }
-    }).catch(err => console.error('Failed to fetch amendments:', err))
+
+  const targetId = route.query.amendmentId || route.params.id || route.state?.amendmentId
+  const pickAmendment = () => {
+    if (!amendmentStore.amendments || amendmentStore.amendments.length === 0) return null
+    if (targetId) {
+      const found = amendmentStore.amendments.find(a => a._id === targetId)
+      if (found) return found
+    }
+    return amendmentStore.amendments[0]
   }
+
+  const selected = pickAmendment()
+  if (selected) {
+    currentAmendment.value = selected
+    populateFormFromAmendment(selected)
+    return
+  }
+
+  amendmentStore.fetchAmendments().then(() => {
+    const afterFetch = pickAmendment()
+    if (afterFetch) {
+      currentAmendment.value = afterFetch
+      populateFormFromAmendment(afterFetch)
+    }
+  }).catch(err => console.error('Failed to fetch amendments:', err))
 })
 
 // Watch for amendment changes and update form
 watch(() => amendmentStore.amendments, () => {
   if (amendmentStore.amendments && amendmentStore.amendments.length > 0 && !currentAmendment.value) {
     currentAmendment.value = amendmentStore.amendments[0]
-    populateFormFromAmendment()
+    populateFormFromAmendment(currentAmendment.value)
   }
 }, { deep: true })
 </script>
