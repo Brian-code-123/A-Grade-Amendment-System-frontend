@@ -331,6 +331,12 @@ img[alt="HKBU Logo"] {
 }
 .badge.bg-danger { animation: badgePulse 2.4s ease-in-out infinite; }
 
+@keyframes badgePulseSuccess {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(25,135,84,0.5); }
+  60%       { box-shadow: 0 0 0 5px rgba(25,135,84,0); }
+}
+.badge.bg-success { animation: badgePulseSuccess 2.4s ease-in-out infinite; }
+
 /* Gradient shift (for branded panels) */
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }

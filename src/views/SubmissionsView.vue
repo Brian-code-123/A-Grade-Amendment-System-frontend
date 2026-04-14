@@ -389,7 +389,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in subStore.submissions" :key="s._id" :class="{ 'table-active': selectedSubIds.includes(s._id), 'table-danger': s.status === 'Rejected' }">
+              <tr v-for="s in subStore.submissions" :key="s._id" :class="{ 'table-active': selectedSubIds.includes(s._id), 'table-success': s.status === 'Approved', 'table-danger': s.status === 'Rejected' }">
                 <td>
                   <input
                     v-if="s.status === 'Draft'"

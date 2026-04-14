@@ -803,7 +803,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-danger': a.status === 'Rejected' && auth.user?.role !== 'admin' }">
+              <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-success': a.status === 'Approved', 'table-danger': a.status === 'Rejected' }">
                 <td class="small text-nowrap">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>
