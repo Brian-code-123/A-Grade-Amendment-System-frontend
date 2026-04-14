@@ -1,0 +1,400 @@
+{
+  "document": {
+    "title": "HKBU Grade Amendment Form",
+    "pages": [
+      {
+        "pageNumber": 1,
+        "dimensions": {
+          "width": 1581.03,
+          "height": 2225.22,
+          "unit": "points",
+          "note": "Scanned image-based form (custom size, not A4)"
+        },
+        "sections": {
+          "studentInformation": {
+            "description": "Common fields that appear on both sides",
+            "fields": {
+              "studentNo": {
+                "label": "Student No.",
+                "x": 340,
+                "y": 1855,
+                "fontSize": 26,
+                "width": 150,
+                "dataKey": "student_no"
+              },
+              "studentName": {
+                "label": "Student Name",
+                "x": 900,
+                "y": 1855,
+                "fontSize": 26,
+                "width": 200,
+                "dataKey": "student_name"
+              },
+              "courseInfo": {
+                "label": "Course Code - Course Title",
+                "x": 400,
+                "y": 1805,
+                "fontSize": 24,
+                "width": 300,
+                "format": "${courseCode} - ${courseTitle}",
+                "maxLength": 50,
+                "dataKeys": ["course_code", "course_title"]
+              },
+              "originalGrade": {
+                "label": "Original Grade",
+                "x": 300,
+                "y": 1755,
+                "fontSize": 26,
+                "width": 80,
+                "dataKey": "original_grade"
+              },
+              "newGrade": {
+                "label": "New Grade",
+                "x": 900,
+                "y": 1755,
+                "fontSize": 26,
+                "width": 80,
+                "dataKey": "new_grade"
+              }
+            }
+          },
+          "academicYearTerm": {
+            "description": "Academic year split into two parts + term",
+            "fields": {
+              "academicYearYear1": {
+                "label": "Academic Year - First Year",
+                "x": 880,
+                "y": 1935,
+                "fontSize": 26,
+                "width": 40,
+                "format": "last 2 digits of YYYY",
+                "dataKey": "academic_year",
+                "extraction": "split('-')[0].slice(-2)"
+              },
+              "academicYearYear2": {
+                "label": "Academic Year - Second Year",
+                "x": 1010,
+                "y": 1935,
+                "fontSize": 26,
+                "width": 40,
+                "format": "last 2 digits of YYYY",
+                "dataKey": "academic_year",
+                "extraction": "split('-')[1].slice(-2)"
+              },
+              "term": {
+                "label": "Term",
+                "x": 1200,
+                "y": 1935,
+                "fontSize": 26,
+                "width": 40,
+                "dataKey": "term"
+              }
+            }
+          },
+          "finalYearStudentWarning": {
+            "description": "Checkbox for final year student warning",
+            "fields": {
+              "finalYearStudent": {
+                "label": "Final Year Student",
+                "x": 105,
+                "y": 1705,
+                "type": "checkbox",
+                "action": "drawTick",
+                "tickSize": 28,
+                "dataKey": "final_year_student"
+              }
+            }
+          },
+          "leftColumnNonAppeal": {
+            "description": "Reason types and instructor section (left side) - for non-appeal reasons",
+            "reasonTypes": {
+              "conversion": {
+                "label": "Conversion",
+                "checkboxX": 100,
+                "checkboxY": 1505,
+                "reasonType": "conversion"
+              },
+              "makeup": {
+                "label": "Makeup",
+                "checkboxX": 100,
+                "checkboxY": 1465,
+                "detailsX": 110,
+                "detailsY": 1420,
+                "fontSize": 22,
+                "lines": 2,
+                "spacing": 4.5,
+                "reasonType": "makeup",
+                "dataKey": "reason_details"
+              },
+              "supplementary": {
+                "label": "Supplementary",
+                "checkboxX": 100,
+                "checkboxY": 1355,
+                "detailsX": 110,
+                "detailsY": 1310,
+                "fontSize": 22,
+                "lines": 2,
+                "spacing": 4.5,
+                "reasonType": "supplementary",
+                "dataKey": "reason_details"
+              },
+              "review": {
+                "label": "Review",
+                "checkboxX": 100,
+                "checkboxY": 1255,
+                "detailsX": 110,
+                "detailsY": 1200,
+                "fontSize": 22,
+                "lines": 2,
+                "spacing": 4.5,
+                "reasonType": "review",
+                "dataKey": "reason_details"
+              },
+              "others": {
+                "label": "Others",
+                "checkboxX": 100,
+                "checkboxY": 1105,
+                "detailsX": 110,
+                "detailsY": 1060,
+                "fontSize": 22,
+                "lines": 2,
+                "spacing": 4.5,
+                "reasonType": "others",
+                "dataKey": "reason_details"
+              }
+            },
+            "instructorSection": {
+              "instructorName": {
+                "label": "Course-Instructor's Name",
+                "x": 420,
+                "y": 960,
+                "fontSize": 26,
+                "dataKey": "instructor_name"
+              },
+              "department": {
+                "label": "Department",
+                "x": 300,
+                "y": 910,
+                "fontSize": 26,
+                "dataKey": "department"
+              },
+              "signature": {
+                "label": "Signature",
+                "x": 280,
+                "y": 840,
+                "width": 120,
+                "height": 48,
+                "type": "image",
+                "format": "PNG",
+                "dataKey": "instructor_signature"
+              },
+              "date": {
+                "label": "Date",
+                "x": 280,
+                "y": 770,
+                "fontSize": 26,
+                "dataKey": "instructor_date"
+              }
+            },
+            "directorEndorsement": {
+              "name": {
+                "label": "Director Name",
+                "x": 200,
+                "y": 545,
+                "fontSize": 26,
+                "dataKey": "endorser_name"
+              },
+              "signature": {
+                "label": "Director Signature",
+                "x": 400,
+                "y": 530,
+                "width": 120,
+                "height": 48,
+                "type": "image",
+                "format": "PNG",
+                "dataKey": "endorsement_signature"
+              },
+              "date": {
+                "label": "Endorsement Date",
+                "x": 300,
+                "y": 460,
+                "fontSize": 26,
+                "dataKey": "endorsement_date"
+              }
+            }
+          },
+          "rightColumnAppeal": {
+            "description": "Appeal section and instructor/director fields (right side) - for appeal reasons",
+            "appeal": {
+              "appealCheckbox": {
+                "label": "Appeal by Student",
+                "checkboxX": 800,
+                "checkboxY": 1505,
+                "reasonType": "appeal",
+                "dataKey": "reason_type"
+              },
+              "groundsLabel": {
+                "label": "Grounds for Appeal",
+                "x": 800,
+                "y": 1450
+              },
+              "technicalErrors": {
+                "label": "Technical errors",
+                "checkboxX": 800,
+                "checkboxY": 1400,
+                "appealGround": "Technical errors"
+              },
+              "proceduralFaults": {
+                "label": "Procedural faults",
+                "checkboxX": 1000,
+                "checkboxY": 1400,
+                "appealGround": "Procedural faults"
+              },
+              "appealDetails": {
+                "label": "Appeal Details",
+                "x": 810,
+                "y": 1300,
+                "fontSize": 22,
+                "lines": 2,
+                "spacing": 4.5,
+                "dataKey": "appeal_details"
+              }
+            },
+            "instructorSection": {
+              "instructorName": {
+                "label": "Course-Instructor's Name",
+                "x": 1100,
+                "y": 1205,
+                "fontSize": 26,
+                "dataKey": "instructor_name"
+              },
+              "department": {
+                "label": "Department",
+                "x": 960,
+                "y": 1155,
+                "fontSize": 26,
+                "dataKey": "department"
+              },
+              "signature": {
+                "label": "Signature",
+                "x": 950,
+                "y": 1090,
+                "width": 120,
+                "height": 48,
+                "type": "image",
+                "format": "PNG",
+                "dataKey": "instructor_signature"
+              },
+              "date": {
+                "label": "Date",
+                "x": 950,
+                "y": 1050,
+                "fontSize": 26,
+                "dataKey": "instructor_date"
+              }
+            },
+            "directorEndorsement": {
+              "name": {
+                "label": "Director Name",
+                "x": 900,
+                "y": 860,
+                "fontSize": 26,
+                "dataKey": "endorser_name"
+              },
+              "signature": {
+                "label": "Director Signature",
+                "x": 1100,
+                "y": 800,
+                "width": 120,
+                "height": 48,
+                "type": "image",
+                "format": "PNG",
+                "dataKey": "endorsement_signature"
+              },
+              "date": {
+                "label": "Endorsement Date",
+                "x": 900,
+                "y": 760,
+                "fontSize": 26,
+                "dataKey": "endorsement_date"
+              }
+            }
+          }
+        }
+      },
+      {
+        "pageNumber": 2,
+        "dimensions": {
+          "width": 1667.85,
+          "height": 2353.83,
+          "unit": "points",
+          "note": "Scanned image-based form (slightly larger than page 1)"
+        },
+        "sections": {
+          "assistantAcademicRegistrarApproval": {
+            "description": "AAR approval section (still to be fully mapped)",
+            "status": "PARTIAL - Coordinates needed"
+          },
+          "forUseOfAcademicRegistry": {
+            "description": "Final processing section by Academic Registry",
+            "status": "PARTIAL - Coordinates needed"
+          }
+        }
+      }
+    ],
+    "coordinateSystem": {
+      "origin": "top-left corner",
+      "xAxis": "increases to the right",
+      "yAxis": "increases downward",
+      "unit": "points (1 point = 1/72 inch)",
+      "textPlacement": "X = left edge, Y = baseline/top depending on renderer"
+    },
+    "textRendering": {
+      "normalFields": {
+        "fontSize": 26,
+        "font": "helvetica",
+        "boldValues": true
+      },
+      "detailFields": {
+        "fontSize": 22,
+        "font": "helvetica",
+        "multiLine": true,
+        "lineSpacing": 4.5
+      },
+      "tickMarks": {
+        "fontSize": 28,
+        "font": "helvetica",
+        "bold": true,
+        "character": "V or ✓"
+      },
+      "images": {
+        "type": "PNG",
+        "background": "transparent or white",
+        "recommendedSize": "120×48 points (signatures)"
+      }
+    },
+    "reasonTypes": {
+      "conversion": "Grade conversion reasons",
+      "makeup": "Makeup exam reasons",
+      "supplementary": "Supplementary exam reasons",
+      "review": "Academic staff review initiated",
+      "others": "Other reasons (specify)",
+      "appeal": "Student initiated appeal",
+      "note": "Only one reason type should be selected (mutually exclusive)"
+    },
+    "implementationNotes": {
+      "library": "pdf-lib recommended for PDF manipulation",
+      "constraints": [
+        "These are scanned forms - no native form fields",
+        "All positioning is coordinate-based",
+        "Page 1 and Page 2 have different dimensions",
+        "Checkbox validation: ensure only one reason type is filled",
+        "Text truncation: Course Code + Title limited to 50 characters",
+        "Signature handling: RGBA PNG with transparent background recommended",
+        "Font size varies by field (26pt normal, 22pt details, 28pt ticks)",
+        "Multi-line text requires manual line splitting",
+        "Y-coordinates are relative to page top"
+      ]
+    }
+  }
+}
