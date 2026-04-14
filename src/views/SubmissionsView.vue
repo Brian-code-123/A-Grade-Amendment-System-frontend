@@ -353,7 +353,7 @@ onMounted(() => {
             </span>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <span v-if="selectedDraftCount > 0" class="badge bg-dark rounded-pill px-3 py-2">
+            <span v-if="selectedDraftCount > 0" class="badge bg-primary rounded-pill px-3 py-2">
               <i class="bi bi-check2-square me-1"></i>{{ selectedDraftCount }} selected
             </span>
             <button
@@ -411,36 +411,33 @@ onMounted(() => {
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
-                  <button
-                    v-if="auth.isAdmin"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="openSubmissionDetails(s._id)"
-                    :disabled="detailsLoading"
-                    title="View Details"
-                  >
-                    <span v-if="detailsLoading" class="spinner-border spinner-border-sm me-1"></span>
-                    <i v-else class="bi bi-eye"></i>
-                  </button>
-
-                  <template v-else>
-                    <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
-                      <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
-                      <i v-else class="bi bi-send"></i> Submit to Program Director
+                  <div class="d-flex flex-column gap-1">
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="openSubmissionDetails(s._id)"
+                      :disabled="detailsLoading"
+                      title="View Details"
+                    >
+                      <span v-if="detailsLoading" class="spinner-border spinner-border-sm me-1"></span>
+                      <i v-else class="bi bi-eye me-1"></i>Details
                     </button>
-                    <span v-else-if="s.status === 'Submitted'" class="text-muted small">
-                      <i class="bi bi-hourglass-split me-1"></i>Pending Review
-                    </span>
-                    <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
-                    <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
-                      <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
-                        <i class="bi bi-pencil me-1"></i>Edit Amendments
-                      </button>
-                      <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
+
+                    <template v-if="!auth.isAdmin">
+                      <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
                         <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
-                        <i v-else class="bi bi-arrow-counterclockwise me-1"></i>Resubmit
+                        <i v-else class="bi bi-send"></i> Submit to Program Director
                       </button>
-                    </div>
-                  </template>
+                      <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
+                        <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
+                          <i class="bi bi-pencil me-1"></i>Edit Amendments
+                        </button>
+                        <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
+                          <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
+                          <i v-else class="bi bi-arrow-counterclockwise me-1"></i>Resubmit
+                        </button>
+                      </div>
+                    </template>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -449,7 +446,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Submission Details Modal (Admin) -->
+    <!-- Submission Details Modal -->
     <div v-if="showDetailsModal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5)">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -458,11 +455,39 @@ onMounted(() => {
             <button type="button" class="btn-close" @click="closeSubmissionDetails"></button>
           </div>
           <div class="modal-body" v-if="selectedSubmission">
-            <p><strong>Title:</strong> {{ selectedSubmission.title }}</p>
-            <p><strong>Description:</strong> {{ selectedSubmission.description || 'N/A' }}</p>
-            <p><strong>Status:</strong> <span class="badge" :class="statusBadge(selectedSubmission.status)">{{ statusLabel(selectedSubmission.status) }}</span></p>
-            <p><strong>Submitted By:</strong> {{ selectedSubmission.submitted_by_name || selectedSubmission.submitted_by || 'N/A' }}</p>
-            <p><strong>Created:</strong> {{ new Date(selectedSubmission.created_at).toLocaleString() }}</p>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Title:</strong> {{ selectedSubmission.title }}</p>
+                <p class="mb-1"><strong>Description:</strong> {{ selectedSubmission.description || 'N/A' }}</p>
+                <p class="mb-1"><strong>Status:</strong> <span class="badge" :class="statusBadge(selectedSubmission.status)">{{ statusLabel(selectedSubmission.status) }}</span></p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Submitted By:</strong> {{ selectedSubmission.submitted_by_name || selectedSubmission.submitted_by || 'N/A' }}</p>
+                <p class="mb-1"><strong>Created:</strong> {{ new Date(selectedSubmission.created_at).toLocaleString() }}</p>
+                <p class="mb-1" v-if="selectedSubmission.submitted_at"><strong>Submitted:</strong> {{ new Date(selectedSubmission.submitted_at).toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <!-- Approval / Rejection info -->
+            <div v-if="selectedSubmission.status === 'Approved'" class="alert alert-success py-2 mb-3">
+              <i class="bi bi-check-circle-fill me-1"></i>
+              <strong>Approved</strong>
+              <span v-if="selectedSubmission.approved_by_name"> by {{ selectedSubmission.approved_by_name }}</span>
+              <span v-if="selectedSubmission.approved_at"> on {{ new Date(selectedSubmission.approved_at).toLocaleString() }}</span>
+            </div>
+            <div v-if="selectedSubmission.status === 'Rejected'" class="alert alert-danger py-2 mb-3">
+              <i class="bi bi-x-circle-fill me-1"></i>
+              <strong>Rejected</strong>
+              <span v-if="selectedSubmission.rejected_at"> on {{ new Date(selectedSubmission.rejected_at).toLocaleString() }}</span>
+              <p class="mb-0 mt-1" v-if="selectedSubmission.rejection_reason"><strong>Reason:</strong> {{ selectedSubmission.rejection_reason }}</p>
+            </div>
+
+            <!-- Print status -->
+            <div v-if="selectedSubmission.printed" class="alert alert-info py-2 mb-3">
+              <i class="bi bi-printer-fill me-1"></i>
+              <strong>Printed</strong>
+              <span v-if="selectedSubmission.printed_at"> on {{ new Date(selectedSubmission.printed_at).toLocaleString() }}</span>
+            </div>
 
             <h6 class="fw-bold mt-3">Included Cases ({{ selectedSubmissionAmendments.length }})</h6>
             <div class="table-responsive" v-if="selectedSubmissionAmendments.length">
@@ -474,6 +499,7 @@ onMounted(() => {
                     <th>Course</th>
                     <th>Original</th>
                     <th>New</th>
+                    <th>Reason</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -483,6 +509,7 @@ onMounted(() => {
                     <td>{{ a.course_code }}</td>
                     <td>{{ a.original_grade }}</td>
                     <td>{{ a.new_grade }}</td>
+                    <td class="small">{{ a.reason_type }}{{ a.reason_details ? ': ' + a.reason_details : '' }}</td>
                   </tr>
                 </tbody>
               </table>
