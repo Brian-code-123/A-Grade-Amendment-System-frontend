@@ -113,7 +113,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in archivedSubmissions" :key="s._id">
+              <tr v-for="s in archivedSubmissions" :key="s._id" :class="{ 'table-success': s.status === 'Approved', 'table-danger': s.status === 'Rejected' }">
                 <td class="fw-semibold">{{ s.title }}</td>
                 <td>{{ s.submitted_by_name }}</td>
                 <td><span class="badge" :class="statusBadge(s.status, s.printed)">{{ displayStatus(s.status, s.printed) }}</span></td>
