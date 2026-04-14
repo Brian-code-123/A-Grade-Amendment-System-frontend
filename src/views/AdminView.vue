@@ -802,7 +802,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in filteredSubmissions" :key="s._id" :class="{ 'table-active': selectedIds.includes(s._id), 'table-success': s.status === 'Approved', 'table-danger': s.status === 'Rejected' }">
+              <tr v-for="s in filteredSubmissions" :key="s._id" :class="{ 'table-active': selectedIds.includes(s._id), 'table-success': s.status === 'Approved' && !s.printed, 'table-danger': s.status === 'Rejected' }">
                 <td>
                   <input type="checkbox" class="form-check-input" :checked="selectedIds.includes(s._id)" @change="toggleSelect(s._id)" />
                 </td>
