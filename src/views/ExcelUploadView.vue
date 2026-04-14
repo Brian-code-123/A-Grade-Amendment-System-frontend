@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
+import * as XLSX from 'xlsx'
 
 const store = useAmendmentStore()
 const auth = useAuthStore()
@@ -44,24 +45,11 @@ async function doImport() {
   }
 }
 
-function toCsvRow(values) {
-  return values
-    .map(v => {
-      const text = String(v ?? '')
-      const escaped = text.replace(/"/g, '""')
-      return `"${escaped}"`
-    })
-    .join(',')
-}
-
-function downloadCsv(filename, rows) {
-  const content = rows.map(toCsvRow).join('\n')
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(link.href)
+function downloadExcel(filename, sheetData, sheetName = 'Sheet1') {
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet(sheetData)
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  XLSX.writeFile(wb, filename)
 }
 
 function downloadTemplate() {
@@ -75,7 +63,7 @@ function downloadTemplate() {
     ['2025-2026', '1', '22240803', 'Sarah Johnson', 'COMP3048', 'Database Systems', 'B-', 'B+', 'appeal', 'Grading calculation error', 'Prof. Emily Wong', 'COMP']
   ]
 
-  downloadCsv('Grade_Amendment_Template.csv', [headers, ...sampleData])
+  downloadExcel('Grade_Amendment_Template.xlsx', [headers, ...sampleData], 'Grade Amendments')
 }
 
 function exportData() {
@@ -106,7 +94,7 @@ function exportData() {
     'Original Grade', 'New Grade', 'Reason Type', 'Reason Details', 'Instructor Name', 'Department', 'Status'
   ]
   const rows = data.map(row => headers.map(h => row[h]))
-  downloadCsv('Grade_Amendments_Export.csv', [headers, ...rows])
+  downloadExcel('Grade_Amendments_Export.xlsx', [headers, ...rows], 'Grade Amendments')
 }
 
 function clearFile() {

@@ -10,7 +10,7 @@ import { PDFDocument } from 'pdf-lib'
 /* ── PDF-Lib Helper for Template Download ────────────────────────── */
 export async function downloadTemplate() {
   try {
-    const existingPdfBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+    const existingPdfBytes = await fetch('/blank form.pdf').then(res => res.arrayBuffer())
     const blob = new Blob([existingPdfBytes], { type: 'application/pdf' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
@@ -687,8 +687,53 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
   const { rgb } = await import('pdf-lib')
   
   // Load the template PDF
-  const templateBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+  const templateBytes = await fetch('/blank form.pdf').then(res => res.arrayBuffer())
   const pdfDoc = await PDFDocument.load(templateBytes)
+
+  // Flatten white ink annotations into page content (so they blank out pre-filled text)
+  // then remove the annotations so newly drawn text renders on top
+  const { PDFName, PDFArray } = await import('pdf-lib')
+  for (const page of pdfDoc.getPages()) {
+    const annotsRef = page.node.get(PDFName.of('Annots'))
+    if (!annotsRef) continue
+    const annots = page.node.context.lookup(annotsRef)
+    if (!annots || !annots.size) continue
+
+    for (let ai = 0; ai < annots.size(); ai++) {
+      const annot = page.node.context.lookup(annots.get(ai))
+      const subtype = annot.get(PDFName.of('Subtype'))
+      if (!subtype || subtype.toString() !== '/Ink') continue
+      const c = annot.get(PDFName.of('C'))
+      if (!c) continue
+      const cArr = page.node.context.lookup(c)
+      if (!cArr || !cArr.size || cArr.size() < 3) continue
+      const r = cArr.get(0).value ? cArr.get(0).value() : parseFloat(cArr.get(0).toString())
+      const g = cArr.get(1).value ? cArr.get(1).value() : parseFloat(cArr.get(1).toString())
+      const b = cArr.get(2).value ? cArr.get(2).value() : parseFloat(cArr.get(2).toString())
+      // Only flatten white annotations (whiteout marks)
+      if (r < 0.99 || g < 0.99 || b < 0.99) continue
+      const rectRef = annot.get(PDFName.of('Rect'))
+      const rect = page.node.context.lookup(rectRef)
+      const coords = []
+      for (let ci = 0; ci < rect.size(); ci++) {
+        const v = rect.get(ci)
+        const rv = page.node.context.lookup(v)
+        coords.push(rv.value ? rv.value() : parseFloat(rv.toString()))
+      }
+      // Draw white filled rectangle at annotation position
+      const [x1, y1, x2, y2] = coords
+      page.drawRectangle({
+        x: x1,
+        y: y1,
+        width: x2 - x1,
+        height: y2 - y1,
+        color: rgb(1, 1, 1),
+        borderWidth: 0,
+      })
+    }
+    // Remove all annotations so they don't cover newly drawn text
+    page.node.delete(PDFName.of('Annots'))
+  }
 
   try {
     const pages = pdfDoc.getPages()
@@ -715,7 +760,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
         page1.drawText('V', {
           x,
           y,
-          size: 11,
+          size: 28,
           color: rgb(0, 0, 0),
         })
       } catch (e) {
@@ -741,33 +786,35 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
 
     // ═══════════════════════════════════════════════════════════════
     // STUDENT INFORMATION (appears on both sides)
+    // Page 1 is 1581 x 2225 pts (large scanned form, NOT A4)
+    // Coordinates calibrated from highlighted reference PDF annotations
     // ═══════════════════════════════════════════════════════════════
-    drawField(data.studentNo, 128, 705, 10)
-    drawField(data.studentName, 423, 704, 10)
+    drawField(data.studentNo, 340, 1876, 26)
+    drawField(data.studentName, 980, 1876, 26)
     if (data.courseCode || data.courseTitle) {
       const courseText = data.courseCode && data.courseTitle 
         ? `${data.courseCode} - ${data.courseTitle}`
         : data.courseCode || ''
       const truncated = courseText.length > 50 ? courseText.substring(0, 47) + '...' : courseText
-      drawField(truncated, 196, 686, 9)
+      drawField(truncated, 400, 1812, 24)
     }
-    drawField(data.originalGrade, 178, 667, 10)
-    drawField(data.newGrade, 415, 667, 10)
+    drawField(data.originalGrade, 350, 1756, 26)
+    drawField(data.newGrade, 950, 1753, 26)
 
     // ═══════════════════════════════════════════════════════════════
     // ACADEMIC YEAR & TERM (Page 1)
     // ═══════════════════════════════════════════════════════════════
     if (data.academicYear) {
       const p = data.academicYear.split('-')
-      if (p[0]) drawField(p[0].slice(-2), 338, 722, 10)
-      if (p[1]) drawField(p[1].slice(-2), 382, 722, 10)
+      if (p[0]) drawField(p[0].slice(-2), 912, 1930, 26)
+      if (p[1]) drawField(p[1].slice(-2), 1037, 1932, 26)
     }
-    if (data.term) drawField(String(data.term), 484, 722, 10)
+    if (data.term) drawField(String(data.term), 1208, 1933, 26)
 
     // ═══════════════════════════════════════════════════════════════
     // FINAL YEAR STUDENT CHECKBOX (Page 1) — "*If the grade..."
     // ═══════════════════════════════════════════════════════════════
-    if (data.finalYearStudent) drawTick(46, 650)
+    if (data.finalYearStudent) drawTick(105, 1650)
 
     // ═══════════════════════════════════════════════════════════════
     // LEFT SIDE - NON-APPEAL REASONS
@@ -775,33 +822,33 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     if (data.reasonType !== 'appeal') {
       // Reason checkboxes
       if (data.reasonType === 'conversion') {
-        drawTick(29, 539)
+        drawTick(155, 1496)
       } else if (data.reasonType === 'makeup') {
-        drawTick(29, 522)
-        drawField(data.reasonDetails, 35, 510, 9)
+        drawTick(159, 1459)
+        drawField(data.reasonDetails, 200, 1459, 22)
       } else if (data.reasonType === 'supplementary') {
-        drawTick(29, 468)
-        drawField(data.reasonDetails, 35, 453, 9)
+        drawTick(157, 1336)
+        drawField(data.reasonDetails, 200, 1336, 22)
       } else if (data.reasonType === 'review') {
-        drawTick(29, 412)
-        drawField(data.reasonDetails, 35, 382, 9)
+        drawTick(148, 1217)
+        drawField(data.reasonDetails, 200, 1217, 22)
       } else if (data.reasonType === 'others') {
-        drawTick(29, 344)
-        drawField(data.reasonDetails, 35, 330, 9)
+        drawTick(142, 1069)
+        drawField(data.reasonDetails, 200, 1069, 22)
       }
 
       // Course Instructor Section (left side)
-      drawField(data.instructorName, 150, 291, 10)
-      drawField(data.department, 116, 275, 10)
-      // Signature @ 109,256
-      await addSignature(data.instructorSignature, 109, 256, 45, 18)
-      drawField(data.instructorDate, 111, 239, 10)
+      drawField(data.instructorName, 435, 932, 26)
+      drawField(data.department, 310, 870, 26)
+      // Signature
+      await addSignature(data.instructorSignature, 320, 822, 120, 48)
+      drawField(data.instructorDate, 325, 760, 26)
 
       // Programme Director Section (left side)
-      drawField(data.endorserName, 75, 184, 10)
-      // Signature @ 180, 183
-      await addSignature(data.endorsementSignature, 180, 183, 45, 18)
-      drawField(data.endorsementDate, 110, 148, 10)
+      drawField(data.endorserName, 225, 553, 26)
+      // Signature
+      await addSignature(data.endorsementSignature, 400, 510, 120, 48)
+      drawField(data.endorsementDate, 235, 463, 26)
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -809,39 +856,40 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // ═══════════════════════════════════════════════════════════════
     if (data.reasonType === 'appeal') {
       // Appeal checkbox
-      drawTick(305, 539)
+      drawTick(820, 1499)
 
       // Appeal grounds checkboxes
       if (data.appealGrounds === 'Technical errors') {
-        drawTick(305, 504)
+        drawTick(874, 1401)
       } else if (data.appealGrounds === 'Procedural faults') {
-        drawTick(380, 505)
+        drawTick(1182, 1405)
       }
 
       // Appeal details
-      drawField(data.appealDetails, 306, 472, 9)
+      drawField(data.appealDetails, 825, 1318, 22)
 
       // Course Instructor Section (right side)
-      drawField(data.instructorName, 441, 420, 10)
-      drawField(data.department, 389, 401, 10)
-      // Signature @ 376,369
-      await addSignature(data.instructorSignature, 376, 369, 45, 18)
-      drawField(data.instructorDate, 375, 344, 10)
+      drawField(data.instructorName, 1100, 1196, 26)
+      drawField(data.department, 975, 1143, 26)
+      // Signature
+      await addSignature(data.instructorSignature, 975, 1077, 120, 48)
+      drawField(data.instructorDate, 977, 1017, 26)
 
       // Programme Director Section (right side)
-      drawField(data.endorserName, 320, 292, 10)
-      // Signature @ 477, 292
-      await addSignature(data.endorsementSignature, 477, 292, 45, 18)
-      drawField(data.endorsementDate, 356, 254, 10)
+      drawField(data.endorserName, 900, 836, 26)
+      // Signature
+      await addSignature(data.endorsementSignature, 1100, 788, 120, 48)
+      drawField(data.endorsementDate, 900, 748, 26)
     }
 
     // ═══════════════════════════════════════════════════════════════
     // PAGE 2 — ASSISTANT ACADEMIC REGISTRAR'S APPROVAL
+    // Page 2 is 1668 x 2354 pts
     // ═══════════════════════════════════════════════════════════════
     if (pages.length > 1) {
       const page2 = pages[1]
 
-      const drawField2 = (text, x, y, size = 10) => {
+      const drawField2 = (text, x, y, size = 26) => {
         if (text === null || text === undefined || text === '') return
         try {
           page2.drawText(String(text), { x, y, size, color: rgb(0, 0, 0) })
@@ -852,13 +900,13 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
 
       const drawTick2 = (x, y) => {
         try {
-          page2.drawText('V', { x, y, size: 11, color: rgb(0, 0, 0) })
+          page2.drawText('V', { x, y, size: 28, color: rgb(0, 0, 0) })
         } catch (e) {
           console.warn(`Page2: Failed to draw tick at ${x}, ${y}:`, e.message)
         }
       }
 
-      const addSignature2 = async (signatureDataUrl, x, y, width = 45, height = 18) => {
+      const addSignature2 = async (signatureDataUrl, x, y, width = 120, height = 48) => {
         if (!signatureDataUrl) return
         try {
           const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
@@ -869,21 +917,21 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       }
 
       // *Approved checkbox
-      if (data.approved === true) drawTick2(35, 748)
+      if (data.approved === true) drawTick2(105, 2105)
 
       // *Not Approved checkbox
-      if (data.notApproved === true) drawTick2(115, 748)
+      if (data.notApproved === true) drawTick2(450, 2105)
 
       // Signature
       if (data.registrarSignature) {
-        await addSignature2(data.registrarSignature, 100, 710, 45, 18)
+        await addSignature2(data.registrarSignature, 310, 1996, 120, 48)
       }
 
       // Date
-      if (data.registrarDate) drawField2(data.registrarDate, 340, 728, 10)
+      if (data.registrarDate) drawField2(data.registrarDate, 1050, 1982, 26)
 
       // Remarks
-      if (data.registrarRemarks) drawField2(data.registrarRemarks, 98, 712, 9)
+      if (data.registrarRemarks) drawField2(data.registrarRemarks, 310, 1918, 22)
     }
 
     return pdfDoc
