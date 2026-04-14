@@ -283,7 +283,7 @@ watch(() => route.query, () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in visibleSubmissions" :key="s._id" :class="{ 'table-success': s.status === 'Approved', 'table-danger': s.status === 'Rejected' }">
+              <tr v-for="s in visibleSubmissions" :key="s._id" :class="{ 'table-success': s.status === 'Approved' && !s.printed, 'table-danger': s.status === 'Rejected' }">
                 <td class="fw-semibold">{{ s.title }}</td>
                 <td>{{ s.submitted_by_name }}</td>
                 <td><span class="badge" :class="statusBadge(s.status)">{{ displayStatus(s.status) }}</span></td>
