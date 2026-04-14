@@ -1,0 +1,275 @@
+
+> lab-spa@0.0.0 test
+> npm run test:coverage
+
+
+> lab-spa@0.0.0 test:coverage
+> vitest run --coverage tests/unit tests/integration
+
+
+ RUN  v3.2.4 /Users/rogerlee/A-Grade-Amendment-System-frontend
+      Coverage enabled with v8
+
+(node:26033) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26027) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26030) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26034) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26029) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26026) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26028) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26031) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26032) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/main.spec.js (1 test) 61ms
+stderr | tests/unit/helpAssistant.spec.js > HelpAssistant > helps close panel with close button
+[Vue Router warn]: No match found for location with path ""
+
+stderr | tests/unit/helpAssistant.spec.js > HelpAssistant > renders help button with appropriate icon
+[Vue Router warn]: No match found for location with path ""
+
+stderr | tests/unit/helpAssistant.spec.js > HelpAssistant > help panel contains relevant information
+[Vue Router warn]: No match found for location with path ""
+
+stderr | tests/unit/helpAssistant.spec.js > HelpAssistant > panel can be toggled multiple times
+[Vue Router warn]: No match found for location with path ""
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > renders submissions management view
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > displays list of all submissions
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > filters submissions by status (pending, approved, rejected)
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > displays submission details in table
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > allows searching submissions by student or course
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > provides view detail button for each submission
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > displays pagination for large submission lists
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > shows submission timestamps
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > allows bulk status update
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > provides export submissions functionality
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/submissionsView.spec.js > SubmissionsView > shows loading state while fetching submissions
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <SubmissionsView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ tests/unit/feedbackView.spec.js (1 test) 108ms
+ ✓ tests/unit/helpAssistant.spec.js (9 tests) 85ms
+ ✓ tests/unit/submissionsView.spec.js (11 tests) 109ms
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > renders signature setup form
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > displays signature canvas for drawing
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > provides clear/reset button for signature
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > validates signature is not empty before save
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > saves signature to local storage
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > shows success notification on save
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > allows retaking signature after setup
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > displays current signature preview if already set
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+stderr | tests/unit/signatureSetupView.spec.js > SignatureSetupView > redirects to home after successful signature setup
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+[Vue warn]: Do not use built-in or reserved HTML elements as component id: canvas
+
+ ✓ tests/unit/signatureSetupView.spec.js (9 tests) 313ms
+ ✓ tests/unit/excelUploadView.spec.js (8 tests) 161ms
+stderr | tests/unit/adminView.spec.js > AdminView > renders admin panel only for authenticated admin users
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > displays submissions management tab
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > shows pending submissions list
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ tests/integration/router-guards.spec.js (4 tests) 666ms
+   ✓ router guards > redirects unauthenticated users to login for protected routes  320ms
+stderr | tests/unit/adminView.spec.js > AdminView > allows filtering submissions by status
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > provides bulk action controls for submissions
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > displays archive management section
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > allows exporting submission reports
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/unit/adminView.spec.js > AdminView > shows system statistics and metrics
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <AdminView ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ ✓ tests/unit/adminView.spec.js (8 tests) 279ms
+(node:26051) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26052) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26055) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/app.spec.js (2 tests) 93ms
+(node:26056) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26057) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | tests/unit/pdfTemplate.spec.js > pdfTemplate service > downloadTemplate shows alert when fetch fails
+Error downloading template: Error: network error
+    at [90m/Users/rogerlee/A-Grade-Amendment-System-frontend/[39mtests/unit/pdfTemplate.spec.js:34:54
+    at [90mfile:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at runSuite [90m(file:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+    at runSuite [90m(file:///Users/rogerlee/A-Grade-Amendment-System-frontend/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1729:8[90m)[39m
+
+ ✓ tests/unit/pdfTemplate.spec.js (4 tests) 35ms
+(node:26061) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26062) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/authCallbackView.spec.js (3 tests) 39ms
+ ✓ tests/unit/demoVerifyView.spec.js (1 test) 74ms
+(node:26064) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/archiveView.spec.js (1 test) 93ms
+ ✓ tests/unit/emailService.spec.js (3 tests) 14ms
+ ✓ tests/unit/demoLoginView.spec.js (3 tests) 37ms
+(node:26066) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/amendmentStore.spec.js (4 tests) 22ms
+ ✓ tests/unit/api.spec.js (3 tests) 29ms
+(node:26069) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/authStore.spec.js (4 tests) 13ms
+(node:26071) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26076) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26077) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26078) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26080) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/archiveStore.spec.js (2 tests) 14ms
+ ✓ tests/unit/submissionStatus.spec.js (2 tests) 4ms
+ ✓ tests/unit/pdfCoordinatesLookup.spec.js (19 tests) 11ms
+ ✓ tests/unit/notificationStore.spec.js (1 test) 11ms
+(node:26086) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/submissionStore.spec.js (3 tests) 22ms
+(node:26084) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ tests/unit/pdfAnnotationCoordinates.spec.js (3 tests) 5ms
+ ✓ tests/unit/themeStore.spec.js (1 test) 8ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/missing-views.spec.js [ tests/unit/missing-views.spec.js ]
+Error: Failed to resolve import "@/views/PDFFormView.vue" from "tests/unit/missing-views.spec.js". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /Users/rogerlee/A-Grade-Amendment-System-frontend/tests/unit/missing-views.spec.js:7:0
+  7  |  const __vi_import_3__ = await import("@/views/PDFEditorView.vue");
+  8  |  const __vi_import_4__ = await import("@/views/PDApprovalView.vue");
+  9  |  const __vi_import_5__ = await import("@/views/PDFFormView.vue");
+     |                                       ^
+  10 |  import { describe, it, expect, beforeEach, vi } from 'vitest'
+  11 |  
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/config.js:29003:43
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/config.js:29000:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/config.js:27123:18
+ ❯ node_modules/vite/dist/node/chunks/config.js:27181:32
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/config.js:27149:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/config.js:28801:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22670:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 25 passed (26)
+      Tests  110 passed (110)
+   Start at  06:06:27
+   Duration  4.47s (transform 1.34s, setup 716ms, collect 4.33s, tests 2.30s, environment 16.47s, prepare 2.41s)
+
