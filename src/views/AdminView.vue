@@ -5,7 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
-import { generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const vueRouter = useRouter()
@@ -375,7 +375,6 @@ function buildPdfData(a, cleanSig, submission) {
 
 async function handlePrint(id) {
   try {
-    await subStore.markPrinted(id)
     const submission = subStore.submissions.find(s => s._id === id)
     const amendments = resolveAmendmentsForSubmission(submission)
     if (amendments.length === 0) { errorMsg.value = 'No amendments found'; return }
@@ -386,27 +385,32 @@ async function handlePrint(id) {
 
     if (amendments.length === 1) {
       const pdfData = buildPdfData(amendments[0], cleanSig, submission)
-      const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
-      const doc = await pdfDocObj.save()
-      
-      const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+      const pdfBlob = await buildPdfBlobForExport(pdfData)
+
       const pdfUrl = URL.createObjectURL(pdfBlob)
-      const w = window.open(pdfUrl, '_blank')
-      if (w) w.addEventListener('load', () => w.print())
+      const link = document.createElement('a')
+      link.href = pdfUrl
+      link.download = `Grade Amendments - ${amendments[0].student_no || amendments[0].student_id || 'Form'}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
+      await subStore.markPrinted(id)
     } else {
       for (const a of amendments) {
         const pdfData = buildPdfData(a, cleanSig, submission)
-        const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
-        const doc = await pdfDocObj.save()
-        
-        const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+        const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
         const link = document.createElement('a')
-        link.href = URL.createObjectURL(pdfBlob)
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        link.href = pdfUrl
         link.download = filename
+        document.body.appendChild(link)
         link.click()
-        URL.revokeObjectURL(link.href)
+        link.remove()
+        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
       }
+      await subStore.markPrinted(id)
     }
     successMsg.value = `Printed ${amendments.length} Grade Amendment Form(s)`
   } catch (e) { errorMsg.value = e.message }
@@ -460,29 +464,48 @@ async function batchPrint() {
     : null
 
   let totalForms = 0
+  let failedSubmissions = 0
   for (const id of ids) {
     try {
-      await subStore.markPrinted(id)
       const sub = subStore.submissions.find(s => s._id === id)
       const amendments = resolveAmendmentsForSubmission(sub)
       for (const a of amendments) {
         const pdfData = buildPdfData(a, cleanSig, sub)
-        const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
-        const doc = await pdfDocObj.save()
-        
-        const pdfBlob = doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+        const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
         const link = document.createElement('a')
-        link.href = URL.createObjectURL(pdfBlob)
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        link.href = pdfUrl
         link.download = filename
+        document.body.appendChild(link)
         link.click()
-        URL.revokeObjectURL(link.href)
+        link.remove()
+        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
         totalForms++
       }
-    } catch { /* continue */ }
+      await subStore.markPrinted(id)
+    } catch {
+      failedSubmissions++
+      /* continue */
+    }
   }
   selectedIds.splice(0)
   successMsg.value = `Downloaded ${totalForms} Grade Amendment Form(s)`
+  if (failedSubmissions > 0) {
+    errorMsg.value = `${failedSubmissions} submission(s) failed to export. Please check whether the PDF template is available.`
+  }
+}
+
+async function buildPdfBlobForExport(pdfData) {
+  try {
+    const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+    const doc = await pdfDocObj.save()
+    return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+  } catch (templateError) {
+    console.warn('Template export failed, fallback to generated PDF:', templateError)
+    const fallbackDoc = generateGradeAmendmentPDF(pdfData)
+    return fallbackDoc.output('blob')
+  }
 }
 
 async function viewDetail(id) {
