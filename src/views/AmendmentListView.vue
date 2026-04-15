@@ -1,13 +1,16 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAmendmentStore } from '@/stores/amendmentStore'
+import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAuthStore } from '@/stores/authStore'
 import { downloadTemplate, downloadFilledForm } from '@/services/pdfTemplate'
 import SignaturePrompt from '@/components/SignaturePrompt.vue'
 
 const store = useAmendmentStore()
+const subStore = useSubmissionStore()
 const auth = useAuthStore()
 const canModifyAmendments = computed(() => !auth.isAdmin)
+const isDemoSession = computed(() => auth.token?.startsWith('demo_token_'))
 
 const showForm = ref(false)
 const editingId = ref(null)
@@ -158,18 +161,33 @@ async function confirmAndSubmit() {
   try {
     const payload = toPayload(form.value)
     if (editingId.value) {
+      const amendmentBeforeUpdate = store.amendments.find(a => a._id === editingId.value)
+      const linkedSubmissionId = amendmentBeforeUpdate?.submission_id
+      const shouldResubmitRejectedCase = Boolean(
+        linkedSubmissionId && getAmendmentStatus(amendmentBeforeUpdate) === 'Rejected'
+      )
+
       const updated = await store.updateAmendment(editingId.value, payload)
-      successMsg.value = '✓ Amendment updated successfully. You can continue editing until it is approved.'
+
+      const localAmendment = store.amendments.find(a => a._id === editingId.value)
+      if (localAmendment) {
+        localAmendment.status = 'Pending'
+        localAmendment.created_at = new Date().toISOString()
+      }
+
+      if (shouldResubmitRejectedCase) {
+        await subStore.resubmitSubmission(linkedSubmissionId)
+        successMsg.value = '✓ Amendment updated and resubmitted successfully. Status is now Pending for review.'
+      } else {
+        successMsg.value = '✓ Amendment updated successfully. You can continue editing until it is approved.'
+      }
+
       if (updated && typeof updated === 'object') {
         form.value = mapAmendmentToForm(updated)
       }
-        const localAmendment = store.amendments.find(a => a._id === editingId.value)
-        if (localAmendment) {
-          localAmendment.status = 'Pending'
-          localAmendment.created_at = new Date().toISOString()
-        }
-        showForm.value = false
-        editingId.value = null
+
+      showForm.value = false
+      editingId.value = null
       showPreview.value = false
     } else {
       await store.createAmendment(payload)
@@ -196,9 +214,11 @@ function startEdit(a) {
   }
   editingId.value = a._id
   form.value = mapAmendmentToForm(a)
+  const linkedSubmission = getLinkedSubmission(a)
   editingRejectContext.value = {
-    status: a.status || '',
-    reason: firstNonEmptyField(a, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']),
+    status: getAmendmentStatus(a),
+    reason: firstNonEmptyField(a, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']) ||
+      firstNonEmptyField(linkedSubmission, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']),
     remarks: firstNonEmptyField(a, ['rejection_remarks', 'rejectionRemarks', 'reject_remarks', 'rejected_remarks', 'review_remarks'])
   }
   showForm.value = true
@@ -237,9 +257,27 @@ const amendmentDetailsText = (amendment) => {
   return '-'
 }
 
+const submissionStatusToAmendmentStatus = (submissionStatus) => {
+  if (submissionStatus === 'Submitted') return 'Pending'
+  return submissionStatus || ''
+}
+
+const getLinkedSubmission = (amendment) => {
+  if (!amendment?.submission_id) return null
+  return subStore.submissions.find(s => s._id === amendment.submission_id) || null
+}
+
+const getAmendmentStatus = (amendment) => {
+  const linkedSubmission = getLinkedSubmission(amendment)
+  if (linkedSubmission?.status) {
+    return submissionStatusToAmendmentStatus(linkedSubmission.status)
+  }
+  return amendment?.status || ''
+}
+
 // Get unique status options for filter dropdown
 const statusOptions = computed(() => {
-  const statuses = [...new Set(store.amendments.map(a => a.status).filter(Boolean))]
+  const statuses = [...new Set(store.amendments.map(a => getAmendmentStatus(a)).filter(Boolean))]
   return statuses.sort()
 })
 
@@ -274,7 +312,7 @@ const getCreatedTimestamp = (amendment) => {
 const filteredAmendments = computed(() => {
   let amendmentList = [...store.amendments]
   
-  amendmentList = amendmentList.filter(amendment => amendment.status !== 'Draft')
+  amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) !== 'Draft')
   
   // Apply course code filter if search term exists
   if (courseCodeFilter.value) {
@@ -285,7 +323,7 @@ const filteredAmendments = computed(() => {
   
   // Apply status filter if selected
   if (statusFilter.value) {
-    amendmentList = amendmentList.filter(amendment => amendment.status === statusFilter.value)
+    amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) === statusFilter.value)
   }
 
   // Apply term filter if selected (non-admin only)
@@ -306,12 +344,20 @@ const filteredAmendments = computed(() => {
 onMounted(async () => {
   try {
     await store.fetchAmendments()
+    if (isDemoSession.value) {
+      await subStore.fetchSubmissions()
+      subStore.startDemoRealtimeSync()
+    }
     if (store.error) {
       errorMsg.value = 'Failed to load amendments: ' + store.error
     }
   } catch (err) {
     errorMsg.value = 'Error loading amendments: ' + err.message
   }
+})
+
+onUnmounted(() => {
+  subStore.stopDemoRealtimeSync()
 })
 </script>
 
@@ -803,7 +849,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-danger': a.status === 'Rejected' && auth.user?.role !== 'admin' }">
+              <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-danger': getAmendmentStatus(a) === 'Rejected' && auth.user?.role !== 'admin' }">
                 <td class="small text-nowrap">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>
@@ -832,18 +878,18 @@ onMounted(async () => {
                   {{ a.instructor_name || '-' }}<br/>
                   <span class="text-muted">{{ a.department || '' }}</span>
                 </td>
-                <td><span class="badge" :class="statusBadge(a.status)">{{ a.status }}</span></td>
+                <td><span class="badge" :class="statusBadge(getAmendmentStatus(a))">{{ getAmendmentStatus(a) }}</span></td>
                 <td>
                   <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
                     <button
                       v-if="canModifyAmendments"
-                      :class="['btn', a.status === 'Rejected' ? 'btn-warning' : 'btn-outline-primary']"
+                      :class="['btn', getAmendmentStatus(a) === 'Rejected' ? 'btn-warning' : 'btn-outline-primary']"
                       @click="startEdit(a)"
-                      :disabled="a.status === 'Approved'"
-                      :title="a.status === 'Rejected' ? 'Edit and resubmit via Submissions' : 'Edit'"
+                      :disabled="getAmendmentStatus(a) === 'Approved'"
+                      :title="getAmendmentStatus(a) === 'Rejected' ? 'Edit and resubmit via Submissions' : 'Edit'"
                     ><i class="bi bi-pencil"></i></button>
-                    <button v-if="canModifyAmendments" class="btn btn-outline-danger" @click="handleDelete(a._id)" :disabled="a.status === 'Approved'"><i class="bi bi-trash"></i></button>
+                    <button v-if="canModifyAmendments" class="btn btn-outline-danger" @click="handleDelete(a._id)" :disabled="getAmendmentStatus(a) === 'Approved'"><i class="bi bi-trash"></i></button>
                   </div>
                 </td>
               </tr>
