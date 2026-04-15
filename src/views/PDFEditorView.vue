@@ -106,6 +106,17 @@
           <div id="pdf-container" class="pdf-container">
             <canvas id="pdf-canvas" ref="pdfCanvasRef"></canvas>
             <canvas id="annotation-canvas" ref="annotationCanvasRef" class="annotation-overlay"></canvas>
+            <input 
+              v-show="showTextInput" 
+              ref="directTextInput"
+              v-model="textContent" 
+              @keyup.enter="addText"
+              @keyup.esc="cancelTextInput"
+              type="text" 
+              placeholder="Type text..."
+              class="direct-text-input"
+              :style="{ left: textX + 'px', top: textY + 'px' }"
+            >
           </div>
         </div>
 
@@ -136,23 +147,22 @@
             </button>
           </div>
 
+          <div class="sidebar-section" v-if="activeTool === 'text'">
+            <h3>✍️ Text Tool</h3>
+            <small style="color:#6c757d">Click to add text. Drag existing text to move. Double-click text to edit.</small>
+            <button @click="editSelectedText" class="tool-action-btn full-width" :disabled="!selectedTextAnnotationId">
+              <i class="bi bi-pencil"></i> Edit Selected Text
+            </button>
+            <button @click="deleteSelectedText" class="tool-action-btn full-width" :disabled="!selectedTextAnnotationId">
+              <i class="bi bi-trash3"></i> Delete Selected Text
+            </button>
+          </div>
+
           <div v-if="successMsg" class="message success-msg">{{ successMsg }}</div>
           <div v-if="errorMsg" class="message error-msg">{{ errorMsg }}</div>
         </div>
       </div>
 
-      <!-- Text Input Field (shown at click location) -->
-      <input 
-        v-show="showTextInput" 
-        ref="directTextInput"
-        v-model="textContent" 
-        @keyup.enter="addText"
-        @keyup.esc="cancelTextInput"
-        type="text" 
-        placeholder="Type text..."
-        class="direct-text-input"
-        :style="{ left: textX + 'px', top: textY + 'px' }"
-      >
     </div>
   </div>
 </template>
@@ -218,6 +228,8 @@ const textY = ref(0)
 const successMsg = ref('')
 const errorMsg = ref('')
 const directTextInput = ref(null)
+const selectedTextAnnotationId = ref(null)
+const editingTextAnnotationId = ref(null)
 
 // Canvas references
 const pdfCanvasRef = ref(null)
@@ -226,10 +238,79 @@ let pdfDoc = null
 let pdfCtx, annotCtx
 let isDrawing = false
 let currentStroke = null
+let dragTextState = null
+let annotationIdCounter = 1
 
 // Annotations storage
 const pageAnnotations = reactive({})
 const redoHistory = reactive({}) // Store redo history for each page
+
+const nextAnnotationId = () => {
+  const id = annotationIdCounter
+  annotationIdCounter += 1
+  return `ann-${id}`
+}
+
+const clearSelectedText = () => {
+  selectedTextAnnotationId.value = null
+}
+
+const getTextMetrics = (annotation) => {
+  if (!annotation || annotation.type !== 'text') return null
+  const fontSize = annotation.fontSize || 16
+  if (annotCtx) {
+    annotCtx.save()
+    annotCtx.font = `${fontSize}px Arial`
+    const width = annotCtx.measureText(annotation.text || '').width
+    annotCtx.restore()
+    return { width, height: fontSize }
+  }
+  return { width: (annotation.text || '').length * fontSize * 0.55, height: fontSize }
+}
+
+const findTextAnnotationAtPoint = (x, y) => {
+  const annotations = pageAnnotations[currentPage.value] || []
+  const padding = 6
+  for (let i = annotations.length - 1; i >= 0; i -= 1) {
+    const annotation = annotations[i]
+    if (annotation.type !== 'text') continue
+    const metrics = getTextMetrics(annotation)
+    if (!metrics) continue
+    const minX = annotation.x - padding
+    const maxX = annotation.x + metrics.width + padding
+    const minY = annotation.y - padding
+    const maxY = annotation.y + metrics.height + padding
+    if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+      return annotation
+    }
+  }
+  return null
+}
+
+const clampTextPosition = (annotation) => {
+  const canvas = document.getElementById('annotation-canvas')
+  if (!canvas || !annotation) return
+  const metrics = getTextMetrics(annotation)
+  if (!metrics) return
+  annotation.x = Math.max(0, Math.min(annotation.x, Math.max(0, canvas.width - metrics.width)))
+  annotation.y = Math.max(0, Math.min(annotation.y, Math.max(0, canvas.height - metrics.height)))
+}
+
+const openTextEditor = (annotation) => {
+  if (!annotation) return
+  editingTextAnnotationId.value = annotation.id
+  selectedTextAnnotationId.value = annotation.id
+  textContent.value = annotation.text || ''
+  textX.value = annotation.x
+  textY.value = annotation.y
+  showTextInput.value = true
+  nextTick(() => {
+    if (directTextInput.value) {
+      directTextInput.value.focus()
+      directTextInput.value.select()
+    }
+  })
+}
 
 // Tools definition
 const tools = [
@@ -342,6 +423,7 @@ const initializeCanvases = () => {
   annotationCanvas.addEventListener('mousemove', draw)
   annotationCanvas.addEventListener('mouseup', stopDrawing)
   annotationCanvas.addEventListener('mouseleave', stopDrawing)
+  annotationCanvas.addEventListener('dblclick', handleCanvasDoubleClick)
   
   return true
 }
@@ -406,13 +488,27 @@ const startDrawing = (e) => {
   const rect = canvas.getBoundingClientRect()
   const x = e.clientX - rect.left
   const y = e.clientY - rect.top
-  
+
   if (activeTool.value === 'text') {
+    const hitText = findTextAnnotationAtPoint(x, y)
+    if (hitText) {
+      selectedTextAnnotationId.value = hitText.id
+      dragTextState = {
+        id: hitText.id,
+        offsetX: x - hitText.x,
+        offsetY: y - hitText.y
+      }
+      showTextInput.value = false
+      redrawAnnotations()
+      return
+    }
+
+    clearSelectedText()
+    editingTextAnnotationId.value = null
     textX.value = x
     textY.value = y
     textContent.value = ''
     showTextInput.value = true
-    // Wait for DOM to update, then focus the input
     nextTick(() => {
       if (directTextInput.value) {
         directTextInput.value.focus()
@@ -420,7 +516,10 @@ const startDrawing = (e) => {
     })
     return
   }
-  
+
+  clearSelectedText()
+  showTextInput.value = false
+
   isDrawing = true
   
   if (activeTool.value === 'pen' || activeTool.value === 'highlight') {
@@ -445,6 +544,22 @@ const startDrawing = (e) => {
 }
 
 const draw = (e) => {
+  if (dragTextState) {
+    const canvas = document.getElementById('annotation-canvas')
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const annotations = pageAnnotations[currentPage.value] || []
+    const dragged = annotations.find(a => a.id === dragTextState.id)
+    if (!dragged) return
+    dragged.x = x - dragTextState.offsetX
+    dragged.y = y - dragTextState.offsetY
+    clampTextPosition(dragged)
+    redrawAnnotations()
+    return
+  }
+
   if (!isDrawing || !currentStroke) return
   
   const canvas = document.getElementById('annotation-canvas')
@@ -479,6 +594,12 @@ const draw = (e) => {
 }
 
 const stopDrawing = () => {
+  if (dragTextState) {
+    dragTextState = null
+    redrawAnnotations()
+    return
+  }
+
   if (!isDrawing) return
   
   isDrawing = false
@@ -494,32 +615,97 @@ const stopDrawing = () => {
 
 // Add text
 const addText = () => {
-  if (!textContent.value.trim()) {
+  const content = textContent.value.trim()
+
+  if (!content) {
+    if (editingTextAnnotationId.value) {
+      deleteSelectedText()
+    }
     showTextInput.value = false
+    editingTextAnnotationId.value = null
     return
   }
   
   if (!pageAnnotations[currentPage.value]) {
     pageAnnotations[currentPage.value] = []
   }
-  
-  pageAnnotations[currentPage.value].push({
-    type: 'text',
-    text: textContent.value,
-    x: textX.value,
-    y: textY.value,
-    color: penColor.value,
-    fontSize: 14
-  })
+
+  if (editingTextAnnotationId.value) {
+    const annotation = pageAnnotations[currentPage.value].find(a => a.id === editingTextAnnotationId.value)
+    if (annotation) {
+      annotation.text = content
+      annotation.x = textX.value
+      annotation.y = textY.value
+      clampTextPosition(annotation)
+      selectedTextAnnotationId.value = annotation.id
+    }
+  } else {
+    const newAnnotation = {
+      id: nextAnnotationId(),
+      type: 'text',
+      text: content,
+      x: textX.value,
+      y: textY.value,
+      color: penColor.value,
+      fontSize: 14
+    }
+    clampTextPosition(newAnnotation)
+    pageAnnotations[currentPage.value].push(newAnnotation)
+    selectedTextAnnotationId.value = newAnnotation.id
+  }
   
   showTextInput.value = false
   textContent.value = ''
+  editingTextAnnotationId.value = null
   redrawAnnotations()
 }
 
 const cancelTextInput = () => {
   showTextInput.value = false
   textContent.value = ''
+  editingTextAnnotationId.value = null
+}
+
+const editSelectedText = () => {
+  if (!selectedTextAnnotationId.value) return
+  const annotations = pageAnnotations[currentPage.value] || []
+  const annotation = annotations.find(a => a.id === selectedTextAnnotationId.value && a.type === 'text')
+  if (!annotation) return
+  openTextEditor(annotation)
+}
+
+const deleteSelectedText = () => {
+  if (!selectedTextAnnotationId.value) return
+  const annotations = pageAnnotations[currentPage.value] || []
+  const index = annotations.findIndex(a => a.id === selectedTextAnnotationId.value && a.type === 'text')
+  if (index >= 0) {
+    annotations.splice(index, 1)
+    clearSelectedText()
+    showTextInput.value = false
+    textContent.value = ''
+    editingTextAnnotationId.value = null
+    redrawAnnotations()
+  }
+}
+
+const handleCanvasDoubleClick = (e) => {
+  if (activeTool.value !== 'text') return
+  const canvas = document.getElementById('annotation-canvas')
+  if (!canvas) return
+  const rect = canvas.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  const hitText = findTextAnnotationAtPoint(x, y)
+  if (!hitText) return
+  openTextEditor(hitText)
+}
+
+const handleGlobalKeydown = (e) => {
+  if (showTextInput.value) return
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextAnnotationId.value) {
+    e.preventDefault()
+    deleteSelectedText()
+  }
 }
 
 // Redraw annotations
@@ -554,6 +740,19 @@ const redrawAnnotations = () => {
       annotCtx.font = (stroke.fontSize || 16) + 'px Arial'
       annotCtx.textBaseline = 'top'
       annotCtx.fillText(stroke.text, stroke.x, stroke.y)
+
+      if (stroke.id && stroke.id === selectedTextAnnotationId.value) {
+        const metrics = getTextMetrics(stroke)
+        if (metrics) {
+          annotCtx.save()
+          annotCtx.strokeStyle = '#0d6efd'
+          annotCtx.setLineDash([4, 2])
+          annotCtx.lineWidth = 1
+          annotCtx.strokeRect(stroke.x - 3, stroke.y - 3, metrics.width + 6, metrics.height + 6)
+          annotCtx.restore()
+        }
+      }
+
       annotCtx.textBaseline = 'alphabetic'
     }
   })
@@ -562,6 +761,8 @@ const redrawAnnotations = () => {
 // Navigation
 const previousPage = () => {
   if (currentPage.value > 1) {
+    cancelTextInput()
+    clearSelectedText()
     currentPage.value--
     renderPage()
   }
@@ -569,6 +770,8 @@ const previousPage = () => {
 
 const nextPage = () => {
   if (currentPage.value < pageCount.value) {
+    cancelTextInput()
+    clearSelectedText()
     currentPage.value++
     renderPage()
   }
@@ -870,6 +1073,8 @@ onMounted(() => {
     formData.value = route.state.formData
     console.log('Form data received:', formData.value)
   }
+
+  window.addEventListener('keydown', handleGlobalKeydown)
   
   // Try to get current amendment from store and auto-populate form
   if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
@@ -893,6 +1098,18 @@ watch(() => amendmentStore.amendments, () => {
     populateFormFromAmendment()
   }
 }, { deep: true })
+
+onUnmounted(() => {
+  const annotationCanvas = document.getElementById('annotation-canvas')
+  if (annotationCanvas) {
+    annotationCanvas.removeEventListener('mousedown', startDrawing)
+    annotationCanvas.removeEventListener('mousemove', draw)
+    annotationCanvas.removeEventListener('mouseup', stopDrawing)
+    annotationCanvas.removeEventListener('mouseleave', stopDrawing)
+    annotationCanvas.removeEventListener('dblclick', handleCanvasDoubleClick)
+  }
+  window.removeEventListener('keydown', handleGlobalKeydown)
+})
 </script>
 
 <style scoped>
@@ -1259,7 +1476,7 @@ watch(() => amendmentStore.amendments, () => {
 }
 
 .direct-text-input {
-  position: fixed;
+  position: absolute;
   padding: 4px 8px;
   border: 2px solid #007bff;
   border-radius: 3px;
