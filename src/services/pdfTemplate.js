@@ -10,11 +10,13 @@ import { PDFDocument } from 'pdf-lib'
 // Template PDF used as the base for coordinate-based filling.
 // Replace this file in `public/` with the provided `mood.pdf` to change the underlying template.
 const TEMPLATE_PDF_PATH = '/mood.pdf'
+const TEMPLATE_CACHE_VERSION = '20260416-1'
 
 async function loadTemplatePdfBytes() {
-  const response = await fetch(TEMPLATE_PDF_PATH)
+  const templateUrl = `${TEMPLATE_PDF_PATH}?v=${TEMPLATE_CACHE_VERSION}`
+  const response = await fetch(templateUrl, { cache: 'no-store' })
   if (!response.ok) {
-    throw new Error(`Failed to load PDF template from ${TEMPLATE_PDF_PATH}`)
+    throw new Error(`Failed to load PDF template from ${templateUrl}`)
   }
   return response.arrayBuffer()
 }
@@ -683,7 +685,7 @@ export async function downloadFilledForm(amendment) {
 
   const filename = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
 
-  // Try template-based PDF first; if it fails, fall back to generated PDF
+  // Template-only export so users always receive the provided official PDF version.
   try {
     const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
     const pdfBytes = await pdfDoc.save()
@@ -697,23 +699,8 @@ export async function downloadFilledForm(amendment) {
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
     return
   } catch (e) {
-    console.warn('Template PDF generation failed, falling back to generated PDF:', e)
-  }
-
-  // Fallback: generate PDF with jsPDF and download
-  try {
-    const doc = generateGradeAmendmentPDF(data)
-    const blob = doc.output ? doc.output('blob') : new Blob([await doc.save()], { type: 'application/pdf' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
-  } catch (err) {
-    console.error('Failed to generate PDF fallback:', err)
-    alert('Failed to generate PDF. Please contact the administrator or try again later.')
+    console.error('Template PDF generation failed:', e)
+    alert('Failed to export the template PDF. Please contact the administrator.')
   }
 }
 
@@ -893,6 +880,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // PAGE 2 — ASSISTANT ACADEMIC REGISTRAR'S APPROVAL
     // ═══════════════════════════════════════════════════════════════
     if (pages.length > 1) {
+      const page2 = pages[1]
       // Page2 helpers: reuse the same mapping but map to page2 size
       const p2Size = page2.getSize()
       const scaleX2 = p2Size.width / ORIGINAL_PAGE_WIDTH

@@ -67,6 +67,30 @@ function amendmentDetails(amendment) {
   return amendment?.appeal_details || amendment?.reason_details || amendment?.details || '-'
 }
 
+function submissionAcademicYearTerm(submission) {
+  const directAcademicYear = submission?.academic_year || submission?.academicYear
+  const directTerm = submission?.term
+  if (directAcademicYear || directTerm) {
+    const yearText = directAcademicYear || '-'
+    const termText = directTerm ? `T${directTerm}` : 'T-'
+    return `${yearText} / ${termText}`
+  }
+
+  const amendments = resolveAmendments(submission)
+  if (!amendments.length) return '-'
+
+  const uniquePairs = new Set(
+    amendments.map(a => `${a?.academic_year || '-'}|${a?.term || '-'}`)
+  )
+
+  return Array.from(uniquePairs)
+    .map(pair => {
+      const [year, term] = pair.split('|')
+      return `${year} / T${term}`
+    })
+    .join(', ')
+}
+
 async function handleApprove(id) {
   if (!confirm('Approve this submission?')) return
   try {
@@ -243,6 +267,7 @@ onMounted(() => {
                 <th>Title</th>
                 <th>Submitted By</th>
                 <th>Status</th>
+                <th>Academic Year / Term</th>
                 <th>Number of Cases</th>
                 <th>Date</th>
                 <th>Actions</th>
@@ -253,6 +278,7 @@ onMounted(() => {
                 <td class="fw-semibold">{{ s.title }}</td>
                 <td>{{ s.submitted_by_name }}</td>
                 <td><span class="badge" :class="statusBadge(s.status)">{{ displayStatus(s.status) }}</span></td>
+                <td class="small">{{ submissionAcademicYearTerm(s) }}</td>
                 <td>{{ s.amendment_count || 0 }}</td>
                 <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
                 <td>
