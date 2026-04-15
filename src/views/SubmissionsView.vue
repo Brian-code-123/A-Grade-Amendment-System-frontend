@@ -259,7 +259,7 @@ onMounted(() => {
   if (auth.token?.startsWith('demo_token_')) {
     demoRefreshTimer = setInterval(() => {
       subStore.fetchSubmissions()
-    }, 3000)
+    }, 5000)
   }
 })
 
