@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
@@ -112,7 +112,15 @@ async function createAndSubmit() {
       description: newDesc.value,
       amendment_ids: selectedAmendments.value
     })
-    successMsg.value = 'Submission created: ' + sub.title
+
+    // Demo flow: auto-submit to PD so the pending case appears immediately.
+    if (auth.token?.startsWith('demo_token_') && sub?._id) {
+      await subStore.submitToAdmin(sub._id)
+      successMsg.value = 'Submission created and sent to Program Director: ' + sub.title
+    } else {
+      successMsg.value = 'Submission created: ' + sub.title
+    }
+
     newTitle.value = ''
     newDesc.value = ''
     selectedAmendments.value = []
@@ -209,6 +217,11 @@ const statusBadge = (status) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  subStore.startDemoRealtimeSync()
+})
+
+onUnmounted(() => {
+  subStore.stopDemoRealtimeSync()
 })
 </script>
 
