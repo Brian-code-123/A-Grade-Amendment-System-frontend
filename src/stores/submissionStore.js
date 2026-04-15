@@ -3,6 +3,9 @@ import { ref } from 'vue'
 import { useAuthStore } from './authStore'
 import { apiFetch } from '@/utils/api'
 
+const DEMO_ADMIN_SUBMISSIONS_STORAGE_KEY = 'demo_admin_submissions'
+const DEMO_PD_SUBMISSIONS_STORAGE_KEY = 'demo_pd_submissions'
+
 const DEMO_SUBMISSIONS = [
   {
     _id: 'ds1',
@@ -198,6 +201,54 @@ const PD_DEMO_SUBMISSIONS = [
   }
 ]
 
+function cloneSubmissions(list) {
+  return JSON.parse(JSON.stringify(list || []))
+}
+
+function isAdminRole(role) {
+  return role === 'admin'
+}
+
+function getDemoStorageKey(role) {
+  return isAdminRole(role) ? DEMO_ADMIN_SUBMISSIONS_STORAGE_KEY : DEMO_PD_SUBMISSIONS_STORAGE_KEY
+}
+
+function getDemoDefaultSubmissions(role) {
+  return isAdminRole(role) ? DEMO_SUBMISSIONS : PD_DEMO_SUBMISSIONS
+}
+
+function readDemoSubmissions(role) {
+  const key = getDemoStorageKey(role)
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        return parsed
+      }
+    }
+  } catch {
+    // Ignore parse/storage errors and fall back to defaults.
+  }
+
+  const defaults = cloneSubmissions(getDemoDefaultSubmissions(role))
+  try {
+    localStorage.setItem(key, JSON.stringify(defaults))
+  } catch {
+    // Ignore storage write failures in demo mode.
+  }
+  return defaults
+}
+
+function writeDemoSubmissions(role, list) {
+  const key = getDemoStorageKey(role)
+  try {
+    localStorage.setItem(key, JSON.stringify(list || []))
+  } catch {
+    // Ignore storage write failures in demo mode.
+  }
+}
+
 export const useSubmissionStore = defineStore('submission', () => {
   const submissions = ref([])
   const currentSubmission = ref(null)
@@ -215,8 +266,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     error.value = ''
 
     if (isDemoUser()) {
-      const auth2 = useAuthStore()
-      submissions.value = auth2.user?.role === 'admin' ? DEMO_SUBMISSIONS : PD_DEMO_SUBMISSIONS
+      submissions.value = readDemoSubmissions(auth.user?.role)
       loading.value = false
       return
     }
@@ -243,7 +293,9 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function fetchSubmission(id) {
     if (isDemoUser()) {
-      currentSubmission.value = [...DEMO_SUBMISSIONS, ...PD_DEMO_SUBMISSIONS].find(s => s._id === id) || null
+      const adminSubs = readDemoSubmissions('admin')
+      const pdSubs = readDemoSubmissions('Head')
+      currentSubmission.value = [...adminSubs, ...pdSubs].find(s => s._id === id) || null
       return
     }
 
@@ -263,6 +315,7 @@ export const useSubmissionStore = defineStore('submission', () => {
   async function createSubmission(data) {
     if (isDemoUser()) {
       const auth = useAuthStore()
+      const role = auth.user?.role
       const newSub = {
         _id: 'ds_' + Date.now(),
         ...data,
@@ -273,6 +326,7 @@ export const useSubmissionStore = defineStore('submission', () => {
         created_at: new Date().toISOString()
       }
       submissions.value.unshift(newSub)
+      writeDemoSubmissions(role, submissions.value)
       return newSub
     }
 
@@ -295,10 +349,12 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function submitToAdmin(id) {
     if (isDemoUser()) {
+      const auth = useAuthStore()
       const s = submissions.value.find(s => s._id === id)
       if (s) {
         s.status = 'Submitted'
         s.submitted_at = new Date().toISOString()
+        writeDemoSubmissions(auth.user?.role, submissions.value)
       }
       return s
     }
@@ -321,10 +377,12 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
+      const role = auth.user?.role
       const s = submissions.value.find(s => s._id === id)
       if (s) {
         s.status = 'Approved'
         s.approved_at = new Date().toISOString()
+        writeDemoSubmissions(role, submissions.value)
       }
       return s
     }
@@ -346,11 +404,13 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
+      const role = auth.user?.role
       const s = submissions.value.find(s => s._id === id)
       if (s) {
         s.status = 'Rejected'
         s.rejection_reason = reason
         s.rejected_at = new Date().toISOString()
+        writeDemoSubmissions(role, submissions.value)
       }
       return s
     }
@@ -368,12 +428,14 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function resubmitSubmission(id) {
     if (isDemoUser()) {
+      const auth = useAuthStore()
       const s = submissions.value.find(s => s._id === id)
       if (s) {
         s.status = 'Submitted'
         s.submitted_at = new Date().toISOString()
         delete s.rejection_reason
         delete s.rejected_at
+        writeDemoSubmissions(auth.user?.role, submissions.value)
       }
       return s
     }
@@ -399,10 +461,12 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function markPrinted(id) {
     if (isDemoUser()) {
+      const auth = useAuthStore()
       const s = submissions.value.find(s => s._id === id)
       if (s) {
         s.printed = true
         s.printed_at = new Date().toISOString()
+        writeDemoSubmissions(auth.user?.role, submissions.value)
       }
       return s
     }
