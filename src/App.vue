@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
@@ -29,6 +29,10 @@ const userInitials = computed(() => {
   const name = auth.user?.name || auth.userName || ''
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'
 })
+
+// Local dropdown open state to ensure dropdowns work even if Bootstrap JS
+// dropdown behaviour isn't available in some dev environments.
+const amendmentsOpen = ref(false)
 
 function handleLogout() {
   auth.logout()
@@ -77,11 +81,11 @@ function handleLogout() {
             </li>
 
             <!-- 2. Amendments (dropdown) — hidden for Programme Director (Head) -->
-            <li class="nav-item dropdown" v-if="!auth.isHead">
+            <li class="nav-item dropdown" v-if="!auth.isHead" :class="{ show: amendmentsOpen }">
               <button
                 class="nav-link nav-tab dropdown-toggle btn btn-link"
                 type="button"
-                data-bs-toggle="dropdown"
+                @click.prevent="amendmentsOpen = !amendmentsOpen"
                 aria-expanded="false"
                 :class="{
                   active:
@@ -92,19 +96,19 @@ function handleLogout() {
               >
                 <i class="bi bi-pencil-square me-1"></i>Amendments
               </button>
-              <ul class="dropdown-menu dropdown-menu-animated mt-1">
+              <ul class="dropdown-menu dropdown-menu-animated mt-1" :class="{ show: amendmentsOpen }">
                 <li>
-                  <router-link class="dropdown-item" to="/amendments" active-class="active">
+                  <router-link class="dropdown-item" to="/amendments" active-class="active" @click="amendmentsOpen = false">
                     <i class="bi bi-file-earmark-text me-2 text-primary"></i>Amendment Form
                   </router-link>
                 </li>
                 <li>
-                  <router-link class="dropdown-item" to="/submissions" active-class="active">
+                  <router-link class="dropdown-item" to="/submissions" active-class="active" @click="amendmentsOpen = false">
                     <i class="bi bi-send me-2 text-success"></i>Submissions
                   </router-link>
                 </li>
                 <li>
-                  <router-link class="dropdown-item" to="/excel-upload" active-class="active">
+                  <router-link class="dropdown-item" to="/excel-upload" active-class="active" @click="amendmentsOpen = false">
                     <i class="bi bi-file-earmark-excel me-2 text-info"></i>Excel Upload
                   </router-link>
                 </li>
