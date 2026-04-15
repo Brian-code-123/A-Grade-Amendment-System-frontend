@@ -5,6 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 
 describe('submissionStore', () => {
   beforeEach(() => {
+    localStorage.removeItem('demo_shared_submissions_v1')
     setActivePinia(createPinia())
   })
 
@@ -48,5 +49,39 @@ describe('submissionStore', () => {
     await expect(store.rejectSubmission('demo', 'no')).rejects.toThrow(
       'Admin accounts cannot reject amendment submissions',
     )
+  })
+
+  it('syncs demo teacher submissions into PD review list', async () => {
+    setActivePinia(createPinia())
+    const teacherAuth = useAuthStore()
+    teacherAuth.setAuth('demo_token_teacher_1', { name: 'Teacher Demo', role: 'Teacher' })
+
+    const teacherStore = useSubmissionStore()
+    await teacherStore.fetchSubmissions()
+
+    const created = await teacherStore.createSubmission({
+      title: 'Shared Demo Case',
+      description: 'Teacher created this case',
+      amendment_ids: ['demo_1'],
+    })
+    await teacherStore.submitToAdmin(created._id)
+
+    setActivePinia(createPinia())
+    const pdAuth = useAuthStore()
+    pdAuth.setAuth('demo_token_pd_1', { name: 'PD Demo', role: 'Programme Director' })
+
+    const pdStore = useSubmissionStore()
+    await pdStore.fetchSubmissions()
+    expect(pdStore.submissions.find((s) => s._id === created._id)?.status).toBe('Submitted')
+
+    await pdStore.approveSubmission(created._id)
+
+    setActivePinia(createPinia())
+    const teacherAuthReloaded = useAuthStore()
+    teacherAuthReloaded.setAuth('demo_token_teacher_2', { name: 'Teacher Demo', role: 'Teacher' })
+
+    const teacherStoreReloaded = useSubmissionStore()
+    await teacherStoreReloaded.fetchSubmissions()
+    expect(teacherStoreReloaded.submissions.find((s) => s._id === created._id)?.status).toBe('Approved')
   })
 })

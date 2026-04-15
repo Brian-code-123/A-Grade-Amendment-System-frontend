@@ -199,6 +199,8 @@ const PD_DEMO_SUBMISSIONS = [
   }
 ]
 
+const DEMO_SUBMISSIONS_STORAGE_KEY = 'demo_shared_submissions_v1'
+
 export const useSubmissionStore = defineStore('submission', () => {
   const submissions = ref([])
   const currentSubmission = ref(null)
@@ -210,14 +212,83 @@ export const useSubmissionStore = defineStore('submission', () => {
     return auth.token?.startsWith('demo_token_')
   }
 
+  const cloneDemoSubmissions = (items = []) => items.map(item => ({ ...item }))
+
+  const readSharedDemoSubmissions = () => {
+    try {
+      const raw = localStorage.getItem(DEMO_SUBMISSIONS_STORAGE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return null
+      return cloneDemoSubmissions(parsed)
+    } catch {
+      return null
+    }
+  }
+
+  const persistSharedDemoSubmissions = (items = []) => {
+    localStorage.setItem(DEMO_SUBMISSIONS_STORAGE_KEY, JSON.stringify(items))
+  }
+
+  const getSharedDemoSubmissions = () => {
+    const stored = readSharedDemoSubmissions()
+    if (stored) return stored
+    const seeded = cloneDemoSubmissions(DEMO_SUBMISSIONS)
+    persistSharedDemoSubmissions(seeded)
+    return seeded
+  }
+
+  const getDemoSubmissionsByRole = (role) => {
+    const shared = getSharedDemoSubmissions()
+    if (role !== 'Programme Director') {
+      return shared
+    }
+
+    const merged = [...shared]
+    const existingIds = new Set(shared.map(s => s._id))
+    for (const sample of PD_DEMO_SUBMISSIONS) {
+      if (!existingIds.has(sample._id)) {
+        merged.push({ ...sample })
+      }
+    }
+    return merged
+  }
+
+  const setDemoSubmissionsByRole = (role) => {
+    submissions.value = getDemoSubmissionsByRole(role)
+  }
+
+  const updateDemoSubmission = (id, mutateFn) => {
+    const auth = useAuthStore()
+    const shared = getSharedDemoSubmissions()
+    const sharedIndex = shared.findIndex(s => s._id === id)
+
+    if (sharedIndex >= 0) {
+      const updated = mutateFn({ ...shared[sharedIndex] })
+      shared[sharedIndex] = updated
+      persistSharedDemoSubmissions(shared)
+      setDemoSubmissionsByRole(auth.user?.role)
+      return updated
+    }
+
+    const localIndex = submissions.value.findIndex(s => s._id === id)
+    if (localIndex >= 0) {
+      const localCopy = [...submissions.value]
+      localCopy[localIndex] = mutateFn({ ...localCopy[localIndex] })
+      submissions.value = localCopy
+      return localCopy[localIndex]
+    }
+
+    return null
+  }
+
   async function fetchSubmissions(query) {
     const auth = useAuthStore()
     loading.value = true
     error.value = ''
 
     if (isDemoUser()) {
-      const auth2 = useAuthStore()
-      submissions.value = auth2.user?.role === 'admin' ? DEMO_SUBMISSIONS : PD_DEMO_SUBMISSIONS
+      setDemoSubmissionsByRole(auth.user?.role)
       loading.value = false
       return
     }
@@ -244,7 +315,8 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function fetchSubmission(id) {
     if (isDemoUser()) {
-      currentSubmission.value = [...DEMO_SUBMISSIONS, ...PD_DEMO_SUBMISSIONS].find(s => s._id === id) || null
+      const auth = useAuthStore()
+      currentSubmission.value = getDemoSubmissionsByRole(auth.user?.role).find(s => s._id === id) || null
       return
     }
 
@@ -264,6 +336,7 @@ export const useSubmissionStore = defineStore('submission', () => {
   async function createSubmission(data) {
     if (isDemoUser()) {
       const auth = useAuthStore()
+      const shared = getSharedDemoSubmissions()
       const newSub = {
         _id: 'ds_' + Date.now(),
         ...data,
@@ -273,7 +346,9 @@ export const useSubmissionStore = defineStore('submission', () => {
         submitted_by_name: auth.user?.name || 'Demo User',
         created_at: new Date().toISOString()
       }
-      submissions.value.unshift(newSub)
+      const nextShared = [newSub, ...shared]
+      persistSharedDemoSubmissions(nextShared)
+      setDemoSubmissionsByRole(auth.user?.role)
       return newSub
     }
 
@@ -296,12 +371,11 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function submitToAdmin(id) {
     if (isDemoUser()) {
-      const s = submissions.value.find(s => s._id === id)
-      if (s) {
-        s.status = 'Submitted'
-        s.submitted_at = new Date().toISOString()
-      }
-      return s
+      return updateDemoSubmission(id, (s) => ({
+        ...s,
+        status: 'Submitted',
+        submitted_at: new Date().toISOString()
+      }))
     }
 
     const auth = useAuthStore()
@@ -322,13 +396,12 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
-      const s = submissions.value.find(s => s._id === id)
-      if (s) {
-        s.status = 'Approved'
-        s.approved_at = new Date().toISOString()
-        s.approved_by_name = auth.user?.name || 'Demo Reviewer'
-      }
-      return s
+      return updateDemoSubmission(id, (s) => ({
+        ...s,
+        status: 'Approved',
+        approved_at: new Date().toISOString(),
+        approved_by_name: auth.user?.name || 'Demo Reviewer'
+      }))
     }
 
     const res = await apiFetch('/api/submissions/' + id + '/approve', {
@@ -348,13 +421,12 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
-      const s = submissions.value.find(s => s._id === id)
-      if (s) {
-        s.status = 'Rejected'
-        s.rejection_reason = reason
-        s.rejected_at = new Date().toISOString()
-      }
-      return s
+      return updateDemoSubmission(id, (s) => ({
+        ...s,
+        status: 'Rejected',
+        rejection_reason: reason,
+        rejected_at: new Date().toISOString()
+      }))
     }
 
     const res = await apiFetch('/api/submissions/' + id + '/reject', {
@@ -370,14 +442,12 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function resubmitSubmission(id) {
     if (isDemoUser()) {
-      const s = submissions.value.find(s => s._id === id)
-      if (s) {
-        s.status = 'Submitted'
-        s.submitted_at = new Date().toISOString()
-        delete s.rejection_reason
-        delete s.rejected_at
-      }
-      return s
+      return updateDemoSubmission(id, (s) => {
+        const next = { ...s, status: 'Submitted', submitted_at: new Date().toISOString() }
+        delete next.rejection_reason
+        delete next.rejected_at
+        return next
+      })
     }
 
     const auth = useAuthStore()
@@ -401,12 +471,11 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function markPrinted(id) {
     if (isDemoUser()) {
-      const s = submissions.value.find(s => s._id === id)
-      if (s) {
-        s.printed = true
-        s.printed_at = new Date().toISOString()
-      }
-      return s
+      return updateDemoSubmission(id, (s) => ({
+        ...s,
+        printed: true,
+        printed_at: new Date().toISOString()
+      }))
     }
 
     const auth = useAuthStore()

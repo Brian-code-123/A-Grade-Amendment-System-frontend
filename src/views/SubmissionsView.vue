@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
@@ -21,6 +21,7 @@ const emailSending = ref(false)
 const reminderSending = ref(false)
 const reminderThresholdDays = ref(3)
 const submitting = reactive({})
+let demoRefreshTimer = null
 
 /* ── Batch selection for submissions ───────────────────────────── */
 const selectedSubIds = reactive([])
@@ -254,6 +255,19 @@ onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
   loadReminderSettings()
+
+  if (auth.token?.startsWith('demo_token_')) {
+    demoRefreshTimer = setInterval(() => {
+      subStore.fetchSubmissions()
+    }, 3000)
+  }
+})
+
+onUnmounted(() => {
+  if (demoRefreshTimer) {
+    clearInterval(demoRefreshTimer)
+    demoRefreshTimer = null
+  }
 })
 </script>
 
