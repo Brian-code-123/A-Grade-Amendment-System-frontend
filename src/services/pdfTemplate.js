@@ -7,18 +7,28 @@ import { jsPDF } from 'jspdf'
 import { useAuthStore } from '@/stores/authStore'
 import { PDFDocument } from 'pdf-lib'
 
+const TEMPLATE_PDF_PATH = '/form.pdf'
+
+async function loadTemplatePdfBytes() {
+  const response = await fetch(TEMPLATE_PDF_PATH)
+  if (!response.ok) {
+    throw new Error(`Failed to load PDF template from ${TEMPLATE_PDF_PATH}`)
+  }
+  return response.arrayBuffer()
+}
+
 /* ── PDF-Lib Helper for Template Download ────────────────────────── */
 export async function downloadTemplate() {
   try {
-    const existingPdfBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+    const existingPdfBytes = await loadTemplatePdfBytes()
     const blob = new Blob([existingPdfBytes], { type: 'application/pdf' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = 'form.pdf'
+    link.download = TEMPLATE_PDF_PATH.split('/').pop() || 'template.pdf'
     link.click()
   } catch (e) {
     console.error('Error downloading template:', e)
-    alert('Failed to download form.pdf from server root.')
+    alert(`Failed to download template from ${TEMPLATE_PDF_PATH}.`)
   }
 }
 
@@ -669,22 +679,14 @@ export async function downloadFilledForm(amendment) {
     registrarRemarks: amendment.registrar_remarks || ''
   }
 
-  try {
-    // Try template-based PDF first
-    const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
-    const pdfBytes = await pdfDoc.save()
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
-    link.click()
-    URL.revokeObjectURL(link.href)
-  } catch (e) {
-    console.warn('Template-based export failed, falling back to generated PDF:', e.message)
-    // Fallback to original generated PDF
-    const doc = generateGradeAmendmentPDF(data)
-    doc.save(`Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`)
-  }
+  const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
+  const pdfBytes = await pdfDoc.save()
+  const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 /**
@@ -695,7 +697,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
   const { rgb } = await import('pdf-lib')
   
   // Load the template PDF
-  const templateBytes = await fetch('/form.pdf').then(res => res.arrayBuffer())
+  const templateBytes = await loadTemplatePdfBytes()
   const pdfDoc = await PDFDocument.load(templateBytes)
 
   try {
