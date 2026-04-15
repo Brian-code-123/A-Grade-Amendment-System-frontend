@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
@@ -21,6 +21,7 @@ const detailSubmission = ref(null)
 const detailAmendments = ref([])
 const searchQuery = ref('')
 const statusFilter = ref('All')
+let demoRefreshTimer = null
 
 // Only show Submitted, Approved, Rejected — no Draft
 const visibleSubmissions = computed(() => {
@@ -152,11 +153,24 @@ onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
   applyFilterFromQuery()
+
+  if (auth.token?.startsWith('demo_token_')) {
+    demoRefreshTimer = setInterval(() => {
+      subStore.fetchSubmissions()
+    }, 3000)
+  }
 })
 
 watch(() => route.query, () => {
   applyFilterFromQuery()
 }, { deep: true })
+
+onUnmounted(() => {
+  if (demoRefreshTimer) {
+    clearInterval(demoRefreshTimer)
+    demoRefreshTimer = null
+  }
+})
 </script>
 
 <template>
