@@ -2,16 +2,18 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+// vueDevTools plugin prints extra startup messages; disable it to keep terminal clean
+// import vueDevTools from 'vite-plugin-vue-devtools'
 
 
 
 
 // https://vite.dev/config/
 export default defineConfig({
+  logLevel: 'error',
   plugins: [
     vue(),
-    vueDevTools(),
+    // vueDevTools(),
   ],
   resolve: {
     alias: {

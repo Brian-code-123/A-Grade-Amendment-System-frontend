@@ -7,7 +7,9 @@ import { jsPDF } from 'jspdf'
 import { useAuthStore } from '@/stores/authStore'
 import { PDFDocument } from 'pdf-lib'
 
-const TEMPLATE_PDF_PATH = '/form.pdf'
+// Template PDF used as the base for coordinate-based filling.
+// Replace this file in `public/` with the provided `mood.pdf` to change the underlying template.
+const TEMPLATE_PDF_PATH = '/mood.pdf'
 
 async function loadTemplatePdfBytes() {
   const response = await fetch(TEMPLATE_PDF_PATH)
@@ -679,14 +681,40 @@ export async function downloadFilledForm(amendment) {
     registrarRemarks: amendment.registrar_remarks || ''
   }
 
-  const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
-  const pdfBytes = await pdfDoc.save()
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
-  link.click()
-  URL.revokeObjectURL(link.href)
+  const filename = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
+
+  // Try template-based PDF first; if it fails, fall back to generated PDF
+  try {
+    const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
+    const pdfBytes = await pdfDoc.save()
+    const blob = pdfBytes instanceof Blob ? pdfBytes : new Blob([pdfBytes], { type: 'application/pdf' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    return
+  } catch (e) {
+    console.warn('Template PDF generation failed, falling back to generated PDF:', e)
+  }
+
+  // Fallback: generate PDF with jsPDF and download
+  try {
+    const doc = generateGradeAmendmentPDF(data)
+    const blob = doc.output ? doc.output('blob') : new Blob([await doc.save()], { type: 'application/pdf' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+  } catch (err) {
+    console.error('Failed to generate PDF fallback:', err)
+    alert('Failed to generate PDF. Please contact the administrator or try again later.')
+  }
 }
 
 /**
@@ -704,14 +732,28 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     const pages = pdfDoc.getPages()
     const page1 = pages[0]
 
-    // Helper to draw text at exact coordinates
+    // Coordinate transform: original coordinates were designed for A4 points
+    // (approx. 595.28 x 841.89). Compute scale factors to adapt to the
+    // actual template page size (so placements align with `mood.pdf`).
+    const ORIGINAL_PAGE_WIDTH = 595.28
+    const ORIGINAL_PAGE_HEIGHT = 841.89
+    const p1Size = page1.getSize()
+    const scaleX = p1Size.width / ORIGINAL_PAGE_WIDTH
+    const scaleY = p1Size.height / ORIGINAL_PAGE_HEIGHT
+    const offsetX = 0
+    const offsetY = 0
+
+    const map = (x, y) => ({ x: x * scaleX + offsetX, y: y * scaleY + offsetY })
+
+    // Helper to draw text at exact coordinates (mapped to actual page size)
     const drawField = (text, x, y, size = 10) => {
       if (text === null || text === undefined || text === '') return
       try {
+        const m = map(x, y)
         page1.drawText(String(text), {
-          x,
-          y,
-          size,
+          x: m.x,
+          y: m.y,
+          size: size * Math.min(scaleX, scaleY),
           color: rgb(0, 0, 0),
         })
       } catch (e) {
@@ -722,10 +764,11 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // Helper to draw checkmark/tick at checkbox
     const drawTick = (x, y) => {
       try {
+        const m = map(x, y)
         page1.drawText('V', {
-          x,
-          y,
-          size: 11,
+          x: m.x,
+          y: m.y,
+          size: 11 * Math.min(scaleX, scaleY),
           color: rgb(0, 0, 0),
         })
       } catch (e) {
@@ -733,16 +776,17 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       }
     }
 
-    // Helper to add signature image
+    // Helper to add signature image (scales position and size)
     const addSignature = async (signatureDataUrl, x, y, width = 45, height = 18) => {
       if (!signatureDataUrl) return
       try {
+        const m = map(x, y)
         const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
         page1.drawImage(signatureImage, {
-          x,
-          y,
-          width,
-          height,
+          x: m.x,
+          y: m.y,
+          width: width * scaleX,
+          height: height * scaleY,
         })
       } catch (e) {
         console.warn(`Failed to add signature at ${x}, ${y}:`, e.message)
@@ -849,12 +893,17 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // PAGE 2 — ASSISTANT ACADEMIC REGISTRAR'S APPROVAL
     // ═══════════════════════════════════════════════════════════════
     if (pages.length > 1) {
-      const page2 = pages[1]
+      // Page2 helpers: reuse the same mapping but map to page2 size
+      const p2Size = page2.getSize()
+      const scaleX2 = p2Size.width / ORIGINAL_PAGE_WIDTH
+      const scaleY2 = p2Size.height / ORIGINAL_PAGE_HEIGHT
+      const map2 = (x, y) => ({ x: x * scaleX2 + offsetX, y: y * scaleY2 + offsetY })
 
       const drawField2 = (text, x, y, size = 10) => {
         if (text === null || text === undefined || text === '') return
         try {
-          page2.drawText(String(text), { x, y, size, color: rgb(0, 0, 0) })
+          const m = map2(x, y)
+          page2.drawText(String(text), { x: m.x, y: m.y, size: size * Math.min(scaleX2, scaleY2), color: rgb(0, 0, 0) })
         } catch (e) {
           console.warn(`Page2: Failed to draw text at ${x}, ${y}:`, e.message)
         }
@@ -862,7 +911,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
 
       const drawTick2 = (x, y) => {
         try {
-          page2.drawText('V', { x, y, size: 11, color: rgb(0, 0, 0) })
+          const m = map2(x, y)
+          page2.drawText('V', { x: m.x, y: m.y, size: 11 * Math.min(scaleX2, scaleY2), color: rgb(0, 0, 0) })
         } catch (e) {
           console.warn(`Page2: Failed to draw tick at ${x}, ${y}:`, e.message)
         }
@@ -871,8 +921,9 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       const addSignature2 = async (signatureDataUrl, x, y, width = 45, height = 18) => {
         if (!signatureDataUrl) return
         try {
+          const m = map2(x, y)
           const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
-          page2.drawImage(signatureImage, { x, y, width, height })
+          page2.drawImage(signatureImage, { x: m.x, y: m.y, width: width * scaleX2, height: height * scaleY2 })
         } catch (e) {
           console.warn(`Page2: Failed to add signature at ${x}, ${y}:`, e.message)
         }
