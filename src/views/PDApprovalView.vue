@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -19,6 +19,7 @@ const detailSubmission = ref(null)
 const detailAmendments = ref([])
 const searchQuery = ref('')
 const statusFilter = ref('All')
+const actioning = reactive({})
 
 // Only show Submitted, Approved, Rejected — no Draft
 const visibleSubmissions = computed(() => {
@@ -92,7 +93,9 @@ function submissionAcademicYearTerm(submission) {
 }
 
 async function handleApprove(id) {
+  if (actioning[id]) return
   if (!confirm('Approve this submission?')) return
+  actioning[id] = true
   try {
     const s = subStore.submissions.find(s => s._id === id)
     await subStore.approveSubmission(id)
@@ -106,6 +109,7 @@ async function handleApprove(id) {
     }
     successMsg.value = `Submission approved${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
+  finally { actioning[id] = false }
 }
 
 function openReject(id) {
@@ -115,9 +119,12 @@ function openReject(id) {
 }
 
 async function confirmReject() {
+  const id = rejectId.value
+  if (!id || actioning[id]) return
+  actioning[id] = true
   try {
-    const s = subStore.submissions.find(s => s._id === rejectId.value)
-    await subStore.rejectSubmission(rejectId.value, rejectReason.value)
+    const s = subStore.submissions.find(s => s._id === id)
+    await subStore.rejectSubmission(id, rejectReason.value)
     rejectModal.value = false
     let emailWarning = ''
     if (s) {
@@ -129,6 +136,7 @@ async function confirmReject() {
     }
     successMsg.value = `Submission rejected${emailWarning}`
   } catch (e) { errorMsg.value = e.message }
+  finally { actioning[id] = false }
 }
 
 async function viewDetail(id) {
@@ -153,6 +161,11 @@ const filterBtnClass = (opt) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  subStore.startDemoRealtimeSync()
+})
+
+onUnmounted(() => {
+  subStore.stopDemoRealtimeSync()
 })
 </script>
 
@@ -352,11 +365,12 @@ onMounted(() => {
 
             <!-- Approve / Reject actions -->
             <div v-if="detailSubmission.status === 'Submitted'" class="d-flex gap-2 mt-3 pt-3 border-top">
-              <button class="btn btn-danger" @click="openReject(detailSubmission._id); detailModal = false">
+              <button class="btn btn-danger" :disabled="actioning[detailSubmission._id]" @click="openReject(detailSubmission._id); detailModal = false">
                 <i class="bi bi-x-circle me-1"></i>Reject
               </button>
-              <button class="btn btn-success ms-auto" @click="handleApprove(detailSubmission._id); detailModal = false">
-                <i class="bi bi-check-circle me-1"></i>Approve
+              <button class="btn btn-success ms-auto" :disabled="actioning[detailSubmission._id]" @click="handleApprove(detailSubmission._id); detailModal = false">
+                <span v-if="actioning[detailSubmission._id]" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="bi bi-check-circle me-1"></i>Approve
               </button>
             </div>
           </div>

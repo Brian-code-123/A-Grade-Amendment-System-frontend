@@ -441,6 +441,46 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
   }
 
+  async function createAndSubmitDemoSubmissionFromAmendment(amendment, auth) {
+    const studentNo = amendment.student_no || amendment.student_id || 'Student'
+    const courseCode = amendment.course_code || 'COURSE'
+    const title = `Grade Amendment - ${courseCode} - ${studentNo}`
+    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} → ${amendment.new_grade || ''}`.trim()
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-demo-user-name': auth.user?.name || 'Demo User',
+      'x-demo-user-email': auth.user?.email || ''
+    }
+
+    const createRes = await apiFetch('/api/demo/submissions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        title,
+        description,
+        amendment_ids: [amendment._id],
+        amendments: [amendment],
+        academic_year: amendment.academic_year || '',
+        term: amendment.term || ''
+      })
+    })
+    const created = await createRes.json()
+    if (!createRes.ok) {
+      throw new Error(created.message || 'Failed to create demo submission')
+    }
+
+    const submitRes = await apiFetch(`/api/demo/submissions/${created._id}/submit`, {
+      method: 'POST',
+      headers
+    })
+    const submitted = await submitRes.json()
+    if (!submitRes.ok) {
+      throw new Error(submitted.message || 'Failed to submit demo submission')
+    }
+
+    return submitted
+  }
+
   async function fetchAmendments(query) {
     const auth = useAuthStore()
     loading.value = true
@@ -488,6 +528,18 @@ export const useAmendmentStore = defineStore('amendment', () => {
         created_at: new Date().toISOString()
       }
       amendments.value.unshift(newAmendment)
+
+      // Teacher demo flow: auto-create and submit a shared submission so PD can review it.
+      if (auth.user?.role === 'Programme Director') {
+        try {
+          const submitted = await createAndSubmitDemoSubmissionFromAmendment(newAmendment, auth)
+          newAmendment.submission_id = submitted._id
+        } catch (syncError) {
+          amendments.value = amendments.value.filter(a => a._id !== newAmendment._id)
+          throw new Error(`Failed to sync case to Program Director: ${syncError.message}`)
+        }
+      }
+
       return newAmendment
     }
 
