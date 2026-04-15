@@ -5,7 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
-import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const vueRouter = useRouter()
@@ -492,20 +492,14 @@ async function batchPrint() {
   selectedIds.splice(0)
   successMsg.value = `Downloaded ${totalForms} Grade Amendment Form(s)`
   if (failedSubmissions > 0) {
-    errorMsg.value = `${failedSubmissions} submission(s) failed to export. Please check whether the PDF template is available.`
+    errorMsg.value = `${failedSubmissions} submission(s) failed to export.`
   }
 }
 
 async function buildPdfBlobForExport(pdfData) {
-  try {
-    const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
-    const doc = await pdfDocObj.save()
-    return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
-  } catch (templateError) {
-    console.warn('Template export failed, fallback to generated PDF:', templateError)
-    const fallbackDoc = generateGradeAmendmentPDF(pdfData)
-    return fallbackDoc.output('blob')
-  }
+  const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+  const doc = await pdfDocObj.save()
+  return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
 }
 
 async function viewDetail(id) {

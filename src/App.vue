@@ -30,6 +30,15 @@ const userInitials = computed(() => {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U'
 })
 
+const userRoleLabel = computed(() => {
+  const role = auth.user?.role
+  if (!role) return ''
+  if (role === 'Programme Director') return 'Teacher'
+  if (role === 'Head') return 'Programme Director'
+  if (role === 'admin') return 'Admin'
+  return role
+})
+
 // Local dropdown open state to ensure dropdowns work even if Bootstrap JS
 // dropdown behaviour isn't available in some dev environments.
 const amendmentsOpen = ref(false)
@@ -212,7 +221,7 @@ function handleLogout() {
               </button>
               <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
                 <li class="px-3 py-1">
-                  <span class="small text-muted text-capitalize">{{ auth.user?.role }}</span>
+                  <span class="small text-muted">{{ userRoleLabel }}</span>
                 </li>
                 <li><hr class="dropdown-divider my-1" /></li>
                 <li>
