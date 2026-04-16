@@ -9,38 +9,52 @@ import { PDFDocument } from 'pdf-lib'
 
 // Template PDF used as the base for coordinate-based filling.
 // Replace this file in `public/` with the provided `mood.pdf` to change the underlying template.
-const TEMPLATE_PDF_PATH = '/mood.pdf'
+const TEMPLATE_PDF_CANDIDATES = ['/mood.pdf', '/template.pdf', '/form.pdf']
 const TEMPLATE_CACHE_VERSION = '20260416-2'
 
 async function loadTemplatePdfBytes() {
-  const templateUrl = `${TEMPLATE_PDF_PATH}?v=${TEMPLATE_CACHE_VERSION}`
-  const response = await fetch(templateUrl, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`Failed to load PDF template from ${templateUrl}`)
+  let lastError = null
+  for (const templatePath of TEMPLATE_PDF_CANDIDATES) {
+    const templateUrl = `${templatePath}?v=${TEMPLATE_CACHE_VERSION}`
+    try {
+      const response = await fetch(templateUrl, { cache: 'no-store' })
+      if (!response.ok) {
+        lastError = new Error(`Failed to load PDF template from ${templateUrl} (HTTP ${response.status})`)
+        continue
+      }
+      return {
+        bytes: await response.arrayBuffer(),
+        templatePath,
+      }
+    } catch (e) {
+      lastError = e
+    }
   }
-  return response.arrayBuffer()
+  const attempted = TEMPLATE_PDF_CANDIDATES.join(', ')
+  throw new Error(`Failed to load PDF template from any configured path: ${attempted}. ${lastError?.message || ''}`)
 }
 
 export async function getTemplatePdfBlob() {
-  const existingPdfBytes = await loadTemplatePdfBytes()
-  return new Blob([existingPdfBytes], { type: 'application/pdf' })
+  const { bytes } = await loadTemplatePdfBytes()
+  return new Blob([bytes], { type: 'application/pdf' })
 }
 
 /* ── PDF-Lib Helper for Template Download ────────────────────────── */
 export async function downloadTemplate() {
   try {
-    const blob = await getTemplatePdfBlob()
+    const { bytes, templatePath } = await loadTemplatePdfBytes()
+    const blob = new Blob([bytes], { type: 'application/pdf' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.href = url
-    link.download = TEMPLATE_PDF_PATH.split('/').pop() || 'template.pdf'
+    link.download = templatePath.split('/').pop() || 'template.pdf'
     document.body.appendChild(link)
     link.click()
     link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch (e) {
     console.error('Error downloading template:', e)
-    alert(`Failed to download template from ${TEMPLATE_PDF_PATH}.`)
+    alert(`Failed to download template from configured paths: ${TEMPLATE_PDF_CANDIDATES.join(', ')}.`)
   }
 }
 
@@ -720,7 +734,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
   const { rgb } = await import('pdf-lib')
   
   // Load the template PDF
-  const templateBytes = await loadTemplatePdfBytes()
+  const { bytes: templateBytes } = await loadTemplatePdfBytes()
   const pdfDoc = await PDFDocument.load(templateBytes)
 
   try {
