@@ -5,7 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
-import { generateGradeAmendmentPDFWithTemplate, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const vueRouter = useRouter()
@@ -262,10 +262,57 @@ async function confirmReject() {
 }
 
 function resolveAmendmentsForSubmission(submission) {
-  if (submission?.amendment_ids && amStore.amendments.length) {
-    return submission.amendment_ids.map(aid => amStore.amendments.find(a => a._id === aid)).filter(Boolean)
+  const normalizeIdValue = (value) => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string' || typeof value === 'number') return String(value)
+    if (typeof value === 'object') {
+      if (value.$oid) return String(value.$oid)
+      if (value._id) return normalizeIdValue(value._id)
+      if (value.id) return String(value.id)
+    }
+    return String(value)
   }
-  return submission?.amendments || []
+
+  if (submission?.amendment_ids && amStore.amendments.length) {
+    const ids = submission.amendment_ids.map(normalizeIdValue)
+    const mapped = amStore.amendments.filter(a => ids.includes(normalizeIdValue(a?._id)))
+    if (mapped.length > 0) return mapped
+  }
+
+  if (Array.isArray(submission?.amendments) && submission.amendments.length > 0) {
+    return submission.amendments
+  }
+
+  if (submission?._id && amStore.amendments.length) {
+    const subId = normalizeIdValue(submission._id)
+    const linked = amStore.amendments.filter((a) => {
+      const sid = a?.submission_id || a?.submissionId
+      return normalizeIdValue(sid) === subId
+    })
+    if (linked.length > 0) return linked
+  }
+
+  if (submission?.amendment_count > 0) {
+    const title = String(submission?.title || '')
+    const description = String(submission?.description || '')
+    const titleMatch = title.match(/Grade\s+Amendment\s*-\s*([^\-]+)\s*-\s*(.+)$/i)
+    const gradeMatch = description.match(/([A-Za-z][+\-]?)\s*[-=]*>\s*([A-Za-z][+\-]?)/)
+
+    return [{
+      _id: `fallback-${submission._id || Date.now()}`,
+      student_no: titleMatch?.[2]?.trim() || '',
+      student_name: submission?.submitted_by_name || '',
+      course_code: titleMatch?.[1]?.trim() || '',
+      course_title: '',
+      original_grade: gradeMatch?.[1] || '',
+      new_grade: gradeMatch?.[2] || '',
+      reason_type: '',
+      reason_details: description || '',
+      department: ''
+    }]
+  }
+
+  return []
 }
 
 const pickFieldValue = (sources, keys) => {
@@ -373,11 +420,77 @@ function buildPdfData(a, cleanSig, submission) {
   }
 }
 
+function createPendingPreviewWindow() {
+  try {
+    const previewWindow = window.open('', '_blank')
+    if (previewWindow?.document) {
+      previewWindow.document.title = 'Preparing PDF'
+      previewWindow.document.body.style.fontFamily = 'Arial, sans-serif'
+      previewWindow.document.body.style.padding = '16px'
+      previewWindow.document.body.innerText = 'Preparing PDF export...'
+    }
+    return previewWindow
+  } catch {
+    return null
+  }
+}
+
+function downloadPdfBlob(blob, filename, previewWindow = null) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+
+  // Browsers may block async-triggered downloads. A pre-opened tab keeps a reliable fallback.
+  if (previewWindow && !previewWindow.closed) {
+    try {
+      previewWindow.location.href = url
+    } catch {
+      previewWindow.close()
+    }
+  }
+
+  // Keep URL alive longer to avoid browser timing issues with large files.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
+
 async function handlePrint(id) {
+  // Open immediately to preserve the user gesture for browsers that block async downloads.
+  let previewWindow = createPendingPreviewWindow()
   try {
     const submission = subStore.submissions.find(s => s._id === id)
-    const amendments = resolveAmendmentsForSubmission(submission)
-    if (amendments.length === 0) { errorMsg.value = 'No amendments found'; return }
+    if (!submission) {
+      errorMsg.value = 'Submission not found'
+      return
+    }
+
+    let amendments = resolveAmendmentsForSubmission(submission)
+    if (amendments.length === 0) {
+      try {
+        await amStore.fetchAmendments()
+        amendments = resolveAmendmentsForSubmission(submission)
+      } catch {
+        // Keep best-effort behavior and continue with template fallback if needed.
+      }
+    }
+
+    if (amendments.length === 0) {
+      const templateBlob = await getTemplatePdfBlob()
+      const filename = `Grade Amendments - ${submission.title || submission._id || 'Form'}.pdf`
+      downloadPdfBlob(templateBlob, filename, previewWindow)
+      await subStore.markPrinted(id)
+      successMsg.value = 'Amendment details unavailable; downloaded the provided template PDF.'
+      return
+    }
+
+    if (amendments.length > 1 && previewWindow && !previewWindow.closed) {
+      previewWindow.close()
+      previewWindow = null
+    }
 
     const cleanSig = auth.user?.signature
       ? await removeSignatureBackground(auth.user.signature)
@@ -386,34 +499,25 @@ async function handlePrint(id) {
     if (amendments.length === 1) {
       const pdfData = buildPdfData(amendments[0], cleanSig, submission)
       const pdfBlob = await buildPdfBlobForExport(pdfData)
-
-      const pdfUrl = URL.createObjectURL(pdfBlob)
-      const link = document.createElement('a')
-      link.href = pdfUrl
-      link.download = `Grade Amendments - ${amendments[0].student_no || amendments[0].student_id || 'Form'}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
+      const filename = `Grade Amendments - ${amendments[0].student_no || amendments[0].student_id || 'Form'}.pdf`
+      downloadPdfBlob(pdfBlob, filename, previewWindow)
       await subStore.markPrinted(id)
     } else {
       for (const a of amendments) {
         const pdfData = buildPdfData(a, cleanSig, submission)
         const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
-        const link = document.createElement('a')
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-        link.href = pdfUrl
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
+        downloadPdfBlob(pdfBlob, filename)
       }
       await subStore.markPrinted(id)
     }
     successMsg.value = `Printed ${amendments.length} Grade Amendment Form(s)`
-  } catch (e) { errorMsg.value = e.message }
+  } catch (e) {
+    if (previewWindow && !previewWindow.closed) {
+      previewWindow.close()
+    }
+    errorMsg.value = e.message
+  }
 }
 
 /* ── Batch actions ─────────────────────────────────────────────── */
@@ -473,14 +577,7 @@ async function batchPrint() {
         const pdfData = buildPdfData(a, cleanSig, sub)
         const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
-        const link = document.createElement('a')
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-        link.href = pdfUrl
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000)
+        downloadPdfBlob(pdfBlob, filename)
         totalForms++
       }
       await subStore.markPrinted(id)
@@ -497,15 +594,29 @@ async function batchPrint() {
 }
 
 async function buildPdfBlobForExport(pdfData) {
-  const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
-  const doc = await pdfDocObj.save()
-  return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+  try {
+    const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
+    const doc = await pdfDocObj.save()
+    return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
+  } catch (e) {
+    console.warn('Template filled export failed, using original template PDF fallback:', e)
+    return getTemplatePdfBlob()
+  }
 }
 
 async function viewDetail(id) {
   await subStore.fetchSubmission(id)
   detailSubmission.value = subStore.currentSubmission
-  detailAmendments.value = resolveAmendmentsForSubmission(detailSubmission.value)
+  let resolved = resolveAmendmentsForSubmission(detailSubmission.value)
+  if (resolved.length === 0) {
+    try {
+      await amStore.fetchAmendments()
+      resolved = resolveAmendmentsForSubmission(detailSubmission.value)
+    } catch {
+      // Keep modal usable even if amendment refresh fails.
+    }
+  }
+  detailAmendments.value = resolved
   detailModal.value = true
 }
 
