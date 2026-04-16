@@ -295,8 +295,8 @@ function resolveAmendmentsForSubmission(submission) {
   if (submission?.amendment_count > 0) {
     const title = String(submission?.title || '')
     const description = String(submission?.description || '')
-    const titleMatch = title.match(/Grade\s+Amendment\s*-\s*([^\-]+)\s*-\s*(.+)$/i)
-    const gradeMatch = description.match(/([A-Za-z][+\-]?)\s*[-=]*>\s*([A-Za-z][+\-]?)/)
+    const titleMatch = title.match(/Grade\s+Amendment\s*[-–—]\s*([^\-–—]+?)\s*[-–—]\s*(.+)$/i)
+    const gradeMatch = description.match(/([A-Za-z][+\-]?)\s*(?:-?>|=>|→|➡)\s*([A-Za-z][+\-]?)/i)
 
     return [{
       _id: `fallback-${submission._id || Date.now()}`,
