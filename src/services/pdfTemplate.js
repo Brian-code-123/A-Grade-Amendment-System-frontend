@@ -10,7 +10,7 @@ import { PDFDocument } from 'pdf-lib'
 // Template PDF used as the base for coordinate-based filling.
 // Replace this file in `public/` with the provided `mood.pdf` to change the underlying template.
 const TEMPLATE_PDF_PATH = '/mood.pdf'
-const TEMPLATE_CACHE_VERSION = '20260416-1'
+const TEMPLATE_CACHE_VERSION = '20260416-2'
 
 async function loadTemplatePdfBytes() {
   const templateUrl = `${TEMPLATE_PDF_PATH}?v=${TEMPLATE_CACHE_VERSION}`
@@ -21,15 +21,23 @@ async function loadTemplatePdfBytes() {
   return response.arrayBuffer()
 }
 
+export async function getTemplatePdfBlob() {
+  const existingPdfBytes = await loadTemplatePdfBytes()
+  return new Blob([existingPdfBytes], { type: 'application/pdf' })
+}
+
 /* ── PDF-Lib Helper for Template Download ────────────────────────── */
 export async function downloadTemplate() {
   try {
-    const existingPdfBytes = await loadTemplatePdfBytes()
-    const blob = new Blob([existingPdfBytes], { type: 'application/pdf' })
+    const blob = await getTemplatePdfBlob()
     const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
+    const url = URL.createObjectURL(blob)
+    link.href = url
     link.download = TEMPLATE_PDF_PATH.split('/').pop() || 'template.pdf'
+    document.body.appendChild(link)
     link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000)
   } catch (e) {
     console.error('Error downloading template:', e)
     alert(`Failed to download template from ${TEMPLATE_PDF_PATH}.`)
