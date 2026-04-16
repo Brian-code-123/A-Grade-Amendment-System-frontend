@@ -5,7 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
-import { generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob, removeSignatureBackground } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const vueRouter = useRouter()
@@ -479,9 +479,15 @@ async function handlePrint(id) {
     }
 
     if (amendments.length === 0) {
-      const templateBlob = await getTemplatePdfBlob()
       const filename = `Grade Amendments - ${submission.title || submission._id || 'Form'}.pdf`
-      downloadPdfBlob(templateBlob, filename, previewWindow)
+      let blob
+      try {
+        blob = await getTemplatePdfBlob()
+      } catch {
+        const fallbackDoc = generateGradeAmendmentPDF({})
+        blob = fallbackDoc.output('blob')
+      }
+      downloadPdfBlob(blob, filename, previewWindow)
       await subStore.markPrinted(id)
       successMsg.value = 'Amendment details unavailable; downloaded the provided template PDF.'
       return
@@ -599,8 +605,14 @@ async function buildPdfBlobForExport(pdfData) {
     const doc = await pdfDocObj.save()
     return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
   } catch (e) {
-    console.warn('Template filled export failed, using original template PDF fallback:', e)
-    return getTemplatePdfBlob()
+    console.warn('Template filled export failed, trying template file fallback:', e)
+    try {
+      return await getTemplatePdfBlob()
+    } catch (templateError) {
+      console.warn('Template file fallback failed, using generated PDF fallback:', templateError)
+      const generatedDoc = generateGradeAmendmentPDF(pdfData)
+      return generatedDoc.output('blob')
+    }
   }
 }
 
