@@ -107,10 +107,15 @@ async function createAndSubmit() {
   if (selectedAmendments.value.length === 0) { errorMsg.value = 'Select at least one amendment'; return }
   errorMsg.value = ''
   try {
+    const selectedAmendmentPayload = selectedAmendments.value
+      .map(aid => amStore.amendments.find(a => a._id === aid))
+      .filter(Boolean)
+
     const sub = await subStore.createSubmission({
       title: newTitle.value,
       description: newDesc.value,
-      amendment_ids: selectedAmendments.value
+      amendment_ids: selectedAmendments.value,
+      amendments: selectedAmendmentPayload
     })
 
     // Demo flow: auto-submit to PD so the pending case appears immediately.
