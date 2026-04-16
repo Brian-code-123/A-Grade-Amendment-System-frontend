@@ -35,3 +35,6 @@ coverage
 
 # PDF files
 *.pdf
+!public/template.pdf
+!public/form.pdf
+!public/HONG KONG BAPTIST UNIVERSITY.pdf
