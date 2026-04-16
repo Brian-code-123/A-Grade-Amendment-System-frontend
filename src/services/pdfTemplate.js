@@ -8,9 +8,32 @@ import { useAuthStore } from '@/stores/authStore'
 import { PDFDocument } from 'pdf-lib'
 
 // Template PDF used as the base for coordinate-based filling.
-// Replace this file in `public/` with the provided `mood.pdf` to change the underlying template.
-const TEMPLATE_PDF_CANDIDATES = ['/mood.pdf', '/template.pdf', '/form.pdf']
-const TEMPLATE_CACHE_VERSION = '20260416-2'
+// Keep the active template as `public/template.pdf` for both admin and teacher exports.
+const customTemplatePath = import.meta.env.VITE_TEMPLATE_PDF_PATH
+const normalizedCustomTemplatePath = customTemplatePath
+  ? (customTemplatePath.startsWith('/') ? customTemplatePath : `/${customTemplatePath}`)
+  : null
+const KNOWN_TEMPLATE_FILENAME_CANDIDATES = [
+  '/HONG KONG BAPTIST UNIVERSITY.pdf'
+]
+const TEMPLATE_PDF_CANDIDATES = [
+  normalizedCustomTemplatePath,
+  '/template.pdf',
+  '/form.pdf',
+  ...KNOWN_TEMPLATE_FILENAME_CANDIDATES
+].filter(Boolean)
+const TEMPLATE_CACHE_VERSION = '20260416-3'
+
+function triggerPdfDownload(blob, filename) {
+  const link = document.createElement('a')
+  const href = URL.createObjectURL(blob)
+  link.href = href
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(href), 60000)
+}
 
 async function loadTemplatePdfBytes() {
   let lastError = null
@@ -44,14 +67,7 @@ export async function downloadTemplate() {
   try {
     const { bytes, templatePath } = await loadTemplatePdfBytes()
     const blob = new Blob([bytes], { type: 'application/pdf' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.href = url
-    link.download = templatePath.split('/').pop() || 'template.pdf'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+    triggerPdfDownload(blob, templatePath.split('/').pop() || 'template.pdf')
   } catch (e) {
     console.error('Error downloading template:', e)
     alert(`Failed to download template from configured paths: ${TEMPLATE_PDF_CANDIDATES.join(', ')}.`)
@@ -712,17 +728,18 @@ export async function downloadFilledForm(amendment) {
     const pdfDoc = await generateGradeAmendmentPDFWithTemplate(data)
     const pdfBytes = await pdfDoc.save()
     const blob = pdfBytes instanceof Blob ? pdfBytes : new Blob([pdfBytes], { type: 'application/pdf' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    triggerPdfDownload(blob, filename)
     return
   } catch (e) {
-    console.error('Template PDF generation failed:', e)
-    alert('Failed to export the template PDF. Please contact the administrator.')
+    console.warn('Template PDF generation failed, falling back to generated PDF:', e)
+  }
+
+  try {
+    const generated = generateGradeAmendmentPDF(data)
+    triggerPdfDownload(generated.output('blob'), filename)
+  } catch (fallbackError) {
+    console.error('Generated fallback export failed:', fallbackError)
+    alert(`Failed to export PDF. Tried template paths: ${TEMPLATE_PDF_CANDIDATES.join(', ')}.`)
   }
 }
 
@@ -743,7 +760,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
 
     // Coordinate transform: original coordinates were designed for A4 points
     // (approx. 595.28 x 841.89). Compute scale factors to adapt to the
-    // actual template page size (so placements align with `mood.pdf`).
+    // actual template page size.
     const ORIGINAL_PAGE_WIDTH = 595.28
     const ORIGINAL_PAGE_HEIGHT = 841.89
     const p1Size = page1.getSize()
