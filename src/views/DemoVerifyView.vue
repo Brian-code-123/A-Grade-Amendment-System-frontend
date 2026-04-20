@@ -46,7 +46,7 @@ function handleVerify() {
         role: 'admin'
       }
       auth.setAuth(demoToken, demoUser)
-      router.push('/')
+      router.replace(auth.resolveLandingRoute(demoUser))
     }, 800)
   } else {
     error.value = 'Incorrect verification code, please try again'

@@ -15,7 +15,7 @@ onMounted(() => {
     role: 'admin'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.replace(auth.resolveLandingRoute(demoUser))
 })
 </script>
 
