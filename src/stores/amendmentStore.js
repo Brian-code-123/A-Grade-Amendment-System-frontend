@@ -481,6 +481,41 @@ export const useAmendmentStore = defineStore('amendment', () => {
     return submitted
   }
 
+  async function createAndSubmitRealSubmissionFromAmendment(amendment, auth) {
+    const studentNo = amendment.student_no || amendment.student_id || 'Student'
+    const courseCode = amendment.course_code || 'COURSE'
+    const title = `Grade Amendment - ${courseCode} - ${studentNo}`
+    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} → ${amendment.new_grade || ''}`.trim()
+
+    const createRes = await apiFetch('/api/submissions', {
+      method: 'POST',
+      headers: auth.authHeaders(),
+      body: JSON.stringify({
+        title,
+        description,
+        amendment_ids: [amendment._id],
+        amendments: [amendment],
+        academic_year: amendment.academic_year || '',
+        term: amendment.term || ''
+      })
+    })
+    const created = await createRes.json()
+    if (!createRes.ok) {
+      throw new Error(created.message || 'Failed to create submission')
+    }
+
+    const submitRes = await apiFetch(`/api/submissions/${created._id}/submit`, {
+      method: 'POST',
+      headers: auth.authHeaders()
+    })
+    const submitted = await submitRes.json()
+    if (!submitRes.ok) {
+      throw new Error(submitted.message || 'Failed to submit submission')
+    }
+
+    return submitted
+  }
+
   async function fetchAmendments(query) {
     const auth = useAuthStore()
     loading.value = true
@@ -556,7 +591,35 @@ export const useAmendmentStore = defineStore('amendment', () => {
         : ''
       throw new Error((result.message || 'Failed to create amendment') + detail)
     }
-    
+    // Mirror demo behavior for real teacher accounts: auto-create and submit
+    // a linked submission so Programme Director review queue updates immediately.
+    if (auth.user?.role === 'Programme Director') {
+      try {
+        const submitted = await createAndSubmitRealSubmissionFromAmendment(result, auth)
+        result.submission_id = submitted._id
+
+        const linkRes = await apiFetch('/api/amendments/' + result._id, {
+          method: 'PUT',
+          headers: auth.authHeaders(),
+          body: JSON.stringify({ submission_id: submitted._id })
+        })
+        if (linkRes.ok) {
+          const linked = await linkRes.json()
+          Object.assign(result, linked)
+        }
+      } catch (syncError) {
+        try {
+          await apiFetch('/api/amendments/' + result._id, {
+            method: 'DELETE',
+            headers: auth.authHeaders()
+          })
+        } catch {
+          // Ignore rollback failures; keep the original sync error for user feedback.
+        }
+        throw new Error(`Failed to sync case to Program Director: ${syncError.message}`)
+      }
+    }
+
     // Add newly created amendment to the store immediately
     amendments.value.unshift(result)
     return result
