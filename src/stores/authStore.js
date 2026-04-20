@@ -25,6 +25,17 @@ function normalizeUser(user) {
   }
 }
 
+function resolveLandingRoute(user) {
+  const normalizedRole = normalizeRole(user?.role)
+  if (normalizedRole === 'admin') {
+    return '/admin'
+  }
+  if (normalizedRole === 'Head') {
+    return '/pd-approvals'
+  }
+  return '/amendments'
+}
+
 function getApiConfigHint() {
   if (typeof window !== 'undefined' && window.location?.hostname?.endsWith('azurestaticapps.net')) {
     return ' This site is running on Azure Static Web Apps. Set VITE_API_BASE_URL to your backend App Service URL.'
@@ -226,5 +237,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth, saveSignature }
+  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth, saveSignature, resolveLandingRoute }
 })

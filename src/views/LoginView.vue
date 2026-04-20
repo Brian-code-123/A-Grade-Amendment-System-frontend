@@ -7,7 +7,7 @@ import { apiFetch } from '@/utils/api'
 const auth = useAuthStore()
 const router = useRouter()
 
-if (auth.isLoggedIn) router.replace('/')
+if (auth.isLoggedIn) router.replace(auth.resolveLandingRoute())
 
 const tab = ref('login')
 const loading = ref(false)
@@ -99,7 +99,7 @@ function demoLoginPD() {
     role: 'Programme Director'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.replace(auth.resolveLandingRoute(demoUser))
 }
 
 function demoLoginHead() {
@@ -110,7 +110,7 @@ function demoLoginHead() {
     role: 'Head'
   }
   auth.setAuth(demoToken, demoUser)
-  router.push('/')
+  router.replace(auth.resolveLandingRoute(demoUser))
 }
 
 async function handleLogin() {
@@ -130,7 +130,7 @@ async function handleLogin() {
       loginForm.value.password, 
       loginForm.value.verificationCode
     )
-    router.push('/')
+    router.replace(auth.resolveLandingRoute())
   } catch (e) {
     error.value = e.message
   } finally {
@@ -159,7 +159,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await auth.register(regForm.value.name, regForm.value.email, regForm.value.password, regForm.value.role)
-    router.push('/')
+    router.replace(auth.resolveLandingRoute())
   } catch (e) {
     error.value = e.message
   } finally {
