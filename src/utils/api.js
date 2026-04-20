@@ -21,13 +21,9 @@ function normalizeApiBaseUrl(raw) {
   }
 }
 
-function shouldForceSameOrigin() {
-  if (typeof window === 'undefined') return false
-  const host = window.location?.hostname || ''
-  return host.endsWith('azurestaticapps.net')
-}
-
-const apiBaseUrl = shouldForceSameOrigin() ? '' : normalizeApiBaseUrl(rawApiBaseUrl)
+// Always honor a valid configured API base URL.
+// If none is configured, requests remain same-origin by default.
+const apiBaseUrl = normalizeApiBaseUrl(rawApiBaseUrl)
 
 export function buildApiUrl(path) {
   const normalizedPath = normalizePath(path)
