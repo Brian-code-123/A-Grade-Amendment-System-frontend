@@ -175,11 +175,13 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = normalizeUser(data)
           localStorage.setItem('user', JSON.stringify(user.value))
         }
-      } else {
+      } else if (res.status === 401 || res.status === 403) {
+        // Only clear local auth when backend explicitly rejects the token.
         clearAuth()
       }
     } catch (e) {
-      clearAuth()
+      // Keep existing auth state on transient network/proxy errors
+      // (e.g. ERR_CONNECTION_CLOSED), so users are not bounced to /login.
     }
   }
 
