@@ -9,6 +9,8 @@ const router = useRouter()
 
 if (auth.isLoggedIn) router.replace(auth.resolveLandingRoute())
 
+const demoSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+
 const tab = ref('login')
 const loading = ref(false)
 const error = ref('')
@@ -96,7 +98,8 @@ function demoLoginPD() {
   const demoUser = {
     email: 'martin.choy@hkbu.edu.hk',
     name: 'Dr. Martin Choy',
-    role: 'Programme Director'
+    role: 'Programme Director',
+    signature: demoSignature
   }
   auth.setAuth(demoToken, demoUser)
   router.replace(auth.resolveLandingRoute(demoUser))
@@ -107,7 +110,8 @@ function demoLoginHead() {
   const demoUser = {
     email: 'head.dept@hkbu.edu.hk',
     name: 'Prof. David Wong',
-    role: 'Head'
+    role: 'Head',
+    signature: demoSignature
   }
   auth.setAuth(demoToken, demoUser)
   router.replace(auth.resolveLandingRoute(demoUser))
