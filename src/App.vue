@@ -22,7 +22,7 @@ onMounted(() => {
 })
 
 const isAuthRoute = computed(() =>
-  ['/login', '/demo-login', '/demo-verify', '/auth-callback'].includes(route.path)
+  ['/login', '/demo-login', '/demo-verify', '/auth/callback', '/auth-callback'].includes(route.path)
 )
 
 const userInitials = computed(() => {
