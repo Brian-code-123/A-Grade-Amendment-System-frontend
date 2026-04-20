@@ -123,17 +123,24 @@ async function handleLogin() {
     error.value = 'Please enter your email and password.'
     return
   }
-  if (!loginForm.value.verificationCode) {
-    error.value = 'Please enter the verification code sent to your email.'
-    return
-  }
   loading.value = true
   try {
-    await auth.loginWithCode(
-      loginForm.value.email, 
-      loginForm.value.password, 
-      loginForm.value.verificationCode
-    )
+    if (loginForm.value.verificationCode) {
+      try {
+        await auth.loginWithCode(
+          loginForm.value.email,
+          loginForm.value.password,
+          loginForm.value.verificationCode
+        )
+      } catch (codeErr) {
+        const msg = String(codeErr?.message || '')
+        const canFallback = msg.includes('Verification code expired') || msg.includes('Invalid verification code') || msg.includes('Email and password are required')
+        if (!canFallback) throw codeErr
+        await auth.login(loginForm.value.email, loginForm.value.password)
+      }
+    } else {
+      await auth.login(loginForm.value.email, loginForm.value.password)
+    }
     router.replace(auth.resolveLandingRoute())
   } catch (e) {
     error.value = e.message
