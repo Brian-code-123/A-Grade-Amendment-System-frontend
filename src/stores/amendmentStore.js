@@ -481,11 +481,11 @@ export const useAmendmentStore = defineStore('amendment', () => {
     return submitted
   }
 
-  async function createAndSubmitRealSubmissionFromAmendment(amendment, auth) {
+  async function createAndSubmitSubmissionFromAmendment(amendment, auth) {
     const studentNo = amendment.student_no || amendment.student_id || 'Student'
     const courseCode = amendment.course_code || 'COURSE'
     const title = `Grade Amendment - ${courseCode} - ${studentNo}`
-    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} → ${amendment.new_grade || ''}`.trim()
+    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} -> ${amendment.new_grade || ''}`.trim()
 
     const createRes = await apiFetch('/api/submissions', {
       method: 'POST',
@@ -514,6 +514,11 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
 
     return submitted
+  }
+
+  function shouldAutoSyncToApprovals(auth) {
+    const role = String(auth?.user?.role || '').trim().toLowerCase()
+    return role !== 'admin' && role !== 'head'
   }
 
   async function fetchAmendments(query) {
@@ -578,7 +583,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
       return newAmendment
     }
 
-    // For real users, post to API
+    // For real users, post amendment then sync it into submission queue for PD approval.
     const res = await apiFetch('/api/amendments', {
       method: 'POST',
       headers: auth.authHeaders(),
@@ -591,17 +596,17 @@ export const useAmendmentStore = defineStore('amendment', () => {
         : ''
       throw new Error((result.message || 'Failed to create amendment') + detail)
     }
-    // Mirror demo behavior for real teacher accounts: auto-create and submit
-    // a linked submission so Programme Director review queue updates immediately.
-    if (auth.user?.role === 'Programme Director') {
+    // Auto-create and submit a linked submission so Programme Director review
+    // queue updates immediately for teacher-like roles.
+    if (shouldAutoSyncToApprovals(auth)) {
       try {
-        const submitted = await createAndSubmitRealSubmissionFromAmendment(result, auth)
+        const submitted = await createAndSubmitSubmissionFromAmendment(result, auth)
         result.submission_id = submitted._id
 
         const linkRes = await apiFetch('/api/amendments/' + result._id, {
           method: 'PUT',
           headers: auth.authHeaders(),
-          body: JSON.stringify({ submission_id: submitted._id })
+          body: JSON.stringify({ submission_id: submitted._id, status: 'Pending' })
         })
         if (linkRes.ok) {
           const linked = await linkRes.json()
