@@ -329,6 +329,28 @@ const pickFieldValue = (sources, keys) => {
   return null
 }
 
+const normalizeSignatureImage = (value) => {
+  if (value === null || value === undefined) return null
+  const normalized = String(value).trim()
+  if (!normalized) return null
+  if (/^data:image\/(png|jpe?g|webp);base64,/i.test(normalized)) {
+    return normalized
+  }
+  return null
+}
+
+const pickSignatureFieldValue = (sources, keys) => {
+  for (const src of sources) {
+    if (!src) continue
+    for (const key of keys) {
+      if (!key) continue
+      const normalized = normalizeSignatureImage(src[key])
+      if (normalized) return normalized
+    }
+  }
+  return null
+}
+
 const formatDateValue = (value, fallback) => {
   if (!value) return fallback
   const parsed = new Date(value)
@@ -338,22 +360,28 @@ const formatDateValue = (value, fallback) => {
 
 function buildPdfData(a, submission) {
   const sources = submission ? [a, submission] : [a]
-  const instructorSignature = pickFieldValue(sources, [
+  const instructorSignature = pickSignatureFieldValue(sources, [
     'instructor_signature',
     'instructorSignature',
     'teacher_signature',
     'teacherSignature',
     'faculty_signature',
     'facultySignature',
+    'submitted_by_signature',
+    'submittedBySignature',
+    'submitted_signature',
+    'submittedSignature',
     'signature'
   ]) || null
-  const endorsementSignature = pickFieldValue(sources, [
+  const endorsementSignature = pickSignatureFieldValue(sources, [
     'endorsement_signature',
     'endorsementSignature',
     'programme_director_signature',
     'programmeDirectorSignature',
     'director_signature',
     'directorSignature',
+    'approved_by_signature',
+    'approvedBySignature',
     'pd_signature',
     'pdSignature',
     'approver_signature',

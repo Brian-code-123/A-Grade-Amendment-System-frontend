@@ -266,7 +266,8 @@ export const useSubmissionStore = defineStore('submission', () => {
   const demoHeaders = (auth) => ({
     'Content-Type': 'application/json',
     'x-demo-user-name': auth.user?.name || 'Demo User',
-    'x-demo-user-email': auth.user?.email || ''
+    'x-demo-user-email': auth.user?.email || '',
+    'x-demo-user-signature': auth.user?.signature || ''
   })
 
   async function demoFetch(path, options = {}) {
