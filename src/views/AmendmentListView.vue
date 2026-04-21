@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -9,8 +10,11 @@ import SignaturePrompt from '@/components/SignaturePrompt.vue'
 const store = useAmendmentStore()
 const subStore = useSubmissionStore()
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 const canModifyAmendments = computed(() => !auth.isAdmin)
 const isDemoSession = computed(() => auth.token?.startsWith('demo_token_'))
+const requiresSignatureForNewCase = computed(() => canModifyAmendments.value && !isDemoSession.value && !auth.user?.signature)
 
 const showForm = ref(false)
 const editingId = ref(null)
@@ -96,6 +100,38 @@ function resetForm() {
   editingRejectContext.value = { status: '', reason: '', remarks: '' }
 }
 
+function promptSignatureSetup() {
+  const shouldSetup = confirm('Please set up your digital signature before creating a new amendment case. Go to Signature Setup now?')
+  if (shouldSetup) {
+    router.push('/signature-setup')
+  }
+}
+
+function canStartNewCase() {
+  if (!requiresSignatureForNewCase.value) return true
+  errorMsg.value = 'Please set up your digital signature before creating a new amendment case.'
+  promptSignatureSetup()
+  return false
+}
+
+function openNewAmendmentForm() {
+  if (!canModifyAmendments.value) {
+    errorMsg.value = 'Admin accounts can view amendment requests only.'
+    return
+  }
+
+  if (showForm.value) {
+    showForm.value = false
+    resetForm()
+    return
+  }
+
+  if (!canStartNewCase()) return
+
+  resetForm()
+  showForm.value = true
+}
+
 function validateForm() {
   const e = {}
   const f = form.value
@@ -144,6 +180,9 @@ async function submitForm() {
     errorMsg.value = 'Admin accounts can view amendment requests only.'
     return
   }
+  if (!editingId.value && !canStartNewCase()) {
+    return
+  }
   if (!validateForm()) return
   successMsg.value = ''
   errorMsg.value = ''
@@ -162,6 +201,9 @@ async function confirmAndSubmit() {
     const payload = toPayload(form.value)
     if (editingId.value) {
       const amendmentBeforeUpdate = store.amendments.find(a => a._id === editingId.value)
+      if (getAmendmentStatus(amendmentBeforeUpdate) === 'Approved') {
+        throw new Error('Approved amendment cases cannot be edited.')
+      }
       const linkedSubmissionId = amendmentBeforeUpdate?.submission_id
       const shouldResubmitRejectedCase = Boolean(
         linkedSubmissionId && getAmendmentStatus(amendmentBeforeUpdate) === 'Rejected'
@@ -190,6 +232,10 @@ async function confirmAndSubmit() {
       editingId.value = null
       showPreview.value = false
     } else {
+      if (!canStartNewCase()) {
+        showPreview.value = false
+        return
+      }
       await store.createAmendment(payload)
       successMsg.value = '✓ Amendment submitted successfully. You can still edit it from the list until approval.'
       resetForm()
@@ -212,6 +258,10 @@ function startEdit(a) {
     errorMsg.value = 'Admin accounts can view amendment requests only.'
     return
   }
+  if (getAmendmentStatus(a) === 'Approved') {
+    errorMsg.value = 'Approved amendment cases cannot be edited.'
+    return
+  }
   editingId.value = a._id
   form.value = mapAmendmentToForm(a)
   const linkedSubmission = getLinkedSubmission(a)
@@ -230,6 +280,13 @@ async function handleDelete(id) {
     errorMsg.value = 'Admin accounts can view amendment requests only.'
     return
   }
+
+  const target = store.amendments.find(a => a._id === id)
+  if (target && getAmendmentStatus(target) === 'Approved') {
+    errorMsg.value = 'Approved amendment cases cannot be deleted.'
+    return
+  }
+
   if (!confirm('Delete this amendment?')) return
   try {
     await store.deleteAmendment(id)
@@ -240,8 +297,9 @@ async function handleDelete(id) {
 }
 
 const statusBadge = (status) => {
-  const map = { Pending: 'bg-warning text-dark', Submitted: 'bg-info', Approved: 'bg-success', Rejected: 'bg-danger' }
-  return map[status] || 'bg-secondary'
+  const normalizedStatus = submissionStatusToAmendmentStatus(status)
+  const map = { Pending: 'bg-warning text-dark', Approved: 'bg-success', Rejected: 'bg-danger' }
+  return map[normalizedStatus] || 'bg-secondary'
 }
 
 const reasonLabel = (type) => {
@@ -272,14 +330,23 @@ const getAmendmentStatus = (amendment) => {
   if (linkedSubmission?.status) {
     return submissionStatusToAmendmentStatus(linkedSubmission.status)
   }
-  return amendment?.status || ''
+  return submissionStatusToAmendmentStatus(amendment?.status)
 }
 
 // Get unique status options for filter dropdown
 const statusOptions = computed(() => {
-  const statuses = [...new Set(store.amendments.map(a => getAmendmentStatus(a)).filter(Boolean))]
-  return statuses.sort()
+  const statuses = [...new Set(store.amendments.map(a => getAmendmentStatus(a)).filter(Boolean))].sort()
+  if (auth.user?.role === 'Programme Director') {
+    const allowed = ['Pending', 'Rejected', 'Approved']
+    return allowed.filter(status => statuses.includes(status))
+  }
+  return statuses
 })
+
+const canExportPdf = (amendment) => {
+  if (!canModifyAmendments.value) return true
+  return getAmendmentStatus(amendment) === 'Approved'
+}
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
@@ -343,9 +410,21 @@ const filteredAmendments = computed(() => {
 
 onMounted(async () => {
   try {
-    await store.fetchAmendments()
+    await Promise.all([
+      store.fetchAmendments(),
+      subStore.fetchSubmissions()
+    ])
+
+    if (route.query.newCase === '1') {
+      openNewAmendmentForm()
+
+      const nextQuery = { ...route.query }
+      delete nextQuery.newCase
+      delete nextQuery.source
+      router.replace({ path: route.path, query: nextQuery })
+    }
+
     if (isDemoSession.value) {
-      await subStore.fetchSubmissions()
       subStore.startDemoRealtimeSync()
     }
     if (store.error) {
@@ -369,8 +448,8 @@ onUnmounted(() => {
       <h3 class="fw-bold mb-0"><i class="bi bi-pencil-square"></i> Grade Amendments</h3>
       <div>
         <button type="button" @click="downloadTemplate()" class="btn btn-outline-secondary btn-sm me-2"><i class="bi bi-download"></i> Download Template</button>
-        <button v-if="canModifyAmendments && !auth.isHead" type="button" class="btn btn-primary btn-sm" @click.stop="showForm = !showForm; if(!showForm) resetForm()">
-          <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : 'New Amendment' }}
+        <button v-if="canModifyAmendments" type="button" class="btn btn-primary btn-sm" @click.stop="openNewAmendmentForm()">
+          <i class="bi" :class="showForm ? 'bi-x' : 'bi-plus'"></i> {{ showForm ? 'Cancel' : (auth.isHead ? 'New Case' : 'New Amendment') }}
         </button>
       </div>
     </div>
@@ -881,7 +960,7 @@ onUnmounted(() => {
                 <td><span class="badge" :class="statusBadge(getAmendmentStatus(a))">{{ getAmendmentStatus(a) }}</span></td>
                 <td>
                   <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
+                    <button v-if="canExportPdf(a)" class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
                     <button
                       v-if="canModifyAmendments"
                       :class="['btn', getAmendmentStatus(a) === 'Rejected' ? 'btn-warning' : 'btn-outline-primary']"

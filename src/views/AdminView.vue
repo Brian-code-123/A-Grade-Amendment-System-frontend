@@ -5,7 +5,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
-import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob, removeSignatureBackground } from '@/services/pdfTemplate'
+import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 
 const vueRouter = useRouter()
@@ -336,7 +336,7 @@ const formatDateValue = (value, fallback) => {
   return typeof value === 'string' ? value : fallback
 }
 
-function buildPdfData(a, cleanSig, submission) {
+function buildPdfData(a, submission) {
   const sources = submission ? [a, submission] : [a]
   const instructorSignature = pickFieldValue(sources, [
     'instructor_signature',
@@ -346,7 +346,7 @@ function buildPdfData(a, cleanSig, submission) {
     'faculty_signature',
     'facultySignature',
     'signature'
-  ]) || cleanSig || null
+  ]) || null
   const endorsementSignature = pickFieldValue(sources, [
     'endorsement_signature',
     'endorsementSignature',
@@ -358,7 +358,7 @@ function buildPdfData(a, cleanSig, submission) {
     'pdSignature',
     'approver_signature',
     'approverSignature'
-  ]) || cleanSig || null
+  ]) || null
   const instructorDateRaw = pickFieldValue(sources, [
     'instructor_date',
     'instructorDate',
@@ -391,11 +391,15 @@ function buildPdfData(a, cleanSig, submission) {
     'directorName',
     'pd_name',
     'pdName',
+    'approver_name',
+    'approverName',
+    'approved_by',
+    'approvedBy',
     'approved_by_name',
     'approvedByName'
-  ]) || auth.user?.name || ''
-  const instructorDate = formatDateValue(instructorDateRaw, new Date().toLocaleDateString())
-  const endorsementDate = formatDateValue(endorsementDateRaw, new Date().toLocaleDateString())
+  ]) || ''
+  const instructorDate = formatDateValue(instructorDateRaw, '')
+  const endorsementDate = formatDateValue(endorsementDateRaw, '')
 
   return {
     academicYear: a.academic_year || '',
@@ -498,19 +502,15 @@ async function handlePrint(id) {
       previewWindow = null
     }
 
-    const cleanSig = auth.user?.signature
-      ? await removeSignatureBackground(auth.user.signature)
-      : null
-
     if (amendments.length === 1) {
-      const pdfData = buildPdfData(amendments[0], cleanSig, submission)
+      const pdfData = buildPdfData(amendments[0], submission)
       const pdfBlob = await buildPdfBlobForExport(pdfData)
       const filename = `Grade Amendments - ${amendments[0].student_no || amendments[0].student_id || 'Form'}.pdf`
       downloadPdfBlob(pdfBlob, filename, previewWindow)
       await subStore.markPrinted(id)
     } else {
       for (const a of amendments) {
-        const pdfData = buildPdfData(a, cleanSig, submission)
+        const pdfData = buildPdfData(a, submission)
         const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
         downloadPdfBlob(pdfBlob, filename)
@@ -569,10 +569,6 @@ async function batchPrint() {
   })
   if (ids.length === 0) { errorMsg.value = 'No approved items selected for printing'; return }
 
-  const cleanSig = auth.user?.signature
-    ? await removeSignatureBackground(auth.user.signature)
-    : null
-
   let totalForms = 0
   let failedSubmissions = 0
   for (const id of ids) {
@@ -580,7 +576,7 @@ async function batchPrint() {
       const sub = subStore.submissions.find(s => s._id === id)
       const amendments = resolveAmendmentsForSubmission(sub)
       for (const a of amendments) {
-        const pdfData = buildPdfData(a, cleanSig, sub)
+        const pdfData = buildPdfData(a, sub)
         const pdfBlob = await buildPdfBlobForExport(pdfData)
         const filename = `Grade Amendments - ${a.student_no || a.student_id || 'Form'}.pdf`
         downloadPdfBlob(pdfBlob, filename)
