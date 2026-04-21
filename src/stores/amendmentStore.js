@@ -481,6 +481,23 @@ export const useAmendmentStore = defineStore('amendment', () => {
     return submitted
   }
 
+  async function createSubmitAndApproveDemoSubmissionFromAmendment(amendment, auth) {
+    const submitted = await createAndSubmitDemoSubmissionFromAmendment(amendment, auth)
+    const approveRes = await apiFetch(`/api/demo/submissions/${submitted._id}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-demo-user-name': auth.user?.name || 'Demo User',
+        'x-demo-user-email': auth.user?.email || ''
+      }
+    })
+    const approved = await approveRes.json()
+    if (!approveRes.ok) {
+      throw new Error(approved.message || 'Failed to approve demo submission')
+    }
+    return approved
+  }
+
   async function createAndSubmitSubmissionFromAmendment(amendment, auth) {
     const studentNo = amendment.student_no || amendment.student_id || 'Student'
     const courseCode = amendment.course_code || 'COURSE'
@@ -521,6 +538,19 @@ export const useAmendmentStore = defineStore('amendment', () => {
     return role !== 'admin' && role !== 'head'
   }
 
+  async function createSubmitAndApproveRealSubmissionFromAmendment(amendment, auth) {
+    const submitted = await createAndSubmitSubmissionFromAmendment(amendment, auth)
+    const approveRes = await apiFetch(`/api/submissions/${submitted._id}/approve`, {
+      method: 'POST',
+      headers: auth.authHeaders()
+    })
+    const approved = await approveRes.json()
+    if (!approveRes.ok) {
+      throw new Error(approved.message || 'Failed to approve submission')
+    }
+    return approved
+  }
+
   async function fetchAmendments(query) {
     const auth = useAuthStore()
     loading.value = true
@@ -559,6 +589,10 @@ export const useAmendmentStore = defineStore('amendment', () => {
     assertCanModifyAmendments()
     const auth = useAuthStore()
 
+    if (!isDemoUser() && !auth.user?.signature) {
+      throw new Error('Please set up your digital signature before creating a new amendment case.')
+    }
+
     // For demo users, add to local list only
     if (isDemoUser()) {
       const newAmendment = {
@@ -577,6 +611,16 @@ export const useAmendmentStore = defineStore('amendment', () => {
         } catch (syncError) {
           amendments.value = amendments.value.filter(a => a._id !== newAmendment._id)
           throw new Error(`Failed to sync case to Program Director: ${syncError.message}`)
+        }
+      } else if (auth.user?.role === 'Head') {
+        // Head (Programme Director role) can file a new case and send it directly to admin.
+        try {
+          const approved = await createSubmitAndApproveDemoSubmissionFromAmendment(newAmendment, auth)
+          newAmendment.submission_id = approved._id
+          newAmendment.status = approved.status || 'Approved'
+        } catch (syncError) {
+          amendments.value = amendments.value.filter(a => a._id !== newAmendment._id)
+          throw new Error(`Failed to send case to Admin: ${syncError.message}`)
         }
       }
 
@@ -622,6 +666,32 @@ export const useAmendmentStore = defineStore('amendment', () => {
           // Ignore rollback failures; keep the original sync error for user feedback.
         }
         throw new Error(`Failed to sync case to Program Director: ${syncError.message}`)
+      }
+    } else if (auth.user?.role === 'Head') {
+      try {
+        const approved = await createSubmitAndApproveRealSubmissionFromAmendment(result, auth)
+        result.submission_id = approved._id
+        result.status = approved.status || 'Approved'
+
+        const linkRes = await apiFetch('/api/amendments/' + result._id, {
+          method: 'PUT',
+          headers: auth.authHeaders(),
+          body: JSON.stringify({ submission_id: approved._id })
+        })
+        if (linkRes.ok) {
+          const linked = await linkRes.json()
+          Object.assign(result, linked)
+        }
+      } catch (syncError) {
+        try {
+          await apiFetch('/api/amendments/' + result._id, {
+            method: 'DELETE',
+            headers: auth.authHeaders()
+          })
+        } catch {
+          // Ignore rollback failures; keep the original sync error for user feedback.
+        }
+        throw new Error(`Failed to send case to Admin: ${syncError.message}`)
       }
     }
 
