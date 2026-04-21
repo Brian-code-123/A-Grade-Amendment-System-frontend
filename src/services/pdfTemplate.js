@@ -8,20 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { PDFDocument } from 'pdf-lib'
 
 // Template PDF used as the base for coordinate-based filling.
-// Keep the active template as `public/template.pdf` for both admin and teacher exports.
-const customTemplatePath = import.meta.env.VITE_TEMPLATE_PDF_PATH
-const normalizedCustomTemplatePath = customTemplatePath
-  ? (customTemplatePath.startsWith('/') ? customTemplatePath : `/${customTemplatePath}`)
-  : null
-const KNOWN_TEMPLATE_FILENAME_CANDIDATES = [
-  '/HONG KONG BAPTIST UNIVERSITY.pdf'
-]
-const TEMPLATE_PDF_CANDIDATES = [
-  normalizedCustomTemplatePath,
-  '/template.pdf',
-  '/form.pdf',
-  ...KNOWN_TEMPLATE_FILENAME_CANDIDATES
-].filter(Boolean)
+const ACTIVE_TEMPLATE_PDF_PATH = '/mood.pdf'
 const TEMPLATE_CACHE_VERSION = '20260416-3'
 
 function triggerPdfDownload(blob, filename) {
@@ -36,25 +23,20 @@ function triggerPdfDownload(blob, filename) {
 }
 
 async function loadTemplatePdfBytes() {
-  let lastError = null
-  for (const templatePath of TEMPLATE_PDF_CANDIDATES) {
-    const templateUrl = `${templatePath}?v=${TEMPLATE_CACHE_VERSION}`
-    try {
-      const response = await fetch(templateUrl, { cache: 'no-store' })
-      if (!response.ok) {
-        lastError = new Error(`Failed to load PDF template from ${templateUrl} (HTTP ${response.status})`)
-        continue
-      }
-      return {
-        bytes: await response.arrayBuffer(),
-        templatePath,
-      }
-    } catch (e) {
-      lastError = e
+  const templatePath = ACTIVE_TEMPLATE_PDF_PATH
+  const templateUrl = `${templatePath}?v=${TEMPLATE_CACHE_VERSION}`
+  try {
+    const response = await fetch(templateUrl, { cache: 'no-store' })
+    if (!response.ok) {
+      throw new Error(`Failed to load PDF template from ${templateUrl} (HTTP ${response.status})`)
     }
+    return {
+      bytes: await response.arrayBuffer(),
+      templatePath,
+    }
+  } catch (e) {
+    throw new Error(`Failed to load PDF template from ${templatePath}. ${e?.message || ''}`)
   }
-  const attempted = TEMPLATE_PDF_CANDIDATES.join(', ')
-  throw new Error(`Failed to load PDF template from any configured path: ${attempted}. ${lastError?.message || ''}`)
 }
 
 export async function getTemplatePdfBlob() {
@@ -70,7 +52,7 @@ export async function downloadTemplate() {
     triggerPdfDownload(blob, templatePath.split('/').pop() || 'template.pdf')
   } catch (e) {
     console.error('Error downloading template:', e)
-    alert(`Failed to download template from configured paths: ${TEMPLATE_PDF_CANDIDATES.join(', ')}.`)
+    alert(`Failed to download template from ${ACTIVE_TEMPLATE_PDF_PATH}.`)
   }
 }
 
@@ -145,6 +127,29 @@ export function removeSignatureBackground(dataUrl) {
     img.onerror = () => resolve(dataUrl) // fallback to original
     img.src = dataUrl
   })
+}
+
+async function embedSignatureImage(pdfDoc, signatureDataUrl) {
+  const normalizedSignature = String(signatureDataUrl || '').trim()
+  if (!normalizedSignature) return null
+
+  if (/^data:image\/png;base64,/i.test(normalizedSignature)) {
+    return pdfDoc.embedPng(normalizedSignature)
+  }
+
+  if (/^data:image\/jpe?g;base64,/i.test(normalizedSignature)) {
+    return pdfDoc.embedJpg(normalizedSignature)
+  }
+
+  try {
+    return await pdfDoc.embedPng(normalizedSignature)
+  } catch {
+    try {
+      return await pdfDoc.embedJpg(normalizedSignature)
+    } catch {
+      return null
+    }
+  }
 }
 
 /* ── Constants ───────────────────────────────────────────────────── */
@@ -739,7 +744,7 @@ export async function downloadFilledForm(amendment) {
     triggerPdfDownload(generated.output('blob'), filename)
   } catch (fallbackError) {
     console.error('Generated fallback export failed:', fallbackError)
-    alert(`Failed to export PDF. Tried template paths: ${TEMPLATE_PDF_CANDIDATES.join(', ')}.`)
+    alert(`Failed to export PDF. Tried template path: ${ACTIVE_TEMPLATE_PDF_PATH}.`)
   }
 }
 
@@ -807,7 +812,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       if (!signatureDataUrl) return
       try {
         const m = map(x, y)
-        const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
+        const signatureImage = await embedSignatureImage(pdfDoc, signatureDataUrl)
+        if (!signatureImage) return
         page1.drawImage(signatureImage, {
           x: m.x,
           y: m.y,
@@ -949,7 +955,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
         if (!signatureDataUrl) return
         try {
           const m = map2(x, y)
-          const signatureImage = await pdfDoc.embedPng(signatureDataUrl)
+          const signatureImage = await embedSignatureImage(pdfDoc, signatureDataUrl)
+          if (!signatureImage) return
           page2.drawImage(signatureImage, { x: m.x, y: m.y, width: width * scaleX2, height: height * scaleY2 })
         } catch (e) {
           console.warn(`Page2: Failed to add signature at ${x}, ${y}:`, e.message)

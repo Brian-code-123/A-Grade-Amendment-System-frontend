@@ -72,6 +72,7 @@ async function doImport() {
         if (rowErrors.length > 0) {
           errors.push({ row: i + 2, errors: rowErrors })
         } else {
+          const userSignature = String(auth.user?.signature || '').trim()
           await store.createAmendment({
             academic_year: academicYear,
             term: term,
@@ -84,7 +85,10 @@ async function doImport() {
             reason_type: reasonType,
             reason_details: reasonDetails,
             instructor_name: instructorName,
-            department: department
+            department: department,
+            instructor_signature: userSignature,
+            teacher_signature: userSignature,
+            submitted_by_signature: userSignature
           })
           imported++
         }
