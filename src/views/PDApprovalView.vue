@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,6 +9,7 @@ import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
+const router = useRouter()
 
 const successMsg = ref('')
 const errorMsg = ref('')
@@ -118,6 +120,18 @@ function openReject(id) {
   rejectModal.value = true
 }
 
+function openNewCase() {
+  if (!auth.user?.signature) {
+    const shouldSetup = confirm('Please set up your digital signature before starting a new amendment case. Go to Signature Setup now?')
+    if (shouldSetup) {
+      router.push('/signature-setup')
+    }
+    return
+  }
+
+  router.push({ path: '/amendments', query: { newCase: '1', source: 'pd-approvals' } })
+}
+
 async function confirmReject() {
   const id = rejectId.value
   if (!id || actioning[id]) return
@@ -177,8 +191,13 @@ onUnmounted(() => {
         <h2 class="fw-bold mb-1">Cases for Approval</h2>
         <small class="text-muted">Review and approve grade amendment submissions from teachers</small>
       </div>
-      <div class="badge bg-primary px-3 py-2 rounded-pill" style="font-size:0.85rem">
-        <i class="bi bi-person-check me-1"></i>Programme Director
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-primary" @click="openNewCase">
+          <i class="bi bi-plus-lg me-1"></i>New Case
+        </button>
+        <div class="badge bg-primary px-3 py-2 rounded-pill" style="font-size:0.85rem">
+          <i class="bi bi-person-check me-1"></i>Programme Director
+        </div>
       </div>
     </div>
 
