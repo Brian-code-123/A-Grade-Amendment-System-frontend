@@ -157,6 +157,8 @@ function validateForm() {
 }
 
 function toPayload(f) {
+  const userSignature = String(auth.user?.signature || '').trim()
+
   return {
     academic_year: f.academicYear,
     term: f.term,
@@ -171,7 +173,10 @@ function toPayload(f) {
     appeal_grounds: f.appealGrounds,
     appeal_details: f.appealDetails,
     instructor_name: f.instructorName,
-    department: f.department
+    department: f.department,
+    instructor_signature: userSignature,
+    teacher_signature: userSignature,
+    submitted_by_signature: userSignature
   }
 }
 
