@@ -475,9 +475,37 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
-  async function resubmitSubmission(id) {
+  function buildSubmissionRefreshPayload(amendment) {
+    if (!amendment || typeof amendment !== 'object') return null
+
+    const studentNo = amendment.student_no || amendment.student_id || 'Student'
+    const courseCode = amendment.course_code || 'COURSE'
+    const title = `Grade Amendment - ${courseCode} - ${studentNo}`
+    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} -> ${amendment.new_grade || ''}`.trim()
+
+    return {
+      title,
+      description,
+      amendment_ids: amendment._id ? [amendment._id] : [],
+      amendments: [amendment],
+      amendment_count: 1,
+      academic_year: amendment.academic_year || '',
+      term: amendment.term || ''
+    }
+  }
+
+  async function resubmitSubmission(id, options = {}) {
+    const refreshPayload = buildSubmissionRefreshPayload(options.amendment)
+
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id + '/resubmit', { method: 'POST' })
+      const requestOptions = {
+        method: 'POST'
+      }
+      if (refreshPayload) {
+        requestOptions.body = JSON.stringify(refreshPayload)
+      }
+
+      const res = await demoFetch('/' + id + '/resubmit', requestOptions)
       const result = await res.json()
       if (!res.ok) throw new Error(result.message || 'Resubmit failed')
       await fetchSubmissions(undefined, { silent: true })
@@ -485,9 +513,16 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     const auth = useAuthStore()
-    const res = await apiFetch('/api/submissions/' + id + '/resubmit', {
+    const requestOptions = {
       method: 'POST',
       headers: auth.authHeaders()
+    }
+    if (refreshPayload) {
+      requestOptions.body = JSON.stringify(refreshPayload)
+    }
+
+    const res = await apiFetch('/api/submissions/' + id + '/resubmit', {
+      ...requestOptions
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Resubmit failed')
