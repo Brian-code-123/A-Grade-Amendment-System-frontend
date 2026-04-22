@@ -223,7 +223,10 @@ async function confirmAndSubmit() {
       }
 
       if (shouldResubmitRejectedCase) {
-        await subStore.resubmitSubmission(linkedSubmissionId)
+        const amendmentForResubmit = updated && typeof updated === 'object'
+          ? updated
+          : (store.amendments.find(a => a._id === editingId.value) || amendmentBeforeUpdate)
+        await subStore.resubmitSubmission(linkedSubmissionId, { amendment: amendmentForResubmit })
         successMsg.value = '✓ Amendment updated and resubmitted successfully. Status is now Pending for review.'
       } else {
         successMsg.value = '✓ Amendment updated successfully. You can continue editing until it is approved.'
