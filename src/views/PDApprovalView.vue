@@ -22,6 +22,7 @@ const detailAmendments = ref([])
 const searchQuery = ref('')
 const statusFilter = ref('All')
 const actioning = reactive({})
+let realSyncIntervalId = null
 
 // Only show Submitted, Approved, Rejected — no Draft
 const visibleSubmissions = computed(() => {
@@ -175,10 +176,22 @@ const filterBtnClass = (opt) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+
+  if (auth.user?.role === 'Head' && !auth.token?.startsWith('demo_token_')) {
+    realSyncIntervalId = window.setInterval(() => {
+      subStore.fetchSubmissions(undefined, { silent: true })
+      amStore.fetchAmendments(undefined, { silent: true })
+    }, 10000)
+  }
+
   subStore.startDemoRealtimeSync()
 })
 
 onUnmounted(() => {
+  if (realSyncIntervalId) {
+    window.clearInterval(realSyncIntervalId)
+    realSyncIntervalId = null
+  }
   subStore.stopDemoRealtimeSync()
 })
 </script>
