@@ -4,9 +4,9 @@
   --sky-100: #e0efff;
   --sky-200: #b9dffe;
   --sky-300: #7cc5fd;
-  --sky-400: #36a9fa;
-  --sky-500: #0c8eeb;
-  --sky-600: #0070c9;
+  --sky-400: #8aaec7;
+  --sky-500: #7ea2bd;
+  --sky-600: #617d93;
   --sky-700: #0059a3;
   --sky-800: #054b86;
   --sky-900: #0a3f6f;
@@ -53,15 +53,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
+    --color-background: #0f1722;
+    --color-background-soft: #152133;
+    --color-background-mute: #1a2740;
 
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
+    --color-border: rgba(126, 144, 161, 0.22);
+    --color-border-hover: rgba(126, 144, 161, 0.34);
 
     --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
+    --color-text: rgba(226, 234, 240, 0.72);
   }
 }
 

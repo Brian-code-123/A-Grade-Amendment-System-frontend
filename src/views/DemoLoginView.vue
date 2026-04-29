@@ -74,7 +74,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 1.2rem;
-  background: linear-gradient(135deg, rgba(12,142,235,0.12), rgba(54,169,250,0.1));
+  background: linear-gradient(135deg, rgba(12,142,235,0.12), rgba(54,169,250,0.06));
   border: 1.5px solid rgba(12,142,235,0.25);
   border-radius: 20px;
   color: #0c8eeb;
@@ -82,17 +82,17 @@ onMounted(() => {
 }
 
 [data-bs-theme="dark"] .login-bg {
-  background: linear-gradient(135deg, rgba(0,180,216,0.06), rgba(0,144,184,0.04));
+  background: linear-gradient(135deg, rgba(126,162,189,0.06), rgba(95,124,150,0.04));
 }
 
 [data-bs-theme="dark"] .glass-card {
   background: rgba(15,35,65,0.6);
-  border-color: rgba(0,180,216,0.15);
+  border-color: rgba(126,162,189,0.15);
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
 [data-bs-theme="dark"] .logo-pill {
   background: rgba(30,50,80,0.7);
-  box-shadow: 0 0 12px rgba(0,180,216,0.12);
+  box-shadow: 0 0 12px rgba(126,162,189,0.12);
 }
 </style>
