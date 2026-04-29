@@ -270,7 +270,7 @@ onMounted(() => {
     </div>
 
     <!-- Batch submit toolbar -->
-    <div v-if="draftSubmissions.length > 0" class="card shadow-sm mb-3 border-0" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)">
+    <div v-if="draftSubmissions.length > 0" class="card shadow-sm mb-3 border-0 batch-toolbar">
       <div class="card-body py-3">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div class="d-flex align-items-center gap-2">
@@ -347,7 +347,10 @@ onMounted(() => {
                   </span>
                   <span v-else-if="s.status === 'Approved'" class="text-success small"><i class="bi bi-check-circle"></i> Approved</span>
                   <div v-else-if="s.status === 'Rejected'" class="d-flex flex-column gap-1">
-                    <button class="btn btn-sm btn-outline-primary" @click="router.push('/amendments')">
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      @click="router.push({ path: '/amendments', query: { source: 'submission', submissionId: s._id } })"
+                    >
                       <i class="bi bi-pencil me-1"></i>Edit Amendments
                     </button>
                     <button class="btn btn-sm btn-warning" @click="resubmitToPD(s._id)" :disabled="submitting[s._id]">
@@ -386,3 +389,13 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.batch-toolbar {
+  background: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);
+}
+
+[data-bs-theme="dark"] .batch-toolbar {
+  background: linear-gradient(135deg, rgba(126,162,189,0.06), rgba(95,124,150,0.04));
+}
+</style>

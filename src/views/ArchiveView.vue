@@ -141,9 +141,9 @@ h2 { color: #0066CC; font-weight: 700; }
 .card-header { background: #f8f9fa; border-bottom: 1px solid rgba(0,0,0,0.08); color: #0066CC; font-weight: 600; }
 .table th { font-weight: 600; font-size: 0.85rem; color: #0066CC; text-transform: uppercase; letter-spacing: 0.3px; padding: 0.75rem; }
 .table td { vertical-align: middle; padding: 0.75rem; }
-[data-bs-theme="dark"] h2 { color: #0099FF; }
-[data-bs-theme="dark"] .card { background: #152338; border-color: rgba(255,255,255,0.08); }
-[data-bs-theme="dark"] .card-header { background: #0f1e30; color: #0099FF; border-color: rgba(255,255,255,0.08); }
-[data-bs-theme="dark"] .table th { color: #0099FF; background: #0f1e30; }
-[data-bs-theme="dark"] .table { color: #e5e7eb; }
+[data-bs-theme="dark"] h2 { color: #9db2c2; }
+[data-bs-theme="dark"] .card { background: #152233; border-color: rgba(122,154,184,0.08); }
+[data-bs-theme="dark"] .card-header { background: #111b29; color: #9db2c2; border-color: rgba(122,154,184,0.08); }
+[data-bs-theme="dark"] .table th { color: #9db2c2; background: #111b29; }
+[data-bs-theme="dark"] .table { color: #d6e0e8; }
 </style>
