@@ -432,9 +432,6 @@ onMounted(async () => {
       router.replace({ path: route.path, query: nextQuery })
     }
 
-    if (isDemoSession.value) {
-      subStore.startDemoRealtimeSync()
-    }
     if (store.error) {
       errorMsg.value = 'Failed to load amendments: ' + store.error
     }
@@ -444,7 +441,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  subStore.stopDemoRealtimeSync()
 })
 </script>
 

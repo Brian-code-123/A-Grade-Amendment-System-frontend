@@ -183,8 +183,6 @@ onMounted(() => {
       amStore.fetchAmendments(undefined, { silent: true })
     }, 10000)
   }
-
-  subStore.startDemoRealtimeSync()
 })
 
 onUnmounted(() => {
@@ -192,7 +190,6 @@ onUnmounted(() => {
     window.clearInterval(realSyncIntervalId)
     realSyncIntervalId = null
   }
-  subStore.stopDemoRealtimeSync()
 })
 </script>
 

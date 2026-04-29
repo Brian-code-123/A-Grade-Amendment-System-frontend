@@ -255,63 +255,10 @@ export const useSubmissionStore = defineStore('submission', () => {
   const currentSubmission = ref(null)
   const loading = ref(false)
   const error = ref('')
-  let demoSyncSubscribers = 0
-  let demoSyncIntervalId = null
 
   const isDemoUser = () => {
     const auth = useAuthStore()
     return auth.token?.startsWith('demo_token_')
-  }
-
-  const demoHeaders = (auth) => ({
-    'Content-Type': 'application/json',
-    'x-demo-user-name': auth.user?.name || 'Demo User',
-    'x-demo-user-email': auth.user?.email || '',
-    'x-demo-user-signature': auth.user?.signature || ''
-  })
-
-  async function demoFetch(path, options = {}) {
-    const auth = useAuthStore()
-    const headers = Object.assign({}, demoHeaders(auth), options.headers || {})
-    return apiFetch('/api/demo/submissions' + path, Object.assign({}, options, { headers }))
-  }
-
-  async function syncDemoSubmissions() {
-    if (!isDemoUser()) return
-    await fetchSubmissions(undefined, { silent: true })
-  }
-
-  function startDemoRealtimeSync() {
-    if (!isDemoUser()) {
-      return () => {}
-    }
-
-    demoSyncSubscribers += 1
-    if (demoSyncSubscribers > 1) {
-      return stopDemoRealtimeSync
-    }
-
-    syncDemoSubmissions().catch(() => {})
-
-    demoSyncIntervalId = window.setInterval(() => {
-      syncDemoSubmissions().catch(() => {})
-    }, DEMO_SYNC_POLL_MS)
-
-    return stopDemoRealtimeSync
-  }
-
-  function stopDemoRealtimeSync() {
-    if (demoSyncSubscribers > 0) {
-      demoSyncSubscribers -= 1
-    }
-    if (demoSyncSubscribers > 0) {
-      return
-    }
-
-    if (demoSyncIntervalId) {
-      window.clearInterval(demoSyncIntervalId)
-      demoSyncIntervalId = null
-    }
   }
 
   async function fetchSubmissions(query, options = {}) {
@@ -321,15 +268,8 @@ export const useSubmissionStore = defineStore('submission', () => {
     error.value = ''
 
     if (isDemoUser()) {
-      try {
-        const res = await demoFetch('')
-        if (!res.ok) throw new Error('Failed to fetch demo submissions')
-        submissions.value = await res.json()
-      } catch (e) {
-        error.value = e.message
-      } finally {
-        if (!silent) loading.value = false
-      }
+      submissions.value = readDemoSubmissions(auth.user?.role)
+      if (!silent) loading.value = false
       return
     }
 
@@ -355,9 +295,9 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function fetchSubmission(id) {
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id)
-      if (!res.ok) throw new Error('Not found')
-      currentSubmission.value = await res.json()
+      const adminSubs = readDemoSubmissions('admin')
+      const pdSubs = readDemoSubmissions('Head')
+      currentSubmission.value = [...adminSubs, ...pdSubs].find(s => s._id === id) || null
       return
     }
 
@@ -376,14 +316,20 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function createSubmission(data) {
     if (isDemoUser()) {
-      const res = await demoFetch('', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Failed to create submission')
-      submissions.value.unshift(result)
-      return result
+      const auth = useAuthStore()
+      const role = auth.user?.role
+      const newSub = {
+        _id: 'ds_' + Date.now(),
+        ...data,
+        status: 'Draft',
+        amendment_count: data.amendment_ids?.length || 0,
+        submitted_by: auth.user?.name || 'Demo User',
+        submitted_by_name: auth.user?.name || 'Demo User',
+        created_at: new Date().toISOString()
+      }
+      submissions.value.unshift(newSub)
+      writeDemoSubmissions(role, submissions.value)
+      return newSub
     }
 
     const auth = useAuthStore()
@@ -405,11 +351,14 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function submitToAdmin(id) {
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id + '/submit', { method: 'POST' })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Submit failed')
-      await fetchSubmissions(undefined, { silent: true })
-      return result
+      const auth = useAuthStore()
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.status = 'Submitted'
+        s.submitted_at = new Date().toISOString()
+        writeDemoSubmissions(auth.user?.role, submissions.value)
+      }
+      return s
     }
 
     const auth = useAuthStore()
@@ -430,11 +379,14 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id + '/approve', { method: 'POST' })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Approve failed')
-      await fetchSubmissions(undefined, { silent: true })
-      return result
+      const role = auth.user?.role
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.status = 'Approved'
+        s.approved_at = new Date().toISOString()
+        writeDemoSubmissions(role, submissions.value)
+      }
+      return s
     }
 
     const res = await apiFetch('/api/submissions/' + id + '/approve', {
@@ -454,14 +406,15 @@ export const useSubmissionStore = defineStore('submission', () => {
     }
 
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id + '/reject', {
-        method: 'POST',
-        body: JSON.stringify({ reason })
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Reject failed')
-      await fetchSubmissions(undefined, { silent: true })
-      return result
+      const role = auth.user?.role
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.status = 'Rejected'
+        s.rejection_reason = reason
+        s.rejected_at = new Date().toISOString()
+        writeDemoSubmissions(role, submissions.value)
+      }
+      return s
     }
 
     const res = await apiFetch('/api/submissions/' + id + '/reject', {
@@ -475,54 +428,24 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
-  function buildSubmissionRefreshPayload(amendment) {
-    if (!amendment || typeof amendment !== 'object') return null
-
-    const studentNo = amendment.student_no || amendment.student_id || 'Student'
-    const courseCode = amendment.course_code || 'COURSE'
-    const title = `Grade Amendment - ${courseCode} - ${studentNo}`
-    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} -> ${amendment.new_grade || ''}`.trim()
-
-    return {
-      title,
-      description,
-      amendment_ids: amendment._id ? [amendment._id] : [],
-      amendments: [amendment],
-      amendment_count: 1,
-      academic_year: amendment.academic_year || '',
-      term: amendment.term || ''
-    }
-  }
-
-  async function resubmitSubmission(id, options = {}) {
-    const refreshPayload = buildSubmissionRefreshPayload(options.amendment)
-
+  async function resubmitSubmission(id) {
     if (isDemoUser()) {
-      const requestOptions = {
-        method: 'POST'
+      const auth = useAuthStore()
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.status = 'Submitted'
+        s.submitted_at = new Date().toISOString()
+        delete s.rejection_reason
+        delete s.rejected_at
+        writeDemoSubmissions(auth.user?.role, submissions.value)
       }
-      if (refreshPayload) {
-        requestOptions.body = JSON.stringify(refreshPayload)
-      }
-
-      const res = await demoFetch('/' + id + '/resubmit', requestOptions)
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Resubmit failed')
-      await fetchSubmissions(undefined, { silent: true })
-      return result
+      return s
     }
 
     const auth = useAuthStore()
-    const requestOptions = {
+    const res = await apiFetch('/api/submissions/' + id + '/resubmit', {
       method: 'POST',
       headers: auth.authHeaders()
-    }
-    if (refreshPayload) {
-      requestOptions.body = JSON.stringify(refreshPayload)
-    }
-
-    const res = await apiFetch('/api/submissions/' + id + '/resubmit', {
-      ...requestOptions
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Resubmit failed')
@@ -540,11 +463,14 @@ export const useSubmissionStore = defineStore('submission', () => {
 
   async function markPrinted(id) {
     if (isDemoUser()) {
-      const res = await demoFetch('/' + id + '/print', { method: 'POST' })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Print failed')
-      await fetchSubmissions(undefined, { silent: true })
-      return result
+      const auth = useAuthStore()
+      const s = submissions.value.find(s => s._id === id)
+      if (s) {
+        s.printed = true
+        s.printed_at = new Date().toISOString()
+        writeDemoSubmissions(auth.user?.role, submissions.value)
+      }
+      return s
     }
 
     const auth = useAuthStore()
@@ -570,8 +496,6 @@ export const useSubmissionStore = defineStore('submission', () => {
     approveSubmission,
     rejectSubmission,
     resubmitSubmission,
-    markPrinted,
-    startDemoRealtimeSync,
-    stopDemoRealtimeSync
+    markPrinted
   }
 })

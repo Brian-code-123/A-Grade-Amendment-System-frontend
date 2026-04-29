@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
@@ -222,11 +222,6 @@ const statusBadge = (status) => {
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
-  subStore.startDemoRealtimeSync()
-})
-
-onUnmounted(() => {
-  subStore.stopDemoRealtimeSync()
 })
 </script>
 
