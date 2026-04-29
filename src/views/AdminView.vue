@@ -295,8 +295,8 @@ function resolveAmendmentsForSubmission(submission) {
   if (submission?.amendment_count > 0) {
     const title = String(submission?.title || '')
     const description = String(submission?.description || '')
-    const titleMatch = title.match(/Grade\s+Amendment\s*[-–—]\s*([^\-–—]+?)\s*[-–—]\s*(.+)$/i)
-    const gradeMatch = description.match(/([A-Za-z][+\-]?)\s*(?:-?>|=>|→|➡)\s*([A-Za-z][+\-]?)/i)
+    const titleMatch = title.match(/Grade\s+Amendment\s*[-–—]\s*([^-–—]+?)\s*[-–—]\s*(.+)$/i)
+    const gradeMatch = description.match(/([A-Za-z][+-]?)\s*(?:-?>|=>|→|➡)\s*([A-Za-z][+-]?)/i)
 
     return [{
       _id: `fallback-${submission._id || Date.now()}`,
@@ -1130,8 +1130,8 @@ h2 {
 }
 
 [data-bs-theme="dark"] .nav-link.active {
-  color: #0099FF;
-  border-color: #0099FF;
+  color: #9db2c2;
+  border-color: #9db2c2;
 }
 
 /* === Stat Cards === */
@@ -1168,13 +1168,13 @@ h2 {
 }
 
 [data-bs-theme="dark"] .stat-card {
-  background: #1e3a5f;
-  border-color: rgba(0, 102, 204, 0.2);
+  background: #152233;
+  border-color: rgba(122,154,184,0.12);
 }
 
 [data-bs-theme="dark"] .stat-card:hover {
-  background: #253a5f;
-  box-shadow: 0 8px 20px rgba(0, 102, 204, 0.25);
+  background: #1a2740;
+  box-shadow: 0 8px 20px rgba(122,154,184,0.18);
 }
 
 .stat-number {
@@ -1193,7 +1193,7 @@ h2 {
 }
 
 [data-bs-theme="dark"] .stat-label {
-  color: #9ca3af;
+  color: #a3b0ba;
 }
 
 /* === Input & Form Elements === */
@@ -1214,20 +1214,20 @@ h2 {
 }
 
 [data-bs-theme="dark"] .form-control {
-  background: #0f1e30;
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
+  background: #111b29;
+  border-color: rgba(122,154,184,0.1);
+  color: #d6e0e8;
 }
 
 [data-bs-theme="dark"] .form-control:focus {
-  border-color: #0099FF;
-  box-shadow: 0 0 0 0.2rem rgba(0, 153, 255, 0.25);
+  border-color: #9db2c2;
+  box-shadow: 0 0 0 0.2rem rgba(157,178,194,0.18);
 }
 
 [data-bs-theme="dark"] .input-group-text {
-  background: #0f1e30 !important;
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
+  background: #111b29 !important;
+  border-color: rgba(122,154,184,0.1);
+  color: #a3b0ba;
 }
 
 /* === Filter Buttons === */
@@ -1258,13 +1258,13 @@ h2 {
 }
 
 [data-bs-theme="dark"] .table th {
-  background: #0f1e30;
-  color: #0099FF;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #111b29;
+  color: #9db2c2;
+  border-color: rgba(122,154,184,0.1);
 }
 
 [data-bs-theme="dark"] .table {
-  color: #e5e7eb;
+  color: #d6e0e8;
 }
 
 .table tbody tr {
@@ -1276,7 +1276,7 @@ h2 {
 }
 
 [data-bs-theme="dark"] .table tbody tr:hover {
-  background: rgba(0, 153, 255, 0.08);
+  background: rgba(157,178,194,0.08);
 }
 
 .table tbody tr.table-active {
@@ -1285,7 +1285,7 @@ h2 {
 }
 
 [data-bs-theme="dark"] .table tbody tr.table-active {
-  background: rgba(0, 153, 255, 0.15) !important;
+  background: rgba(157,178,194,0.12) !important;
 }
 
 .table td {
@@ -1295,7 +1295,7 @@ h2 {
 }
 
 [data-bs-theme="dark"] .table td {
-  border-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(122,154,184,0.05);
 }
 
 /* === Badges === */
@@ -1311,7 +1311,7 @@ h2 {
 }
 
 [data-bs-theme="dark"] .bg-info {
-  background-color: #00CCFF !important;
+  background-color: #7ea2bd !important;
 }
 
 /* === Cards === */
@@ -1327,12 +1327,12 @@ h2 {
 }
 
 [data-bs-theme="dark"] .card {
-  background: #152338;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: #152233;
+  border-color: rgba(122,154,184,0.08);
 }
 
 [data-bs-theme="dark"] .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 153, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(122,154,184,0.1);
 }
 
 .card-header {
@@ -1343,9 +1343,9 @@ h2 {
 }
 
 [data-bs-theme="dark"] .card-header {
-  background: #0f1e30;
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #0099FF;
+  background: #111b29;
+  border-color: rgba(122,154,184,0.08);
+  color: #9db2c2;
 }
 
 /* === Button Styling === */

@@ -255,7 +255,7 @@ const dismissSignatureWarning = () => {
 }
 
 .avatar-placeholder {
-  background: linear-gradient(135deg, #0c8eeb 0%, #36a9fa 100%);
+  background: linear-gradient(135deg, var(--sky-500) 0%, var(--sky-400) 100%);
 }
 
 .info-group {

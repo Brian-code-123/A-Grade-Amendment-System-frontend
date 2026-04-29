@@ -296,9 +296,9 @@ function handleLogout() {
   z-index: 1000;
 }
 .navbar-dark.app-nav {
-  background: #0d1b2a !important;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  box-shadow: 0 1px 12px rgba(0,0,0,0.35);
+  background: #101826 !important;
+  border-bottom: 1px solid rgba(122,154,184,0.08);
+  box-shadow: 0 1px 12px rgba(0,0,0,0.28);
 }
 
 /* Brand */
@@ -322,7 +322,7 @@ function handleLogout() {
   vertical-align: middle;
   flex-shrink: 0;
 }
-.navbar-dark .nav-divider { background: rgba(255,255,255,0.2); }
+.navbar-dark .nav-divider { background: rgba(148,168,184,0.18); }
 .nav-brand-text {
   font-size: 0.82rem;
   font-weight: 600;
@@ -331,7 +331,7 @@ function handleLogout() {
   line-height: 1.2;
   white-space: nowrap;
 }
-.navbar-dark .nav-brand-text { color: #c8ddef; }
+.navbar-dark .nav-brand-text { color: #c7d2db; }
 
 /* ── Nav tabs — underline indicator style ── */
 .nav-tab {
@@ -369,10 +369,10 @@ function handleLogout() {
   box-shadow: none;
   border: none;
 }
-.navbar-dark .nav-tab { color: #8ba5bf; }
+.navbar-dark .nav-tab { color: #94a8b8; }
 .navbar-dark .nav-tab:hover,
-.navbar-dark .nav-tab.active { color: #4ecff5 !important; }
-.navbar-dark .nav-tab::after { background: #00b4d8; }
+.navbar-dark .nav-tab.active { color: #b2c5d2 !important; }
+.navbar-dark .nav-tab::after { background: #8aa7bb; }
 
 /* ── Icon-only button ── */
 .btn-icon {
@@ -409,11 +409,11 @@ function handleLogout() {
   box-shadow: none;
 }
 .user-btn:hover {
-  border-color: #0c8eeb;
+  border-color: var(--sky-500);
   background: rgba(12,142,235,0.05);
 }
-.navbar-dark .user-btn { border-color: rgba(0,180,216,0.28); }
-.navbar-dark .user-btn:hover { border-color: #00b4d8; background: rgba(0,180,216,0.08); }
+.navbar-dark .user-btn { border-color: rgba(122,154,184,0.24); }
+.navbar-dark .user-btn:hover { border-color: #8aa7bb; background: rgba(126,162,189,0.08); }
 .user-avatar {
   width: 28px; height: 28px;
   border-radius: 50%;
@@ -425,7 +425,7 @@ function handleLogout() {
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }
-.navbar-dark .user-avatar { background: linear-gradient(135deg, #00b4d8, #0090b8); }
+.navbar-dark .user-avatar { background: linear-gradient(135deg, #7a9cb6, #617d93); }
 .user-name {
   font-size: 0.912rem;
   font-weight: 500;
@@ -435,7 +435,7 @@ function handleLogout() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.navbar-dark .user-name { color: #c0d4e6; }
+.navbar-dark .user-name { color: #c7d2db; }
 
 /* ── Login button ── */
 .nav-login-btn {
@@ -457,7 +457,7 @@ function handleLogout() {
   box-shadow: 0 4px 14px rgba(12,142,235,0.38);
   color: #fff;
 }
-.navbar-dark .nav-login-btn { background: linear-gradient(135deg, #00b4d8, #0090b8); box-shadow: 0 2px 8px rgba(0,180,216,0.3); }
+.navbar-dark .nav-login-btn { background: linear-gradient(135deg, #7a9cb6, #617d93); box-shadow: 0 2px 8px rgba(97,125,147,0.26); }
 
 /* ── Dropdown animation ── */
 .dropdown-menu-animated {
@@ -467,8 +467,8 @@ function handleLogout() {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 [data-bs-theme="dark"] .dropdown-menu-animated {
-  box-shadow: 0 8px 28px rgba(0,0,0,0.4);
-  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.34);
+  border-color: rgba(122,154,184,0.08);
 }
 @keyframes fadeSlideDown {
   from { opacity: 0; transform: translateY(-8px); }

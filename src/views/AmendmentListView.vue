@@ -84,6 +84,49 @@ const editingRejectContext = ref({
 
 const isEditingRejected = computed(() => editingRejectContext.value.status === 'Rejected')
 
+function getSubmissionAmendmentCandidates(submission) {
+  if (!submission) return []
+
+  if (Array.isArray(submission.amendments) && submission.amendments.length > 0) {
+    return submission.amendments.filter(Boolean)
+  }
+
+  if (Array.isArray(submission.amendment_ids) && submission.amendment_ids.length > 0) {
+    return submission.amendment_ids
+      .map((id) => store.amendments.find((amendment) => amendment._id === id))
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+async function openSubmissionEditForm(submissionId) {
+  if (!submissionId) return false
+
+  if (!subStore.submissions.length) {
+    await subStore.fetchSubmissions(undefined, { silent: true })
+  }
+
+  const submission = subStore.submissions.find((item) => item._id === submissionId)
+  if (!submission) return false
+
+  const candidates = getSubmissionAmendmentCandidates(submission)
+  const target = candidates[0]
+  if (!target) return false
+
+  editingId.value = target._id
+  form.value = mapAmendmentToForm(target)
+  editingRejectContext.value = {
+    status: getAmendmentStatus(target),
+    reason: firstNonEmptyField(target, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']) ||
+      firstNonEmptyField(submission, ['rejection_reason', 'rejectionReason', 'reject_reason', 'rejected_reason']),
+    remarks: firstNonEmptyField(target, ['rejection_remarks', 'rejectionRemarks', 'reject_remarks', 'rejected_remarks', 'review_remarks'])
+  }
+  showForm.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  return true
+}
+
 function firstNonEmptyField(obj, keys) {
   if (!obj) return ''
   for (const key of keys) {
@@ -422,6 +465,18 @@ onMounted(async () => {
       store.fetchAmendments(),
       subStore.fetchSubmissions()
     ])
+
+    if (route.query.source === 'submission' && route.query.submissionId) {
+      const opened = await openSubmissionEditForm(String(route.query.submissionId))
+      if (!opened) {
+        errorMsg.value = 'Unable to load the linked amendment data for editing.'
+      }
+      const nextQuery = { ...route.query }
+      delete nextQuery.source
+      delete nextQuery.submissionId
+      router.replace({ path: route.path, query: nextQuery })
+      return
+    }
 
     if (route.query.newCase === '1') {
       openNewAmendmentForm()

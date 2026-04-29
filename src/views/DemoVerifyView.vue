@@ -150,8 +150,8 @@ function refreshCaptcha() {
 }
 
 [data-bs-theme="dark"] .login-bg {
-  background: radial-gradient(ellipse at 20% 50%, rgba(0,180,216,0.12) 0%, transparent 60%),
-              radial-gradient(ellipse at 80% 10%, rgba(0,144,184,0.10) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 20% 50%, rgba(126,162,189,0.12) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 10%, rgba(95,124,150,0.10) 0%, transparent 50%);
 }
 
 /* Logo pill */
@@ -164,7 +164,7 @@ function refreshCaptcha() {
 
 [data-bs-theme="dark"] .logo-pill {
   background: rgba(255,255,255,0.88);
-  box-shadow: 0 0 20px rgba(0,180,216,0.25);
+  box-shadow: 0 0 20px rgba(126,162,189,0.22);
 }
 
 /* Glass card */
@@ -182,8 +182,8 @@ function refreshCaptcha() {
   background: rgba(13,31,60,0.65);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid rgba(0,180,216,0.18);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(0,180,216,0.1) inset;
+  border: 1px solid rgba(126,162,189,0.18);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(126,162,189,0.08) inset;
 }
 
 /* Verify icon */
@@ -193,7 +193,7 @@ function refreshCaptcha() {
 }
 
 [data-bs-theme="dark"] .verify-icon {
-  color: #00d6ff;
+  color: var(--ocean-accent);
 }
 
 /* Success icon */
@@ -217,14 +217,14 @@ function refreshCaptcha() {
 /* Captcha box */
 .captcha-box {
   background: linear-gradient(135deg, rgba(12,142,235,0.08), rgba(54,169,250,0.05));
-  border: 2px solid rgba(12,142,235,0.25);
+  border: 2px solid rgba(12,142,235,0.22);
   border-radius: 12px;
   padding: 1.5rem;
 }
 
 [data-bs-theme="dark"] .captcha-box {
-  background: linear-gradient(135deg, rgba(0,180,216,0.1), rgba(0,144,184,0.05));
-  border-color: rgba(0,180,216,0.3);
+  background: linear-gradient(135deg, rgba(126,162,189,0.1), rgba(95,124,150,0.05));
+  border-color: rgba(126,162,189,0.3);
 }
 
 .captcha-question {
@@ -243,7 +243,7 @@ function refreshCaptcha() {
 }
 
 [data-bs-theme="dark"] .captcha-text {
-  color: #00d6ff;
+  color: var(--ocean-accent);
 }
 
 .btn-refresh {
@@ -263,9 +263,9 @@ function refreshCaptcha() {
 }
 
 [data-bs-theme="dark"] .btn-refresh {
-  background: rgba(0,180,216,0.15);
-  border-color: rgba(0,180,216,0.4);
-  color: #00d6ff;
+  background: rgba(126,162,189,0.15);
+  border-color: rgba(126,162,189,0.4);
+  color: var(--ocean-accent);
 }
 
 /* Glass inputs */
@@ -286,7 +286,7 @@ function refreshCaptcha() {
 }
 
 .glass-input:focus {
-  border-color: #0c8eeb;
+  border-color: var(--sky-500);
   box-shadow: 0 0 0 3px rgba(12,142,235,0.12);
   background: rgba(255,255,255,0.85);
 }
@@ -298,20 +298,20 @@ function refreshCaptcha() {
 
 [data-bs-theme="dark"] .glass-input {
   background: rgba(10,22,40,0.6);
-  border-color: rgba(0,180,216,0.22);
+  border-color: rgba(12,142,235,0.22);
   color: #cce8f4;
 }
 
 [data-bs-theme="dark"] .glass-input:focus {
-  border-color: #00b4d8;
-  box-shadow: 0 0 0 3px rgba(0,180,216,0.18);
+  border-color: var(--ocean-accent);
+  box-shadow: 0 0 0 3px rgba(12,142,235,0.16);
   background: rgba(10,22,40,0.8);
 }
 
 /* Primary button */
 .btn-primary-glass {
   padding: 0.65rem 1.25rem;
-  background: linear-gradient(135deg, #0c8eeb, #36a9fa);
+  background: linear-gradient(135deg, var(--sky-500), var(--sky-400));
   border: none;
   border-radius: 12px;
   color: #fff;
@@ -336,7 +336,7 @@ function refreshCaptcha() {
 }
 
 [data-bs-theme="dark"] .btn-primary-glass {
-  background: linear-gradient(135deg, #00b4d8, #0090b8);
-  box-shadow: 0 4px 14px rgba(0,180,216,0.3);
+  background: linear-gradient(135deg, var(--ocean-accent), var(--ocean-accent2));
+  box-shadow: 0 4px 14px rgba(126,162,189,0.22);
 }
 </style>
