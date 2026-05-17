@@ -9,7 +9,7 @@ export default [
   },
   {
     name: 'app/files-to-ignore',
-    ignores: ['**/dist/**', '**/node_modules/**']
+    ignores: ['**/dist/**', '**/node_modules/**', 'public/pdf.worker.min.mjs']
   },
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],

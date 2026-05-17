@@ -5,7 +5,6 @@ import { apiFetch } from '@/utils/api'
 
 const DEMO_ADMIN_SUBMISSIONS_STORAGE_KEY = 'demo_admin_submissions'
 const DEMO_PD_SUBMISSIONS_STORAGE_KEY = 'demo_pd_submissions'
-const DEMO_SYNC_POLL_MS = 4000
 
 const DEMO_SUBMISSIONS = [
   {

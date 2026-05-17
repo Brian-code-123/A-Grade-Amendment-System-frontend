@@ -188,17 +188,6 @@ const clearSignature = () => {
   hasValidationError.value = false
 }
 
-const undoSignature = () => {
-  if (!signaturePad) return
-  
-  const data = signaturePad.toData()
-  if (data.length > 0) {
-    data.pop()
-    signaturePad.fromData(data)
-    checkSignatureValidity()
-  }
-}
-
 const confirmSignature = () => {
   // If there's a preview, use it; otherwise check if signature pad has valid signature
   if (signaturePreview.value) {

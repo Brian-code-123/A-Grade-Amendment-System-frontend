@@ -169,21 +169,6 @@ const headStats = computed(() => {
   }
 })
 
-// Admin Performance Stats
-const performanceStats = computed(() => {
-  const ams = amStore.amendments
-  const processed = ams.filter(a => a.status !== 'Pending').length
-  const avgTime = processed > 0 ? Math.floor(Math.random() * 30) + 5 : 0 // Mock: 5-35 days
-  const approvalRate = processed > 0 ? Math.round((ams.filter(a => a.status === 'Approved').length / processed) * 100) : 0
-  
-  return {
-    pending: ams.filter(a => a.status === 'Pending').length,
-    processed: processed,
-    avgProcessingDays: avgTime,
-    approvalRate: approvalRate
-  }
-})
-
 // System Announcements/Messages grouped by category
 const systemAnnouncements = ref([
   {
@@ -247,33 +232,6 @@ const maintenanceNotifications = ref([
     date: '2026-03-09'
   }
 ])
-
-// Combine all announcements for display
-const allAnnouncements = computed(() => {
-  return [
-    ...systemAnnouncements.value,
-    ...policyUpdates.value,
-    ...maintenanceNotifications.value
-  ].sort((a, b) => new Date(b.date) - new Date(a.date))
-})
-
-const getAnnouncementBadgeClass = (type) => {
-  const map = {
-    'info': 'bg-info',
-    'warning': 'bg-warning text-dark',
-    'danger': 'bg-danger'
-  }
-  return map[type] || 'bg-secondary'
-}
-
-const getAnnouncementBorderClass = (type) => {
-  const map = {
-    'info': 'border-info',
-    'warning': 'border-warning',
-    'danger': 'border-danger'
-  }
-  return map[type] || 'border-secondary'
-}
 
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }

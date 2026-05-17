@@ -37,7 +37,7 @@ export const useNotificationStore = defineStore('notification', () => {
     try {
       const res = await apiFetch('/api/notifications', { headers: auth.authHeaders() })
       if (res.ok) notifications.value = await res.json()
-    } catch (e) { /* ignore */ } finally {
+    } catch { /* ignore */ } finally {
       loading.value = false
     }
   }
@@ -57,7 +57,7 @@ export const useNotificationStore = defineStore('notification', () => {
         const data = await res.json()
         unreadCount.value = data.count
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   async function markAsRead(id) {

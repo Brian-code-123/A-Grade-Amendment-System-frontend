@@ -18,7 +18,7 @@ onMounted(async () => {
       const user = userParam ? JSON.parse(decodeURIComponent(userParam)) : null
       auth.setAuth(token, user)
       router.replace(auth.resolveLandingRoute(user))
-    } catch (e) {
+    } catch {
       error.value = 'Failed to process login. Please try again.'
     }
   } else if (route.query.error) {
