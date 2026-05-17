@@ -155,7 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token.value }
       })
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     clearAuth()
   }
 
@@ -179,7 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
         // Only clear local auth when backend explicitly rejects the token.
         clearAuth()
       }
-    } catch (e) {
+    } catch {
       // Keep existing auth state on transient network/proxy errors
       // (e.g. ERR_CONNECTION_CLOSED), so users are not bounced to /login.
     }

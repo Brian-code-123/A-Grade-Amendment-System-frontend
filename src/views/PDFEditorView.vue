@@ -169,11 +169,10 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import * as pdfjsLib from 'pdfjs-dist'
 
-const router = useRouter()
 const route = useRoute()
 const amendmentStore = useAmendmentStore()
 
@@ -204,7 +203,7 @@ const setupWorkerFallback = async () => {
     if (!response.ok) {
       throw new Error('Local worker not found')
     }
-  } catch (e) {
+  } catch {
     const cdnUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
     pdfjsLib.GlobalWorkerOptions.workerSrc = cdnUrl
     console.warn('Local worker unavailable, using CDN:', cdnUrl)

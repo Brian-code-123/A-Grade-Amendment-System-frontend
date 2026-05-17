@@ -234,14 +234,6 @@ const handleProfileUpdated = () => {
   }, 3000)
 }
 
-const handleProfileError = (message) => {
-  errorMessage.value = message
-  showErrorAlert.value = true
-  setTimeout(() => {
-    showErrorAlert.value = false
-  }, 4000)
-}
-
 const dismissSignatureWarning = () => {
   // 用戶可以先關閉警告，但路由守衛仍會強制導向profile
 }
