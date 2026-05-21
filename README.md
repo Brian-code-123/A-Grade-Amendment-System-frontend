@@ -75,9 +75,6 @@ Modern, responsive Vue 3 interface for grade amendment tracking and management.
 - **Q: PDF not loading?**
   - A: Ensure `pdf.worker.min.mjs` is correctly placed in the `public/` folder.
 
-# 11. Contributing
-- Open a PR against `main`.
-- Ensure component tests pass if applicable.
 
 # 12. License
 MIT License.
