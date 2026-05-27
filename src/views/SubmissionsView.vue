@@ -219,6 +219,58 @@ const statusBadge = (status) => {
   return map[normalized] || 'bg-secondary'
 }
 
+const amendmentLookup = computed(() => new Map(amStore.amendments.map(amendment => [amendment._id, amendment])))
+
+function getSubmissionAmendments(submission) {
+  return (submission.amendment_ids || [])
+    .map(id => amendmentLookup.value.get(id))
+    .filter(Boolean)
+}
+
+function getPrimaryAmendment(submission) {
+  return getSubmissionAmendments(submission)[0] || null
+}
+
+function getAmendmentHeadline(amendment) {
+  if (!amendment) return ''
+  const studentNo = amendment.student_no ? ` (${amendment.student_no})` : ''
+  return `${amendment.student_name || 'Unknown student'}${studentNo} · ${amendment.course_code || 'Unknown course'}`
+}
+
+function getAmendmentSummary(amendment) {
+  if (!amendment) return ''
+  const yearTerm = [amendment.academic_year ? `AY ${amendment.academic_year}` : '', amendment.term ? `Term ${amendment.term}` : '']
+    .filter(Boolean)
+    .join(' · ')
+  const gradeChange = [amendment.original_grade, amendment.new_grade].filter(Boolean).join(' → ')
+  const reasonMap = {
+    conversion: 'Conversion',
+    makeup: 'Make-up exam',
+    supplementary: 'Supplementary exam',
+    review: 'Staff review',
+    appeal: 'Appeal',
+    others: 'Other',
+  }
+  const reason = reasonMap[amendment.reason_type] || amendment.reason_type || 'Amendment'
+  return [yearTerm, gradeChange ? `Grade ${gradeChange}` : '', reason].filter(Boolean).join(' · ')
+}
+
+function getSubmissionHeadline(submission) {
+  const primary = getPrimaryAmendment(submission)
+  if (!primary) return submission.title || 'Unnamed submission'
+  return getAmendmentHeadline(primary)
+}
+
+function getSubmissionSummary(submission) {
+  const amendments = getSubmissionAmendments(submission)
+  const primary = amendments[0]
+  const parts = []
+  if (primary) parts.push(getAmendmentSummary(primary))
+  if (submission.title) parts.push(`Batch title: ${submission.title}`)
+  if (amendments.length > 1) parts.push(`+${amendments.length - 1} more amendment${amendments.length > 2 ? 's' : ''}`)
+  return parts.filter(Boolean).join(' · ')
+}
+
 onMounted(() => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
@@ -226,12 +278,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container py-4">
+  <div class="container py-4 submissions-page">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold mb-0"><i class="bi bi-send"></i> Submissions</h3>
       <button class="btn btn-primary btn-sm" @click="showCreate = !showCreate">
         <i class="bi" :class="showCreate ? 'bi-x' : 'bi-plus'"></i> {{ showCreate ? 'Cancel' : 'New Submission' }}
       </button>
+    </div>
+
+    <div class="alert alert-secondary border-0 small mb-3">
+      <i class="bi bi-info-circle me-1"></i>
+      This page lists submissions built from linked grade amendment forms.
     </div>
 
     <div v-if="successMsg" class="alert alert-success alert-dismissible fade show">
@@ -298,6 +355,28 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Workflow -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-header fw-bold"><i class="bi bi-diagram-3"></i> Submission Workflow</div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
+          <span class="badge bg-secondary p-2">Notification Received</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-primary p-2">Fill Form / Upload Excel</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-info p-2">Validate Data</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-warning text-dark p-2">Create Submission</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-success p-2">Director Submits</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-dark p-2">Admin Review</span>
+          <i class="bi bi-arrow-right"></i>
+          <span class="badge bg-success p-2">Complete</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Submissions List -->
     <div class="card shadow-sm">
       <div class="card-body p-0">
@@ -308,7 +387,7 @@ onMounted(() => {
             <thead>
               <tr>
                 <th style="width:40px"></th>
-                <th>Title</th>
+                <th>Amendment / Submission</th>
                 <th>Status</th>
                 <th>Number of Cases</th>
                 <th>Created</th>
@@ -327,8 +406,9 @@ onMounted(() => {
                   />
                 </td>
                 <td>
-                  <div class="fw-semibold">{{ s.title }}</div>
-                  <div class="text-muted small">{{ s.description }}</div>
+                  <div class="fw-semibold">{{ getSubmissionHeadline(s) }}</div>
+                  <div class="text-muted small">{{ getSubmissionSummary(s) }}</div>
+                  <div class="text-muted small" v-if="s.description">{{ s.description }}</div>
                   <div v-if="s.status === 'Rejected' && s.rejection_reason" class="d-flex align-items-start gap-1 mt-1">
                     <i class="bi bi-exclamation-circle-fill text-danger mt-1 flex-shrink-0"></i>
                     <span class="text-danger small"><strong>Reason:</strong> {{ s.rejection_reason }}</span>
@@ -365,37 +445,159 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-    <!-- Workflow -->
-    <div class="card shadow-sm mt-4">
-      <div class="card-header fw-bold"><i class="bi bi-diagram-3"></i> Submission Workflow</div>
-      <div class="card-body">
-        <div class="d-flex flex-wrap align-items-center justify-content-center gap-2">
-          <span class="badge bg-secondary p-2">Notification Received</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-primary p-2">Fill Form / Upload Excel</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-info p-2">Validate Data</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-warning text-dark p-2">Create Submission</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-success p-2">Director Submits</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-dark p-2">Admin Review</span>
-          <i class="bi bi-arrow-right"></i>
-          <span class="badge bg-success p-2">Complete</span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <style scoped>
 .batch-toolbar {
-  background: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);
+  background: linear-gradient(135deg,#f1fbf5 0%,#dff0e7 100%);
 }
 
-[data-bs-theme="dark"] .batch-toolbar {
-  background: linear-gradient(135deg, rgba(126,162,189,0.06), rgba(95,124,150,0.04));
+.submissions-page {
+  --submissions-forest-900: #050d0a;
+  --submissions-forest-850: #091410;
+  --submissions-forest-800: #0d1914;
+  --submissions-forest-700: #14241d;
+  --submissions-forest-600: #1d3228;
+  --submissions-forest-500: #2a473b;
+  --submissions-forest-400: #486d5d;
+  --submissions-accent: #8db7a4;
+  --submissions-accent-2: #bfd4ca;
+  --submissions-text: #edf5f1;
+  --submissions-muted: #cad7d1;
+  --submissions-danger: #704048;
+  --submissions-danger-soft: #d3a0a7;
+}
+
+[data-bs-theme="dark"] .submissions-page {
+  color: var(--submissions-text);
+}
+
+[data-bs-theme="dark"] .submissions-page > .card,
+[data-bs-theme="dark"] .submissions-page .batch-toolbar {
+  background: rgba(10,21,16,0.92);
+  border-color: rgba(141,183,164,0.18);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.28);
+}
+
+[data-bs-theme="dark"] .submissions-page h3,
+[data-bs-theme="dark"] .submissions-page .fw-semibold,
+[data-bs-theme="dark"] .submissions-page .fw-bold {
+  color: var(--submissions-text);
+}
+
+[data-bs-theme="dark"] .submissions-page .form-label,
+[data-bs-theme="dark"] .submissions-page .form-check-label,
+[data-bs-theme="dark"] .submissions-page .small,
+[data-bs-theme="dark"] .submissions-page td,
+[data-bs-theme="dark"] .submissions-page th {
+  color: var(--submissions-text);
+}
+
+[data-bs-theme="dark"] .submissions-page .batch-toolbar .text-muted,
+[data-bs-theme="dark"] .submissions-page .batch-toolbar .small,
+[data-bs-theme="dark"] .submissions-page .text-muted {
+  color: var(--submissions-muted) !important;
+}
+
+[data-bs-theme="dark"] .submissions-page .batch-toolbar .badge.bg-dark {
+  background: rgba(141,183,164,0.16) !important;
+  color: var(--submissions-text) !important;
+}
+
+[data-bs-theme="dark"] .submissions-page .batch-toolbar .btn-success,
+[data-bs-theme="dark"] .submissions-page .btn-primary,
+[data-bs-theme="dark"] .submissions-page .btn-success {
+  background: linear-gradient(135deg, #4f7f69, #3c6653);
+  border-color: transparent;
+  color: #f4fbf7;
+}
+
+[data-bs-theme="dark"] .submissions-page .btn-success:hover,
+[data-bs-theme="dark"] .submissions-page .btn-primary:hover {
+  background: linear-gradient(135deg, #5c9278, #4f7f69);
+}
+
+[data-bs-theme="dark"] .submissions-page table {
+  color: var(--submissions-text);
+}
+
+[data-bs-theme="dark"] .submissions-page thead {
+  background: rgba(8,19,14,0.95);
+}
+
+[data-bs-theme="dark"] .submissions-page thead th {
+  border-bottom-color: rgba(141,183,164,0.22);
+  color: var(--submissions-accent-2);
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr {
+  background: rgba(10,21,16,0.88);
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr:hover,
+[data-bs-theme="dark"] .submissions-page tbody tr.table-active {
+  background: rgba(29,50,40,0.88) !important;
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger {
+  background: rgba(92,48,54,0.42) !important;
+  border-left: 4px solid rgba(211,160,167,0.72);
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger:hover {
+  background: rgba(104,54,61,0.5) !important;
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger,
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger td,
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger .text-danger,
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger .text-muted,
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger .small {
+  color: #ffe5e8 !important;
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger > * {
+  background-color: rgba(92,48,54,0.42) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.18);
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger .btn-outline-primary {
+  color: #ffe5e8;
+  border-color: rgba(255,229,232,0.42);
+}
+
+[data-bs-theme="dark"] .submissions-page tbody tr.table-danger .btn-outline-primary:hover {
+  background: rgba(255,229,232,0.14);
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .submissions-page .card-header {
+  background: linear-gradient(135deg, rgba(10,27,20,0.94), rgba(16,35,26,0.88));
+  color: var(--submissions-accent-2);
+}
+
+[data-bs-theme="dark"] .submissions-page .table-responsive {
+  border-color: rgba(121,179,151,0.14);
+}
+
+[data-bs-theme="dark"] .submissions-page .btn-outline-primary {
+  color: var(--submissions-accent-2);
+  border-color: rgba(191,212,202,0.42);
+}
+
+[data-bs-theme="dark"] .submissions-page .btn-outline-primary:hover {
+  background: rgba(141,183,164,0.14);
+  color: #f4fbf7;
+}
+
+[data-bs-theme="dark"] .submissions-page .btn-warning {
+  background: linear-gradient(135deg, #e0b84e, #c79d2f);
+  border-color: transparent;
+  color: #1d1a10;
+}
+
+[data-bs-theme="dark"] .submissions-page .btn-close {
+  filter: invert(1) grayscale(100%);
 }
 </style>
