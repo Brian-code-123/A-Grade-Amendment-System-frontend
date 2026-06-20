@@ -76,7 +76,7 @@ async function saveSignature() {
     const signatureImage = signaturePad.toDataURL('image/png')
     
     // Save to auth store
-    const result = await auth.saveSignature(signatureImage)
+    await auth.saveSignature(signatureImage)
     
     message.value = 'Signature saved successfully! It will be used on all future PDF forms.'
     messageType.value = 'success'
