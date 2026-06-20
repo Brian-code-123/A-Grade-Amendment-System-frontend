@@ -1,84 +1,103 @@
-# 1. Project Name & Tagline
-## A-Grade Amendment System (Frontend)
-Modern, responsive Vue 3 interface for grade amendment tracking and management.
+# A Grade Amendment System
 
-# 2. Table of Contents
-- [1. Project Name & Tagline](#1-project-name--tagline)
-- [2. Table of Contents](#2-table-of-contents)
-- [3. Project Overview](#3-project-overview)
-- [4. Quick Start](#4-quick-start)
-- [5. Usage](#5-usage)
-- [6. Configuration](#6-configuration)
-- [7. Project Structure](#7-project-structure)
-- [8. Development](#8-development)
-- [9. Deployment](#9-deployment)
-- [10. FAQ](#10-faq)
-- [11. Contributing](#11-contributing)
-- [12. License](#12-license)
+A full-stack web application designed to streamline university grade amendment workflows by replacing manual, paper-based processes with a centralized, auditable digital solution.
 
-# 3. Project Overview
-- **Project Background**: Part of the A-Grade Amendment System suite, handling all user interactions and PDF generation.
-- **Main Features**: Vue 3 SPA, Pinia state management, PDF rendering/editing, signature capture, and Excel upload management.
-- **Applicable Scenarios**: Faculty members submitting grade changes and administrators reviewing submissions.
-- **Tech Stack**: Vue 3, Vite, Pinia, Tailwind CSS, Vue Router, PDF.js.
+## Table of Contents
 
-# 4. Quick Start
-### 4.1 Environmental Requirements
-- **System**: macOS / Windows / Linux
-- **Language**: Node.js v18+
-- **Tools**: npm / pnpm
+- [Overview](#overview)
+- [The Problem](#the-problem)
+- [Proposed Solution](#proposed-solution)
+- [Core Workflow](#core-workflow)
+- [Key Features](#key-features)
+- [System Benefits](#system-benefits)
+- [Tech Stack](#tech-stack)
+- [Deployment](#deployment)
+- [Future Improvements](#future-improvements)
 
-### 4.2 Installation Steps
-1. **Clone the project**: `git clone https://github.com/Brian-code-123/A-Grade-Amendment-System-frontend.git`
-2. **Install dependencies**: `npm install`
-3. **Environment Setup**: Copy `.env.example` to `.env` and set `VITE_API_BASE_URL`.
-4. **Run development server**: `npm run dev`
-5. **Access address**: http://localhost:5173
+## Overview
 
-# 5. Usage
-- **Basic Usage**: Navigate through the dashboard to upload Excel files, fill out amendment forms, or capture digital signatures.
-- **Common Commands**:
-  - `npm run dev`: Start development server
-  - `npm run build`: Build for production
-  - `npm run preview`: Preview production build locally
-- **Key Views**:
-  - `HomeView`: Main entry point.
-  - `PDFEditorView`: Interface for editing and signing amendment PDFs.
-  - `ExcelUploadView`: Batch processing of grade data.
+This project introduces a fully digital, role-based workflow system that enables instructors, programme directors, and administrative staff to submit, review, approve, and track grade amendments entirely online. The system eliminates manual handoffs, reduces processing time, and creates an immutable audit trail for all actions.
 
-# 6. Configuration
-- **Environment Variables**:
-  - `VITE_API_BASE_URL`: URL of the backend API service (e.g., `https://api.example.com`).
-  - `VITE_APP_TITLE`: Custom application title.
-- **Configuration Files**: `vite.config.js` for build settings and `staticwebapp.config.json` for Azure routing.
+## The Problem
 
-# 7. Project Structure
-- `/src/components`: Reusable Vue components (Forms, Signature Board).
-- `/src/views`: Page-level components (Home, Admin, PDF Editor).
-- `/src/stores`: Pinia state management (Auth, Amendment, Notification).
-- `/src/services`: Email and PDF generation logic.
-- `/src/router`: Frontend route definitions with auth guards.
+Current grade amendment processes rely entirely on manual, paper-driven workflows, creating significant operational challenges:
 
-# 8. Development
-- **Coding Standard**: ESLint + Prettier for code consistency.
-- **State Management**: Use Pinia for all cross-component states.
-- **Best Practices**: Prefer Composition API in all new components.
+- Process bottlenecks: average 3–4 week processing time, up to 6–8 weeks during peak periods.
+- High workload burden: 100+ hours of manual data entry required per semester.
+- Loss and error risks: paper forms are easily lost, damaged, or duplicated, with no centralized tracking.
+- Compliance gaps: no systematic audit trail, making policy compliance unprovable during reviews.
 
-# 9. Deployment
-- **Platform**: Hosted as Azure Static Web App or bundled into the backend `public/` folder.
-- **Process**: Automated via GitHub Actions.
-- **Build Output**: `dist/` directory contains minimized assets.
+## Proposed Solution
 
-# 10. FAQ
-- **Q: Login redirecting to wrong URL?**
-  - A: Check `VITE_API_BASE_URL` in your environment variables.
-- **Q: PDF not loading?**
-  - A: Ensure `pdf.worker.min.mjs` is correctly placed in the `public/` folder.
+The system replaces paper-based handoffs with a structured digital workflow so the right users can submit, review, approve, and monitor amendment requests in one place.
 
-# 11. Contributing
-- Open a PR against `main`.
-- Ensure component tests pass if applicable.
+## Core Workflow
 
-# 12. License
-MIT License.
+### Approved case
+
+1. Instructor submits a new grade amendment request.
+2. Programme Director receives and reviews the case.
+3. Programme Director approves the request with optional comments.
+4. Administrative staff receives the approved request.
+5. System generates a printable record for final processing.
+
+### Rejected case
+
+1. Instructor submits a new grade amendment request.
+2. Programme Director receives and reviews the case.
+3. Programme Director rejects the request with clear feedback.
+4. Rejected case is automatically returned to the instructor.
+5. Instructor reads remarks and resubmits a revised request if needed.
+
+## Key Features
+
+- Electronic signature support for secure digital approvals.
+- PDF processing and editing tools for grade documents.
+- Excel import and export for bulk grade data handling.
+- Role-based UI for Instructor, Programme Director, and Admin users.
+- Simplified form management with revision submission and checklists.
+- Email authentication for secure login via institutional email addresses.
+- Process status visualization for real-time tracking of request progress.
+
+## System Benefits
+
+| Benefit | Details |
+| --- | --- |
+| 10x Faster Processing | Reduces grade amendment turnaround time from weeks to days. |
+| Reduced Input Overhead | Streamlined forms with 44% fewer required input fields. |
+| Centralized Data Storage | Uses MongoDB to eliminate data redundancy and inconsistencies. |
+| Full Audit Trail | Automatically logs all actions for compliance and audit purposes. |
+| Improved Usability | Modern minimal UI with role-specific views and clear process status. |
+| Reduced Staff Burden | Eliminates 100+ hours of manual data entry work per semester. |
+
+## Tech Stack
+
+### Frontend
+
+- Vue 3
+- Vite
+- Pinia
+- Vue Router
+- Oruga UI
+- Bootstrap
+- Material Design Icons
+
+### Backend
+
+- Node.js + Express.js
+- MongoDB
+- jsonwebtoken
+- bcryptjs
+- dotenv
+- Azure App Services
+
+## Deployment
+
+The application is deployed on Azure Static Web Apps for global availability and simplified CI/CD.
+
+Live demo: https://agreeable-pebble-0d1936800.6.azurestaticapps.net
+
+## Future Improvements
+
+- Integration with university student information systems (SIS) for auto-populated student and course data.
 

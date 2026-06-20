@@ -72,7 +72,7 @@ async function fetchFeedbacks() {
   try {
     const res = await apiFetch('/api/feedback', { headers: auth.authHeaders() })
     if (res.ok) feedbacks.value = await res.json()
-  } catch (e) { /* ignore */ } finally {
+  } catch { /* ignore */ } finally {
     loading.value = false
   }
 }
