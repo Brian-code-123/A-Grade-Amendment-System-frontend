@@ -1,7 +1,30 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
+import { useSubmissionStore } from './submissionStore'
 import { apiFetch } from '@/utils/api'
+
+async function parseJsonResponse(res, fallbackMessage) {
+  const contentType = (res.headers.get('content-type') || '').toLowerCase()
+  const text = await res.text()
+
+  if (!contentType.includes('application/json')) {
+    throw new Error(`${fallbackMessage} returned a non-JSON response`)
+  }
+
+  let data = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(`${fallbackMessage} returned invalid JSON`)
+  }
+
+  if (!res.ok) {
+    throw new Error(data.message || `${fallbackMessage} (${res.status})`)
+  }
+
+  return data
+}
 
 export const useAmendmentStore = defineStore('amendment', () => {
   const amendments = ref([])
@@ -441,94 +464,93 @@ export const useAmendmentStore = defineStore('amendment', () => {
     }
   }
 
-  async function createAndSubmitDemoSubmissionFromAmendment(amendment, auth) {
+  function buildSubmissionPayload(amendment) {
     const studentNo = amendment.student_no || amendment.student_id || 'Student'
     const courseCode = amendment.course_code || 'COURSE'
     const title = `Grade Amendment - ${courseCode} - ${studentNo}`
     const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} → ${amendment.new_grade || ''}`.trim()
+
+    return {
+      title,
+      description,
+      amendment_ids: [amendment._id],
+      amendments: [amendment],
+      academic_year: amendment.academic_year || '',
+      term: amendment.term || ''
+    }
+  }
+
+  async function createLocalDemoSubmissionFromAmendment(amendment, auth) {
+    const submissionStore = useSubmissionStore()
+    const draft = await submissionStore.createSubmission(buildSubmissionPayload(amendment))
+    const submitted = await submissionStore.submitToAdmin(draft._id)
+
+    if (submitted?._id) {
+      submitted.submitted_by = submitted.submitted_by || auth.user?.name || 'Demo User'
+      submitted.submitted_by_name = submitted.submitted_by_name || auth.user?.name || 'Demo User'
+    }
+
+    return submitted || draft
+  }
+
+  async function createAndSubmitDemoSubmissionFromAmendment(amendment, auth) {
     const headers = {
       'Content-Type': 'application/json',
       'x-demo-user-name': auth.user?.name || 'Demo User',
       'x-demo-user-email': auth.user?.email || ''
     }
 
-    const createRes = await apiFetch('/api/demo/submissions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        title,
-        description,
-        amendment_ids: [amendment._id],
-        amendments: [amendment],
-        academic_year: amendment.academic_year || '',
-        term: amendment.term || ''
+    try {
+      const createRes = await apiFetch('/api/demo/submissions', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(buildSubmissionPayload(amendment))
       })
-    })
-    const created = await createRes.json()
-    if (!createRes.ok) {
-      throw new Error(created.message || 'Failed to create demo submission')
-    }
+      const created = await parseJsonResponse(createRes, 'Failed to create demo submission')
 
-    const submitRes = await apiFetch(`/api/demo/submissions/${created._id}/submit`, {
-      method: 'POST',
-      headers
-    })
-    const submitted = await submitRes.json()
-    if (!submitRes.ok) {
-      throw new Error(submitted.message || 'Failed to submit demo submission')
+      const submitRes = await apiFetch(`/api/demo/submissions/${created._id}/submit`, {
+        method: 'POST',
+        headers
+      })
+      return await parseJsonResponse(submitRes, 'Failed to submit demo submission')
+    } catch (syncError) {
+      return createLocalDemoSubmissionFromAmendment(amendment, auth)
     }
-
-    return submitted
   }
 
   async function createSubmitAndApproveDemoSubmissionFromAmendment(amendment, auth) {
     const submitted = await createAndSubmitDemoSubmissionFromAmendment(amendment, auth)
-    const approveRes = await apiFetch(`/api/demo/submissions/${submitted._id}/approve`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-demo-user-name': auth.user?.name || 'Demo User',
-        'x-demo-user-email': auth.user?.email || ''
-      }
-    })
-    const approved = await approveRes.json()
-    if (!approveRes.ok) {
-      throw new Error(approved.message || 'Failed to approve demo submission')
+    try {
+      const approveRes = await apiFetch(`/api/demo/submissions/${submitted._id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-demo-user-name': auth.user?.name || 'Demo User',
+          'x-demo-user-email': auth.user?.email || ''
+        }
+      })
+      return await parseJsonResponse(approveRes, 'Failed to approve demo submission')
+    } catch {
+      const submissionStore = useSubmissionStore()
+      return submissionStore.approveSubmission(submitted._id)
     }
-    return approved
   }
 
   async function createAndSubmitSubmissionFromAmendment(amendment, auth) {
-    const studentNo = amendment.student_no || amendment.student_id || 'Student'
-    const courseCode = amendment.course_code || 'COURSE'
-    const title = `Grade Amendment - ${courseCode} - ${studentNo}`
-    const description = `${amendment.student_name || ''} ${courseCode} ${amendment.original_grade || ''} -> ${amendment.new_grade || ''}`.trim()
+    const payload = buildSubmissionPayload(amendment)
 
     const createRes = await apiFetch('/api/submissions', {
       method: 'POST',
       headers: auth.authHeaders(),
-      body: JSON.stringify({
-        title,
-        description,
-        amendment_ids: [amendment._id],
-        amendments: [amendment],
-        academic_year: amendment.academic_year || '',
-        term: amendment.term || ''
-      })
+      body: JSON.stringify(payload)
     })
-    const created = await createRes.json()
-    if (!createRes.ok) {
-      throw new Error(created.message || 'Failed to create submission')
-    }
+    const created = await parseJsonResponse(createRes, 'Failed to create submission')
 
     const submitRes = await apiFetch(`/api/submissions/${created._id}/submit`, {
       method: 'POST',
       headers: auth.authHeaders()
     })
-    const submitted = await submitRes.json()
-    if (!submitRes.ok) {
-      throw new Error(submitted.message || 'Failed to submit submission')
-    }
+    const submitted = await parseJsonResponse(submitRes, 'Failed to submit submission')
 
     return submitted
   }
@@ -544,10 +566,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
       method: 'POST',
       headers: auth.authHeaders()
     })
-    const approved = await approveRes.json()
-    if (!approveRes.ok) {
-      throw new Error(approved.message || 'Failed to approve submission')
-    }
+    const approved = await parseJsonResponse(approveRes, 'Failed to approve submission')
     return approved
   }
 
@@ -762,8 +781,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
       headers: { 'Authorization': 'Bearer ' + auth.token },
       body: formData
     })
-    const result = await res.json()
-    if (!res.ok) throw new Error(result.message || 'Import failed')
+    const result = await parseJsonResponse(res, 'Import failed')
     await fetchAmendments()
     return result
   }
