@@ -149,7 +149,7 @@
 
           <div class="sidebar-section" v-if="activeTool === 'text'">
             <h3>✍️ Text Tool</h3>
-            <small style="color:#6c757d">Click to add text. Drag existing text to move. Double-click text to edit.</small>
+            <small style="color:#6c757d">Click to place an Aa box, drag it to position, then double-click to type.</small>
             <button @click="editSelectedText" class="tool-action-btn full-width" :disabled="!selectedTextAnnotationId">
               <i class="bi bi-pencil"></i> Edit Selected Text
             </button>
@@ -171,10 +171,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAmendmentStore } from '@/stores/amendmentStore'
+import { useThemeStore } from '@/stores/themeStore'
 import * as pdfjsLib from 'pdfjs-dist'
 
 const route = useRoute()
 const amendmentStore = useAmendmentStore()
+const themeStore = useThemeStore()
 
 // Form data passed from submission/amendment
 const formData = ref(null)
@@ -230,6 +232,12 @@ const directTextInput = ref(null)
 const selectedTextAnnotationId = ref(null)
 const editingTextAnnotationId = ref(null)
 
+const TEXT_PLACEHOLDER_LABEL = 'Aa'
+const TEXT_FONT_SIZE = 14
+const TEXT_BOX_PADDING = 6
+
+const isDarkTheme = () => document.documentElement.getAttribute('data-bs-theme') === 'dark'
+
 // Canvas references
 const pdfCanvasRef = ref(null)
 const annotationCanvasRef = ref(null)
@@ -256,20 +264,21 @@ const clearSelectedText = () => {
 
 const getTextMetrics = (annotation) => {
   if (!annotation || annotation.type !== 'text') return null
-  const fontSize = annotation.fontSize || 16
+  const fontSize = annotation.fontSize || TEXT_FONT_SIZE
+  const displayText = annotation.isDraft ? TEXT_PLACEHOLDER_LABEL : (annotation.text || TEXT_PLACEHOLDER_LABEL)
   if (annotCtx) {
     annotCtx.save()
     annotCtx.font = `${fontSize}px Arial`
-    const width = annotCtx.measureText(annotation.text || '').width
+    const width = annotCtx.measureText(displayText).width
     annotCtx.restore()
     return { width, height: fontSize }
   }
-  return { width: (annotation.text || '').length * fontSize * 0.55, height: fontSize }
+  return { width: displayText.length * fontSize * 0.55, height: fontSize }
 }
 
 const findTextAnnotationAtPoint = (x, y) => {
   const annotations = pageAnnotations[currentPage.value] || []
-  const padding = 6
+  const padding = TEXT_BOX_PADDING
   for (let i = annotations.length - 1; i >= 0; i -= 1) {
     const annotation = annotations[i]
     if (annotation.type !== 'text') continue
@@ -284,6 +293,29 @@ const findTextAnnotationAtPoint = (x, y) => {
     }
   }
   return null
+}
+
+const createTextDraft = (x, y) => {
+  if (!pageAnnotations[currentPage.value]) {
+    pageAnnotations[currentPage.value] = []
+  }
+
+  const draftAnnotation = {
+    id: nextAnnotationId(),
+    type: 'text',
+    text: '',
+    isDraft: true,
+    x,
+    y,
+    color: penColor.value,
+    fontSize: TEXT_FONT_SIZE
+  }
+
+  clampTextPosition(draftAnnotation)
+  pageAnnotations[currentPage.value].push(draftAnnotation)
+  selectedTextAnnotationId.value = draftAnnotation.id
+  editingTextAnnotationId.value = null
+  return draftAnnotation
 }
 
 const clampTextPosition = (annotation) => {
@@ -503,16 +535,12 @@ const startDrawing = (e) => {
     }
 
     clearSelectedText()
-    editingTextAnnotationId.value = null
-    textX.value = x
-    textY.value = y
+    const draftAnnotation = createTextDraft(x, y)
+    textX.value = draftAnnotation.x
+    textY.value = draftAnnotation.y
     textContent.value = ''
-    showTextInput.value = true
-    nextTick(() => {
-      if (directTextInput.value) {
-        directTextInput.value.focus()
-      }
-    })
+    showTextInput.value = false
+    redrawAnnotations()
     return
   }
 
@@ -635,6 +663,7 @@ const addText = () => {
       annotation.text = content
       annotation.x = textX.value
       annotation.y = textY.value
+      annotation.isDraft = false
       clampTextPosition(annotation)
       selectedTextAnnotationId.value = annotation.id
     }
@@ -646,7 +675,8 @@ const addText = () => {
       x: textX.value,
       y: textY.value,
       color: penColor.value,
-      fontSize: 14
+      fontSize: TEXT_FONT_SIZE,
+      isDraft: false
     }
     clampTextPosition(newAnnotation)
     pageAnnotations[currentPage.value].push(newAnnotation)
@@ -711,6 +741,10 @@ const handleGlobalKeydown = (e) => {
 const redrawAnnotations = () => {
   const canvas = document.getElementById('annotation-canvas')
   if (!canvas || !annotCtx) return
+
+  const darkMode = isDarkTheme()
+  const draftColor = darkMode ? '#b6c5d0' : '#8c8c8c'
+  const selectionColor = darkMode ? '#7ea2bd' : '#0d6efd'
   
   annotCtx.clearRect(0, 0, canvas.width, canvas.height)
   
@@ -735,24 +769,36 @@ const redrawAnnotations = () => {
       annotCtx.lineWidth = stroke.width
       annotCtx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
     } else if (stroke.type === 'text') {
-      annotCtx.fillStyle = stroke.color
-      annotCtx.font = (stroke.fontSize || 16) + 'px Arial'
+      const metrics = getTextMetrics(stroke)
+      const fontSize = stroke.fontSize || TEXT_FONT_SIZE
+      const isDraft = Boolean(stroke.isDraft)
+      const displayText = isDraft ? TEXT_PLACEHOLDER_LABEL : (stroke.text || '')
+
+      annotCtx.save()
+      annotCtx.font = `${fontSize}px Arial`
       annotCtx.textBaseline = 'top'
-      annotCtx.fillText(stroke.text, stroke.x, stroke.y)
+
+      if (isDraft) {
+        annotCtx.strokeStyle = draftColor
+        annotCtx.setLineDash([4, 2])
+        annotCtx.strokeRect(stroke.x, stroke.y, metrics?.width || 0, metrics?.height || 0)
+        annotCtx.fillStyle = draftColor
+      } else {
+        annotCtx.fillStyle = stroke.color
+      }
+
+      annotCtx.fillText(displayText, stroke.x, stroke.y)
 
       if (stroke.id && stroke.id === selectedTextAnnotationId.value) {
-        const metrics = getTextMetrics(stroke)
         if (metrics) {
-          annotCtx.save()
-          annotCtx.strokeStyle = '#0d6efd'
+          annotCtx.strokeStyle = selectionColor
           annotCtx.setLineDash([4, 2])
           annotCtx.lineWidth = 1
-          annotCtx.strokeRect(stroke.x - 3, stroke.y - 3, metrics.width + 6, metrics.height + 6)
-          annotCtx.restore()
+          annotCtx.strokeRect(stroke.x - TEXT_BOX_PADDING / 2, stroke.y - TEXT_BOX_PADDING / 2, metrics.width + TEXT_BOX_PADDING, metrics.height + TEXT_BOX_PADDING)
         }
       }
 
-      annotCtx.textBaseline = 'alphabetic'
+      annotCtx.restore()
     }
   })
 }
@@ -827,8 +873,9 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
       ctx.lineWidth = stroke.width
       ctx.strokeRect(stroke.x, stroke.y, stroke.w, stroke.h)
     } else if (stroke.type === 'text') {
+      if (stroke.isDraft) return
       ctx.fillStyle = stroke.color
-      ctx.font = (stroke.fontSize || 16) + 'px Arial'
+      ctx.font = (stroke.fontSize || TEXT_FONT_SIZE) + 'px Arial'
       ctx.textBaseline = 'top'
       ctx.fillText(stroke.text, stroke.x, stroke.y)
       ctx.textBaseline = 'alphabetic'
@@ -1088,6 +1135,12 @@ onMounted(() => {
       }
     }).catch(err => console.error('Failed to fetch amendments:', err))
   }
+})
+
+watch(() => themeStore.theme, async () => {
+  if (!pdfLoaded.value) return
+  await nextTick()
+  redrawAnnotations()
 })
 
 // Watch for amendment changes and update form
@@ -1518,5 +1571,142 @@ onUnmounted(() => {
 
 .btn-secondary:hover {
   background: #dee2e6;
+}
+
+[data-bs-theme="dark"] .pdf-editor-container {
+  background: linear-gradient(180deg, #0f1722 0%, #0a111b 100%);
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .header-nav {
+  background: rgba(21,33,51,0.92);
+  border-bottom-color: rgba(122,154,184,0.14);
+  box-shadow: 0 1px 16px rgba(0,0,0,0.38);
+}
+
+[data-bs-theme="dark"] .header-title {
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .nav-btn-back {
+  background: linear-gradient(135deg, #6f8fa8, #5f7b92);
+  color: #f4f7fa;
+}
+
+[data-bs-theme="dark"] .nav-btn-back:hover {
+  background: linear-gradient(135deg, #7ea2bd, #6f8fa8);
+}
+
+[data-bs-theme="dark"] .file-upload-area {
+  background: rgba(21,33,51,0.82);
+  border-color: rgba(122,154,184,0.22);
+  box-shadow: 0 4px 28px rgba(0,0,0,0.34);
+}
+
+[data-bs-theme="dark"] .file-upload-area.dragover {
+  background: rgba(30,58,95,0.34);
+  border-color: rgba(126,162,189,0.54);
+}
+
+[data-bs-theme="dark"] .file-upload-area h2,
+[data-bs-theme="dark"] .sidebar-section h3,
+[data-bs-theme="dark"] .page-info,
+[data-bs-theme="dark"] .zoom-info {
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .file-upload-area p {
+  color: #8aa0af;
+}
+
+[data-bs-theme="dark"] .toolbar,
+[data-bs-theme="dark"] .right-sidebar {
+  background: rgba(21,33,51,0.92);
+  border-color: rgba(122,154,184,0.16);
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .pdf-viewer {
+  background: radial-gradient(ellipse at top, rgba(122,154,184,0.10), transparent 60%), #0f1722;
+}
+
+[data-bs-theme="dark"] .pdf-container {
+  background: #f8fafc;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.48);
+  border: 1px solid rgba(122,154,184,0.18);
+}
+
+[data-bs-theme="dark"] .toolbar-group {
+  border-right-color: rgba(122,154,184,0.14);
+}
+
+[data-bs-theme="dark"] .tool-btn,
+[data-bs-theme="dark"] .nav-btn,
+[data-bs-theme="dark"] .zoom-btn,
+[data-bs-theme="dark"] .action-btn,
+[data-bs-theme="dark"] .export-btn,
+[data-bs-theme="dark"] .tool-action-btn,
+[data-bs-theme="dark"] .btn-secondary {
+  background: rgba(15,23,34,0.82);
+  border-color: rgba(122,154,184,0.22);
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .tool-btn:hover,
+[data-bs-theme="dark"] .nav-btn:hover,
+[data-bs-theme="dark"] .zoom-btn:hover,
+[data-bs-theme="dark"] .action-btn:hover,
+[data-bs-theme="dark"] .export-btn:hover,
+[data-bs-theme="dark"] .tool-action-btn:hover,
+[data-bs-theme="dark"] .btn-secondary:hover {
+  background: rgba(30,58,95,0.42);
+  border-color: rgba(126,162,189,0.46);
+}
+
+[data-bs-theme="dark"] .tool-btn.active,
+[data-bs-theme="dark"] .btn-primary,
+[data-bs-theme="dark"] .upload-btn {
+  background: linear-gradient(135deg, #6f8fa8, #5f7b92);
+  border-color: transparent;
+  color: #f4f7fa;
+}
+
+[data-bs-theme="dark"] .color-btn {
+  border-color: rgba(122,154,184,0.32);
+  box-shadow: 0 0 0 2px rgba(21,33,51,0.85), 0 0 0 4px rgba(122,154,184,0.18);
+}
+
+[data-bs-theme="dark"] .color-btn.active {
+  border-color: #d6e0e8;
+  box-shadow: 0 0 0 2px rgba(21,33,51,0.9), 0 0 0 4px rgba(126,162,189,0.38);
+}
+
+[data-bs-theme="dark"] .page-input,
+[data-bs-theme="dark"] .direct-text-input {
+  background: rgba(15,23,34,0.92);
+  border-color: rgba(126,162,189,0.45);
+  color: #d6e0e8;
+}
+
+[data-bs-theme="dark"] .message.success-msg {
+  background: rgba(20,87,63,0.55);
+  color: #c7f3dd;
+  border-color: rgba(41,154,111,0.28);
+}
+
+[data-bs-theme="dark"] .message.error-msg {
+  background: rgba(117,26,41,0.56);
+  color: #ffd4da;
+  border-color: rgba(220,53,69,0.28);
+}
+
+[data-bs-theme="dark"] .modal-overlay {
+  background: rgba(4,8,14,0.7);
+}
+
+[data-bs-theme="dark"] .modal {
+  background: rgba(21,33,51,0.96);
+  color: #d6e0e8;
+  border: 1px solid rgba(122,154,184,0.14);
 }
 </style>
