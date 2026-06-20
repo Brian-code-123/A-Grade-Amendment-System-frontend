@@ -391,17 +391,8 @@ const confirmAndSave = async () => {
   isSubmitting.value = true
   
   try {
-    // 更新用戶數據到auth store
     const signatureValue = requiresSignature.value ? formData.value.signature : null
 
-    const updatedUser = {
-      ...auth.user,
-      name: formData.value.name,
-      email: formData.value.email,
-      signature: signatureValue
-    }
-
-    // 直接更新
     auth.user.name = formData.value.name
     auth.user.email = formData.value.email
     auth.user.signature = signatureValue
@@ -413,8 +404,8 @@ const confirmAndSave = async () => {
     if (requiresSignature.value && formData.value.signature && !originalData.value.signature) {
       try {
         await auth.saveSignature(formData.value.signature)
-      } catch (e) {
-        console.warn('Failed to save signature to backend, but saved locally', e)
+      } catch {
+        console.warn('Failed to save signature to backend, but saved locally')
       }
     }
 
