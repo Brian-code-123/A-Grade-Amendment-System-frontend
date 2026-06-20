@@ -89,8 +89,8 @@ function handleLogout() {
               </router-link>
             </li>
 
-            <!-- 2. Amendments (dropdown) — hidden for Programme Director (Head) -->
-            <li class="nav-item dropdown" v-if="!auth.isHead" :class="{ show: amendmentsOpen }">
+            <!-- 2. Amendments (dropdown) — hidden for Programme Director (Head) and Admin -->
+            <li class="nav-item dropdown" v-if="!auth.isHead && !auth.isAdmin" :class="{ show: amendmentsOpen }">
               <button
                 class="nav-link nav-tab dropdown-toggle btn btn-link"
                 type="button"
