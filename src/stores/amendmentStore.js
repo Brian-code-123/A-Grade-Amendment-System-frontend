@@ -513,7 +513,7 @@ export const useAmendmentStore = defineStore('amendment', () => {
         headers
       })
       return await parseJsonResponse(submitRes, 'Failed to submit demo submission')
-    } catch (syncError) {
+    } catch {
       return createLocalDemoSubmissionFromAmendment(amendment, auth)
     }
   }
