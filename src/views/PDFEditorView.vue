@@ -196,7 +196,6 @@ const formDataInputs = reactive({
 // Set worker - try local file first, then fallback to CDN
 // Start with local file path (served from /public)
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-console.log('PDF.js worker URL set to: /pdf.worker.min.mjs')
 
 // Also set up CDN fallback if local isn't available
 const setupWorkerFallback = async () => {
@@ -208,7 +207,6 @@ const setupWorkerFallback = async () => {
   } catch {
     const cdnUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
     pdfjsLib.GlobalWorkerOptions.workerSrc = cdnUrl
-    console.warn('Local worker unavailable, using CDN:', cdnUrl)
   }
 }
 
@@ -385,7 +383,6 @@ const handleFileDrop = (e) => {
 
 const handleFileSelect = (e) => {
   const file = e.target.files?.[0]
-  console.log('File selected:', file?.name, file?.type)
   if (file?.type === 'application/pdf') {
     loadPDF(file)
   } else {
@@ -399,13 +396,10 @@ const loadPDF = async (file) => {
     errorMsg.value = ''
     successMsg.value = 'Loading PDF...'
     
-    console.log('Loading PDF:', file.name)
     const arrayBuffer = await file.arrayBuffer()
-    console.log('File size:', arrayBuffer.byteLength, 'bytes')
-    
+
     pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise
-    console.log('PDF loaded, pages:', pdfDoc.numPages)
-    
+
     pageCount.value = pdfDoc.numPages
     currentPage.value = 1
     fileName.value = file.name || 'document.pdf'
@@ -416,19 +410,16 @@ const loadPDF = async (file) => {
     await nextTick()
     // Small delay to ensure canvas elements are mounted
     await new Promise(resolve => setTimeout(resolve, 100))
-    console.log('DOM updated, initializing canvases...')
-    
+
     const initialized = initializeCanvases()
     if (!initialized) {
       errorMsg.value = 'Failed to initialize canvas'
       return
     }
-    
-    console.log('Canvases initialized, rendering page...')
+
     await renderPage()
   } catch (e) {
     errorMsg.value = 'Failed to load PDF: ' + e.message
-    console.error('LoadPDF error:', e)
   }
 }
 
@@ -438,15 +429,13 @@ const initializeCanvases = () => {
   const annotationCanvas = document.getElementById('annotation-canvas')
   
   if (!pdfCanvas || !annotationCanvas) {
-    console.error('Canvas elements not found')
     return false
   }
-  
+
   pdfCtx = pdfCanvas.getContext('2d')
   annotCtx = annotationCanvas.getContext('2d')
-  
+
   if (!pdfCtx || !annotCtx) {
-    console.error('Failed to get 2D context')
     return false
   }
   
@@ -462,52 +451,43 @@ const initializeCanvases = () => {
 // Render page
 const renderPage = async () => {
   if (!pdfDoc) {
-    console.error('PDF not loaded')
     return
   }
-  
+
   // Validate page number
   if (currentPage.value < 1 || currentPage.value > pageCount.value) {
-    console.error('Invalid page number:', currentPage.value)
     return
   }
-  
+
   try {
     const pdfCanvas = document.getElementById('pdf-canvas')
     const annotationCanvas = document.getElementById('annotation-canvas')
-    
+
     if (!pdfCanvas || !annotationCanvas) {
-      console.error('Canvases not found')
       return
     }
-    
-    console.log('Getting page:', currentPage.value)
+
     const page = await pdfDoc.getPage(currentPage.value)
-    console.log('Page retrieved successfully')
-    
+
     const scale = zoomLevel.value / 100
     const viewport = page.getViewport({ scale })
-    
-    console.log('Canvas size:', viewport.width, 'x', viewport.height)
+
     pdfCanvas.width = viewport.width
     pdfCanvas.height = viewport.height
     annotationCanvas.width = viewport.width
     annotationCanvas.height = viewport.height
-    
+
     // Clear canvas
     pdfCtx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height)
-    
-    console.log('Rendering page...')
+
     await page.render({
       canvasContext: pdfCtx,
       viewport
     }).promise
-    
-    console.log('Page rendered successfully')
+
     redrawAnnotations()
   } catch (e) {
     errorMsg.value = 'Failed to render page: ' + e.message
-    console.error('Render error:', e)
   }
 }
 
@@ -889,8 +869,6 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
     // approved === null means no decision yet; true/false both count as "has data"
     const hasApprovalData = formDataInputs.approved !== null || formDataInputs.approvalDate || formDataInputs.approvalRemarks
 
-    console.log(`renderPageToCanvas page=${pageNum} scale=${scale} hasFormData=${hasFormData} hasApprovalData=${hasApprovalData} approved=${formDataInputs.approved}`)
-
     if (hasFormData && pageNum === 1) {
       addFormDataToCanvas(ctx, 1, scale)
     }
@@ -1104,20 +1082,15 @@ const populateFormFromAmendment = () => {
   } else {
     formDataInputs.approved = null
   }
-  
-  console.log('Form populated from amendment:', formDataInputs)
 }
 
 onMounted(() => {
   // Setup worker fallback after component is mounted
-  setupWorkerFallback().catch(err => {
-    console.error('Error setting up worker fallback:', err)
-  })
-  
+  setupWorkerFallback().catch(() => {})
+
   // Capture form data from route state if available
   if (route.state?.formData) {
     formData.value = route.state.formData
-    console.log('Form data received:', formData.value)
   }
 
   window.addEventListener('keydown', handleGlobalKeydown)
@@ -1133,7 +1106,7 @@ onMounted(() => {
         currentAmendment.value = amendmentStore.amendments[0]
         populateFormFromAmendment()
       }
-    }).catch(err => console.error('Failed to fetch amendments:', err))
+    }).catch(() => {})
   }
 })
 
