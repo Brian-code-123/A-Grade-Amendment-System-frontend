@@ -405,7 +405,7 @@ const confirmAndSave = async () => {
       try {
         await auth.saveSignature(formData.value.signature)
       } catch {
-        console.warn('Failed to save signature to backend, but saved locally')
+        // saved locally; backend sync failed silently
       }
     }
 
@@ -422,7 +422,6 @@ const confirmAndSave = async () => {
     errors.value = {}
 
   } catch (error) {
-    console.error('Error saving profile:', error)
     emit('profile-error', error.message || 'Failed to save profile')
   } finally {
     isSubmitting.value = false

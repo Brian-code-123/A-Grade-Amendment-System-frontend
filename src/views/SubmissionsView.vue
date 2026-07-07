@@ -196,8 +196,8 @@ async function resubmitToPD(id) {
 
     try {
       await amStore.fetchAmendments()
-    } catch (refreshErr) {
-      console.warn('Failed to refresh amendments after resubmit', refreshErr)
+    } catch {
+      // resubmit already succeeded; refresh failure is non-fatal
     }
     successMsg.value = 'Submission resubmitted successfully! The Program Director will review it shortly.'
   } catch (e) {
