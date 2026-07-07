@@ -92,8 +92,7 @@ async function saveSignature() {
       window.location.replace('/') // Full page reload
     }, 2500)
     
-  } catch (error) {
-    console.error('Error saving signature:', error)
+  } catch {
     message.value = 'Error saving signature. Your signature has been saved locally and will work on PDFs. Please refresh the page.'
     messageType.value = 'warning'
     

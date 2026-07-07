@@ -50,8 +50,7 @@ export async function downloadTemplate() {
     const { bytes, templatePath } = await loadTemplatePdfBytes()
     const blob = new Blob([bytes], { type: 'application/pdf' })
     triggerPdfDownload(blob, templatePath.split('/').pop() || 'template.pdf')
-  } catch (e) {
-    console.error('Error downloading template:', e)
+  } catch {
     alert(`Failed to download template from ${ACTIVE_TEMPLATE_PDF_PATH}.`)
   }
 }
@@ -735,15 +734,14 @@ export async function downloadFilledForm(amendment) {
     const blob = pdfBytes instanceof Blob ? pdfBytes : new Blob([pdfBytes], { type: 'application/pdf' })
     triggerPdfDownload(blob, filename)
     return
-  } catch (e) {
-    console.warn('Template PDF generation failed, falling back to generated PDF:', e)
+  } catch {
+    // fall through to generated-PDF fallback below
   }
 
   try {
     const generated = generateGradeAmendmentPDF(data)
     triggerPdfDownload(generated.output('blob'), filename)
-  } catch (fallbackError) {
-    console.error('Generated fallback export failed:', fallbackError)
+  } catch {
     alert(`Failed to export PDF. Tried template path: ${ACTIVE_TEMPLATE_PDF_PATH}.`)
   }
 }
@@ -759,7 +757,7 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
   const { bytes: templateBytes } = await loadTemplatePdfBytes()
   const pdfDoc = await PDFDocument.load(templateBytes)
 
-  try {
+  {
     const pages = pdfDoc.getPages()
     const page1 = pages[0]
 
@@ -787,8 +785,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
           size: size * Math.min(scaleX, scaleY),
           color: rgb(0, 0, 0),
         })
-      } catch (e) {
-        console.warn(`Failed to draw text at ${x}, ${y}:`, e.message)
+      } catch {
+        // skip field on draw failure
       }
     }
 
@@ -802,8 +800,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
           size: 11 * Math.min(scaleX, scaleY),
           color: rgb(0, 0, 0),
         })
-      } catch (e) {
-        console.warn(`Failed to draw tick at ${x}, ${y}:`, e.message)
+      } catch {
+        // skip tick on draw failure
       }
     }
 
@@ -820,8 +818,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
           width: width * scaleX,
           height: height * scaleY,
         })
-      } catch (e) {
-        console.warn(`Failed to add signature at ${x}, ${y}:`, e.message)
+      } catch {
+        // skip signature on draw failure
       }
     }
 
@@ -937,8 +935,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
         try {
           const m = map2(x, y)
           page2.drawText(String(text), { x: m.x, y: m.y, size: size * Math.min(scaleX2, scaleY2), color: rgb(0, 0, 0) })
-        } catch (e) {
-          console.warn(`Page2: Failed to draw text at ${x}, ${y}:`, e.message)
+        } catch {
+          // skip field on draw failure
         }
       }
 
@@ -946,8 +944,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
         try {
           const m = map2(x, y)
           page2.drawText('V', { x: m.x, y: m.y, size: 11 * Math.min(scaleX2, scaleY2), color: rgb(0, 0, 0) })
-        } catch (e) {
-          console.warn(`Page2: Failed to draw tick at ${x}, ${y}:`, e.message)
+        } catch {
+          // skip tick on draw failure
         }
       }
 
@@ -958,8 +956,8 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
           const signatureImage = await embedSignatureImage(pdfDoc, signatureDataUrl)
           if (!signatureImage) return
           page2.drawImage(signatureImage, { x: m.x, y: m.y, width: width * scaleX2, height: height * scaleY2 })
-        } catch (e) {
-          console.warn(`Page2: Failed to add signature at ${x}, ${y}:`, e.message)
+        } catch {
+          // skip signature on draw failure
         }
       }
 
@@ -982,8 +980,5 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     }
 
     return pdfDoc
-  } catch (e) {
-    console.error('Error filling template PDF:', e)
-    throw e
   }
 }

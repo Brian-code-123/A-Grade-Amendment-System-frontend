@@ -628,12 +628,10 @@ async function buildPdfBlobForExport(pdfData) {
     const pdfDocObj = await generateGradeAmendmentPDFWithTemplate(pdfData)
     const doc = await pdfDocObj.save()
     return doc instanceof Blob ? doc : new Blob([doc], { type: 'application/pdf' })
-  } catch (e) {
-    console.warn('Template filled export failed, trying template file fallback:', e)
+  } catch {
     try {
       return await getTemplatePdfBlob()
-    } catch (templateError) {
-      console.warn('Template file fallback failed, using generated PDF fallback:', templateError)
+    } catch {
       const generatedDoc = generateGradeAmendmentPDF(pdfData)
       return generatedDoc.output('blob')
     }
