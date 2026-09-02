@@ -11,6 +11,7 @@ A full-stack web application designed to streamline university grade amendment w
 - [Key Features](#key-features)
 - [System Benefits](#system-benefits)
 - [Tech Stack](#tech-stack)
+- [Security](#security)
 - [Deployment](#deployment)
 - [Future Improvements](#future-improvements)
 
@@ -66,7 +67,7 @@ The system replaces paper-based handoffs with a structured digital workflow so t
 | 10x Faster Processing | Reduces grade amendment turnaround time from weeks to days. |
 | Reduced Input Overhead | Streamlined forms with 44% fewer required input fields. |
 | Centralized Data Storage | Uses MongoDB to eliminate data redundancy and inconsistencies. |
-| Full Audit Trail | Automatically logs all actions for compliance and audit purposes. |
+| Full Audit Trail | Every approval, rejection, and resubmission is recorded in an append-only log for compliance and audit purposes. |
 | Improved Usability | Modern minimal UI with role-specific views and clear process status. |
 | Reduced Staff Burden | Eliminates 100+ hours of manual data entry work per semester. |
 
@@ -91,9 +92,15 @@ The system replaces paper-based handoffs with a structured digital workflow so t
 - dotenv
 - Azure App Services
 
+## Security
+
+- Session tokens issued by the backend are short-lived and rejected once expired or revoked, so a stolen or leaked token stops working on its own.
+- Roles (Instructor, Programme Director, Head, admin) are assigned by the backend and cannot be chosen or changed from the sign-up form.
+- Every case status change is written to an append-only audit log on the backend, independent of the editable case record, so a rejection reason can never be silently lost on resubmission.
+
 ## Deployment
 
-The application is deployed on Azure Static Web Apps for global availability and simplified CI/CD.
+The application is deployed on Azure Static Web Apps for global availability and simplified CI/CD. Every pull request and push to main runs linting and the automated test suite before the build is deployed.
 
 Live demo: https://agreeable-pebble-0d1936800.6.azurestaticapps.net
 
