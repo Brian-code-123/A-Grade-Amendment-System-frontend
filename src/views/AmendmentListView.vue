@@ -6,6 +6,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAuthStore } from '@/stores/authStore'
 import { downloadTemplate, downloadFilledForm } from '@/services/pdfTemplate'
 import SignaturePrompt from '@/components/SignaturePrompt.vue'
+import { useAmendmentFilters } from '@/composables/useAmendmentFilters'
 
 const store = useAmendmentStore()
 const subStore = useSubmissionStore()
@@ -18,10 +19,6 @@ const requiresSignatureForNewCase = computed(() => canModifyAmendments.value && 
 
 const showForm = ref(false)
 const editingId = ref(null)
-const courseCodeFilter = ref('')
-const termFilter = ref('')
-const statusFilter = ref('')
-const sortOrder = ref('oldest') // 'oldest' or 'newest'
 
 const VALID_GRADES = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','I','NR','PR','YR','W','P','NP']
 
@@ -384,80 +381,25 @@ const getAmendmentStatus = (amendment) => {
   return submissionStatusToAmendmentStatus(amendment?.status)
 }
 
-// Get unique status options for filter dropdown
-const statusOptions = computed(() => {
-  const statuses = [...new Set(store.amendments.map(a => getAmendmentStatus(a)).filter(Boolean))].sort()
-  if (auth.user?.role === 'Programme Director') {
-    const allowed = ['Pending', 'Rejected', 'Approved']
-    return allowed.filter(status => statuses.includes(status))
-  }
-  return statuses
-})
-
 const canExportPdf = (amendment) => {
   if (!canModifyAmendments.value) return true
   return getAmendmentStatus(amendment) === 'Approved'
 }
 
-// Check if any filters are active
-const hasActiveFilters = computed(() => {
-  return courseCodeFilter.value || statusFilter.value || termFilter.value
-})
-
-const totalAmendmentCount = computed(() => store.amendments.length)
-
-const getCreatedTimestamp = (amendment) => {
-  const rawDate = amendment.created_at || amendment.create_date || amendment.createdAt
-  if (rawDate) {
-    const timestamp = new Date(rawDate).getTime()
-    if (Number.isFinite(timestamp)) {
-      return timestamp
-    }
-  }
-
-  if (amendment._id) {
-    try {
-      return parseInt(String(amendment._id).substring(0, 8), 16) * 1000
-    } catch {
-      return 0
-    }
-  }
-
-  return 0
-}
-
-// Filter amendments based on user role and search filters
-const filteredAmendments = computed(() => {
-  let amendmentList = [...store.amendments]
-  
-  amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) !== 'Draft')
-  
-  // Apply course code filter if search term exists
-  if (courseCodeFilter.value) {
-    amendmentList = amendmentList.filter(amendment => 
-      amendment.course_code?.toLowerCase().includes(courseCodeFilter.value.toLowerCase())
-    )
-  }
-  
-  // Apply status filter if selected
-  if (statusFilter.value) {
-    amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) === statusFilter.value)
-  }
-
-  // Apply term filter if selected (non-admin only)
-  if (termFilter.value) {
-    amendmentList = amendmentList.filter(amendment => String(amendment.term) === termFilter.value)
-  }
-  
-  // Sort by creation date
-  amendmentList.sort((a, b) => {
-    const dateA = getCreatedTimestamp(a)
-    const dateB = getCreatedTimestamp(b)
-    return sortOrder.value === 'oldest' ? dateA - dateB : dateB - dateA
-  })
-  
-  return amendmentList
-})
+const {
+  courseCodeFilter,
+  termFilter,
+  statusFilter,
+  sortOrder,
+  statusOptions,
+  hasActiveFilters,
+  totalAmendmentCount,
+  filteredAmendments
+} = useAmendmentFilters(
+  computed(() => store.amendments),
+  getAmendmentStatus,
+  { role: computed(() => auth.user?.role) }
+)
 
 onMounted(async () => {
   try {
