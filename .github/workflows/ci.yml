@@ -32,10 +32,10 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint -- --max-warnings=0
 
       - name: Unit tests
-        run: npm run test:unit
+        run: npm run test:unit -- --run
 
       - name: Build
         run: npm run build
