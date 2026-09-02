@@ -10,7 +10,7 @@
     "dev": "node ./scripts/dev.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test:unit": "vitest --passWithNoTests",
+    "test:unit": "vitest",
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
