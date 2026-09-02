@@ -14,7 +14,6 @@
     "lint": "eslint . --fix --cache"
   },
   "dependencies": {
-    "@azure/msal-browser": "^5.2.0",
     "@mdi/font": "^7.4.47",
     "@oruga-ui/oruga-next": "^0.11.6",
     "@oruga-ui/theme-bootstrap": "^0.9.4",
