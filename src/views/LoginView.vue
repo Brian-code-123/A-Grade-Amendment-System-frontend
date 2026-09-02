@@ -7,7 +7,7 @@ import { apiFetch } from '@/utils/api'
 const auth = useAuthStore()
 const router = useRouter()
 
-if (auth.isLoggedIn) router.replace(auth.resolveLandingRoute())
+if (auth.isLoggedIn) router.replace(auth.resolveLandingRoute(auth.user))
 
 const demoSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
 
@@ -141,7 +141,7 @@ async function handleLogin() {
     } else {
       await auth.login(loginForm.value.email, loginForm.value.password)
     }
-    router.replace(auth.resolveLandingRoute())
+    router.replace(auth.resolveLandingRoute(auth.user))
   } catch (e) {
     error.value = e.message
   } finally {
@@ -170,7 +170,7 @@ async function handleRegister() {
   loading.value = true
   try {
     await auth.register(regForm.value.name, regForm.value.email, regForm.value.password, regForm.value.role)
-    router.replace(auth.resolveLandingRoute())
+    router.replace(auth.resolveLandingRoute(auth.user))
   } catch (e) {
     error.value = e.message
   } finally {
