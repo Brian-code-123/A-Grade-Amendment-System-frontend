@@ -35,7 +35,7 @@ coverage
 .env.*
 
 # PDF files
-*.pdf
+public/*.pdf
 !public/template.pdf
 !public/form.pdf
 !public/mood.pdf
