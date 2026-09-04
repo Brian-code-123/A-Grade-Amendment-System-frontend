@@ -302,7 +302,7 @@ onUnmounted(() => {
           <i class="bi bi-inbox" style="font-size:2rem;opacity:0.3"></i>
           <p class="mt-2">No cases found</p>
         </div>
-        <div v-else class="table-responsive">
+        <div v-else class="table-responsive table-responsive-cards">
           <table class="table table-hover mb-0 align-middle">
             <thead>
               <tr>
@@ -317,13 +317,13 @@ onUnmounted(() => {
             </thead>
             <tbody>
               <tr v-for="s in visibleSubmissions" :key="s._id">
-                <td class="fw-semibold">{{ s.title }}</td>
-                <td>{{ s.submitted_by_name }}</td>
-                <td><span class="badge" :class="statusBadge(s.status)">{{ displayStatus(s.status) }}</span></td>
-                <td class="small">{{ submissionAcademicYearTerm(s) }}</td>
-                <td>{{ s.amendment_count || 0 }}</td>
-                <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
-                <td>
+                <td class="fw-semibold" data-label="Title">{{ s.title }}</td>
+                <td data-label="Submitted By">{{ s.submitted_by_name }}</td>
+                <td data-label="Status"><span class="badge" :class="statusBadge(s.status)">{{ displayStatus(s.status) }}</span></td>
+                <td class="small" data-label="Academic Year / Term">{{ submissionAcademicYearTerm(s) }}</td>
+                <td data-label="Number of Cases">{{ s.amendment_count || 0 }}</td>
+                <td class="small" data-label="Date">{{ new Date(s.created_at).toLocaleDateString() }}</td>
+                <td class="card-cell-actions" data-label="Actions">
                   <button class="btn btn-sm btn-outline-secondary" @click="viewDetail(s._id)" title="View Details">
                     <i class="bi bi-eye"></i>
                   </button>
@@ -370,20 +370,20 @@ onUnmounted(() => {
             <p v-if="detailSubmission.rejection_reason"><strong>Rejection Reason:</strong> <span class="text-danger">{{ detailSubmission.rejection_reason }}</span></p>
 
             <h6 class="fw-bold mt-3">Amendment Cases ({{ detailAmendments.length }})</h6>
-            <div class="table-responsive">
+            <div class="table-responsive table-responsive-cards">
               <table class="table table-sm">
                 <thead>
                   <tr><th>Student No.</th><th>Name</th><th>Course</th><th>Original</th><th>New</th><th>Reason</th><th>Details</th></tr>
                 </thead>
                 <tbody>
                   <tr v-for="a in detailAmendments" :key="a._id">
-                    <td>{{ a.student_no || a.student_id }}</td>
-                    <td>{{ a.student_name }}</td>
-                    <td>{{ a.course_code }}</td>
-                    <td><span class="badge bg-secondary">{{ a.original_grade }}</span></td>
-                    <td><span class="badge bg-primary">{{ a.new_grade }}</span></td>
-                    <td>{{ amendmentReasonLabel(a) }}</td>
-                    <td class="small">{{ amendmentDetails(a) }}</td>
+                    <td data-label="Student No.">{{ a.student_no || a.student_id }}</td>
+                    <td data-label="Name">{{ a.student_name }}</td>
+                    <td data-label="Course">{{ a.course_code }}</td>
+                    <td data-label="Original"><span class="badge bg-secondary">{{ a.original_grade }}</span></td>
+                    <td data-label="New"><span class="badge bg-primary">{{ a.new_grade }}</span></td>
+                    <td data-label="Reason">{{ amendmentReasonLabel(a) }}</td>
+                    <td class="small" data-label="Details">{{ amendmentDetails(a) }}</td>
                   </tr>
                   <tr v-if="detailAmendments.length === 0">
                     <td colspan="7" class="text-center text-muted">No amendment details available</td>
