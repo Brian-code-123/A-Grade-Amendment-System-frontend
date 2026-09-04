@@ -382,7 +382,7 @@ onMounted(() => {
       <div class="card-body p-0">
         <div v-if="subStore.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
         <div v-else-if="subStore.submissions.length === 0" class="text-center text-muted py-4">No submissions yet</div>
-        <div v-else class="table-responsive">
+        <div v-else class="table-responsive table-responsive-cards">
           <table class="table table-hover mb-0">
             <thead>
               <tr>
@@ -405,7 +405,7 @@ onMounted(() => {
                     @change="toggleSubSelect(s._id)"
                   />
                 </td>
-                <td>
+                <td data-label="Amendment / Submission">
                   <div class="fw-semibold">{{ getSubmissionHeadline(s) }}</div>
                   <div class="text-muted small">{{ getSubmissionSummary(s) }}</div>
                   <div class="text-muted small" v-if="s.description">{{ s.description }}</div>
@@ -414,10 +414,10 @@ onMounted(() => {
                     <span class="text-danger small"><strong>Reason:</strong> {{ s.rejection_reason }}</span>
                   </div>
                 </td>
-                <td><span class="badge" :class="statusBadge(s.status)">{{ statusLabel(s.status) }}</span></td>
-                <td>{{ s.amendment_count || 0 }}</td>
-                <td class="small">{{ new Date(s.created_at).toLocaleDateString() }}</td>
-                <td>
+                <td data-label="Status"><span class="badge" :class="statusBadge(s.status)">{{ statusLabel(s.status) }}</span></td>
+                <td data-label="Number of Cases">{{ s.amendment_count || 0 }}</td>
+                <td class="small" data-label="Created">{{ new Date(s.created_at).toLocaleDateString() }}</td>
+                <td data-label="Actions">
                   <button v-if="s.status === 'Draft'" class="btn btn-sm btn-success" @click="submitToAdmin(s._id)" :disabled="emailSending || submitting[s._id]">
                     <span v-if="submitting[s._id]" class="spinner-border spinner-border-sm me-1"></span>
                     <i v-else class="bi bi-send"></i> Submit to Program Director
