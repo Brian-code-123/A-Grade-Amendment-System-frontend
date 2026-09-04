@@ -97,6 +97,11 @@
             <i class="bi bi-arrow-clockwise"></i>
           </button>
         </div>
+
+        <!-- Sidebar Toggle (mobile only) -->
+        <button @click="sidebarOpen = !sidebarOpen" class="sidebar-toggle-btn" title="Toggle panel">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
       </div>
 
       <!-- Main Content Area -->
@@ -105,7 +110,7 @@
         <div class="pdf-viewer">
           <div id="pdf-container" class="pdf-container">
             <canvas id="pdf-canvas" ref="pdfCanvasRef"></canvas>
-            <canvas id="annotation-canvas" ref="annotationCanvasRef" class="annotation-overlay"></canvas>
+            <canvas id="annotation-canvas" ref="annotationCanvasRef" class="annotation-overlay" :class="{ 'tool-active': activeTool }"></canvas>
             <input 
               v-show="showTextInput" 
               ref="directTextInput"
@@ -121,17 +126,17 @@
         </div>
 
         <!-- Right Sidebar -->
-        <div class="right-sidebar">
+        <div class="right-sidebar" :class="{ open: sidebarOpen }">
 
           <div class="sidebar-section">
-            <h3>�📥 Download</h3>
+            <h3>Download</h3>
             <button @click="downloadOriginal" class="action-btn full-width">
               <i class="bi bi-download"></i> Original PDF
             </button>
           </div>
 
           <div class="sidebar-section">
-            <h3>📤 Export As</h3>
+            <h3>Export As</h3>
             <button @click="exportAsPNG" class="export-btn">
               <i class="bi bi-image"></i> PNG
             </button>
@@ -141,14 +146,14 @@
           </div>
 
           <div class="sidebar-section">
-            <h3>🛠️ Tools</h3>
+            <h3>Tools</h3>
             <button @click="clearPage" class="tool-action-btn full-width">
               <i class="bi bi-trash"></i> Clear Page
             </button>
           </div>
 
           <div class="sidebar-section" v-if="activeTool === 'text'">
-            <h3>✍️ Text Tool</h3>
+            <h3>Text Tool</h3>
             <small style="color:#6c757d">Click to place an Aa box, drag it to position, then double-click to type.</small>
             <button @click="editSelectedText" class="tool-action-btn full-width" :disabled="!selectedTextAnnotationId">
               <i class="bi bi-pencil"></i> Edit Selected Text
@@ -212,6 +217,7 @@ const setupWorkerFallback = async () => {
 
 // State
 const pdfLoaded = ref(false)
+const sidebarOpen = ref(false)
 const activeTool = ref('pen')
 const penColor = ref('#000000')
 const penWidth = ref(2)
@@ -630,6 +636,7 @@ const addText = () => {
     }
     showTextInput.value = false
     editingTextAnnotationId.value = null
+    activeTool.value = ''
     return
   }
   
@@ -666,6 +673,7 @@ const addText = () => {
   showTextInput.value = false
   textContent.value = ''
   editingTextAnnotationId.value = null
+  activeTool.value = ''
   redrawAnnotations()
 }
 
@@ -673,6 +681,7 @@ const cancelTextInput = () => {
   showTextInput.value = false
   textContent.value = ''
   editingTextAnnotationId.value = null
+  activeTool.value = ''
 }
 
 const editSelectedText = () => {
@@ -963,15 +972,35 @@ const exportAsPNG = async () => {
   try {
     const baseName = fileName.value.replace(/\.pdf$/i, '')
     successMsg.value = 'Exporting PNG…'
+
+    const pageCanvases = []
     for (let p = 1; p <= pageCount.value; p++) {
-      const canvas = await renderPageToCanvas(p, true)
-      const link = document.createElement('a')
-      link.href = canvas.toDataURL('image/png')
-      link.download = `${baseName}_page${p}.png`
-      link.click()
-      // Brief delay so browser doesn't block multiple simultaneous downloads
-      await new Promise(r => setTimeout(r, 350))
+      pageCanvases.push(await renderPageToCanvas(p, true))
     }
+
+    const PAGE_GAP = 16
+    const combinedWidth = Math.max(...pageCanvases.map(c => c.width))
+    const combinedHeight = pageCanvases.reduce((sum, c) => sum + c.height, 0) + PAGE_GAP * (pageCanvases.length - 1)
+
+    const combinedCanvas = document.createElement('canvas')
+    combinedCanvas.width = combinedWidth
+    combinedCanvas.height = combinedHeight
+    const ctx = combinedCanvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, combinedWidth, combinedHeight)
+
+    let yOffset = 0
+    for (const pageCanvas of pageCanvases) {
+      const xOffset = (combinedWidth - pageCanvas.width) / 2
+      ctx.drawImage(pageCanvas, xOffset, yOffset)
+      yOffset += pageCanvas.height + PAGE_GAP
+    }
+
+    const link = document.createElement('a')
+    link.href = combinedCanvas.toDataURL('image/png')
+    link.download = `${baseName}_annotated.png`
+    link.click()
+
     successMsg.value = `Exported ${pageCount.value} page(s) as PNG!`
     setTimeout(() => successMsg.value = '', 3000)
   } catch (e) {
@@ -1374,6 +1403,11 @@ onUnmounted(() => {
   align-items: flex-start;
   justify-content: center;
   padding: 10px 20px 20px 20px;
+  max-width: 100vw;
+}
+
+.sidebar-toggle-btn {
+  display: none;
 }
 
 .pdf-container {
@@ -1392,6 +1426,10 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
+  cursor: default;
+}
+
+.annotation-overlay.tool-active {
   cursor: crosshair;
 }
 
@@ -1681,5 +1719,57 @@ onUnmounted(() => {
   background: rgba(21,33,51,0.96);
   color: #d6e0e8;
   border: 1px solid rgba(122,154,184,0.14);
+}
+
+/* ============================================
+   RESPONSIVE (mobile) — toolbar/sidebar only
+   ============================================ */
+@media (max-width: 767.98px) {
+  .sidebar-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    color: #333;
+    margin-left: auto;
+  }
+
+  .tool-btn, .nav-btn, .zoom-btn, .color-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .editor-content {
+    position: relative;
+  }
+
+  .right-sidebar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 85vw;
+    max-width: 300px;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    box-shadow: -2px 0 12px rgba(0,0,0,0.15);
+    z-index: 5;
+  }
+
+  .right-sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+[data-bs-theme="dark"] .sidebar-toggle-btn {
+  background: rgba(21,33,51,0.85);
+  border-color: rgba(122,154,184,0.22);
+  color: #d6e0e8;
 }
 </style>
