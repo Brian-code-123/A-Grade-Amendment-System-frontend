@@ -6,6 +6,7 @@ import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAuthStore } from '@/stores/authStore'
 import { downloadTemplate, downloadFilledForm } from '@/services/pdfTemplate'
 import SignaturePrompt from '@/components/SignaturePrompt.vue'
+import { useAmendmentFilters } from '@/composables/useAmendmentFilters'
 
 const store = useAmendmentStore()
 const subStore = useSubmissionStore()
@@ -18,10 +19,6 @@ const requiresSignatureForNewCase = computed(() => canModifyAmendments.value && 
 
 const showForm = ref(false)
 const editingId = ref(null)
-const courseCodeFilter = ref('')
-const termFilter = ref('')
-const statusFilter = ref('')
-const sortOrder = ref('oldest') // 'oldest' or 'newest'
 
 const VALID_GRADES = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','I','NR','PR','YR','W','P','NP']
 
@@ -384,80 +381,25 @@ const getAmendmentStatus = (amendment) => {
   return submissionStatusToAmendmentStatus(amendment?.status)
 }
 
-// Get unique status options for filter dropdown
-const statusOptions = computed(() => {
-  const statuses = [...new Set(store.amendments.map(a => getAmendmentStatus(a)).filter(Boolean))].sort()
-  if (auth.user?.role === 'Programme Director') {
-    const allowed = ['Pending', 'Rejected', 'Approved']
-    return allowed.filter(status => statuses.includes(status))
-  }
-  return statuses
-})
-
 const canExportPdf = (amendment) => {
   if (!canModifyAmendments.value) return true
   return getAmendmentStatus(amendment) === 'Approved'
 }
 
-// Check if any filters are active
-const hasActiveFilters = computed(() => {
-  return courseCodeFilter.value || statusFilter.value || termFilter.value
-})
-
-const totalAmendmentCount = computed(() => store.amendments.length)
-
-const getCreatedTimestamp = (amendment) => {
-  const rawDate = amendment.created_at || amendment.create_date || amendment.createdAt
-  if (rawDate) {
-    const timestamp = new Date(rawDate).getTime()
-    if (Number.isFinite(timestamp)) {
-      return timestamp
-    }
-  }
-
-  if (amendment._id) {
-    try {
-      return parseInt(String(amendment._id).substring(0, 8), 16) * 1000
-    } catch {
-      return 0
-    }
-  }
-
-  return 0
-}
-
-// Filter amendments based on user role and search filters
-const filteredAmendments = computed(() => {
-  let amendmentList = [...store.amendments]
-  
-  amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) !== 'Draft')
-  
-  // Apply course code filter if search term exists
-  if (courseCodeFilter.value) {
-    amendmentList = amendmentList.filter(amendment => 
-      amendment.course_code?.toLowerCase().includes(courseCodeFilter.value.toLowerCase())
-    )
-  }
-  
-  // Apply status filter if selected
-  if (statusFilter.value) {
-    amendmentList = amendmentList.filter(amendment => getAmendmentStatus(amendment) === statusFilter.value)
-  }
-
-  // Apply term filter if selected (non-admin only)
-  if (termFilter.value) {
-    amendmentList = amendmentList.filter(amendment => String(amendment.term) === termFilter.value)
-  }
-  
-  // Sort by creation date
-  amendmentList.sort((a, b) => {
-    const dateA = getCreatedTimestamp(a)
-    const dateB = getCreatedTimestamp(b)
-    return sortOrder.value === 'oldest' ? dateA - dateB : dateB - dateA
-  })
-  
-  return amendmentList
-})
+const {
+  courseCodeFilter,
+  termFilter,
+  statusFilter,
+  sortOrder,
+  statusOptions,
+  hasActiveFilters,
+  totalAmendmentCount,
+  filteredAmendments
+} = useAmendmentFilters(
+  computed(() => store.amendments),
+  getAmendmentStatus,
+  { role: computed(() => auth.user?.role) }
+)
 
 onMounted(async () => {
   try {
@@ -540,7 +482,7 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-      <div v-if="auth.user?.role !== 'admin'" class="col-md-2">
+      <div v-if="auth.user?.role !== 'admin'" class="col-md-2 mt-2 mt-md-0">
         <label class="form-label small fw-semibold text-muted">Filter by Term</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-calendar2-week"></i></span>
@@ -559,7 +501,7 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-      <div class="col-md-2">
+      <div class="col-md-2 mt-2 mt-md-0">
         <label class="form-label small fw-semibold text-muted">Filter by Status</label>
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-funnel"></i></span>
@@ -577,7 +519,7 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 mt-2 mt-md-0">
         <label class="form-label small fw-semibold text-muted">Sort by Date</label>
         <div class="btn-group w-100" role="group">
           <input type="radio" class="btn-check" id="sort-oldest" value="oldest" v-model="sortOrder" />
@@ -590,7 +532,7 @@ onUnmounted(() => {
           </label>
         </div>
       </div>
-      <div class="col-md-2 d-flex align-items-end">
+      <div class="col-md-2 d-flex align-items-end mt-2 mt-md-0">
         <button v-if="hasActiveFilters" @click="courseCodeFilter = ''; statusFilter = ''; termFilter = ''" class="btn btn-sm btn-outline-primary w-100">
           <i class="bi bi-arrow-counterclockwise me-1"></i>Clear All
         </button>
@@ -971,7 +913,7 @@ onUnmounted(() => {
       <div class="card-body p-0">
         <div v-if="store.loading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
         <div v-else-if="filteredAmendments.length === 0" class="text-center text-muted py-4">No amendments found. Create one above.</div>
-        <div v-else class="table-responsive">
+        <div v-else class="table-responsive table-responsive-cards">
           <table class="table table-hover mb-0 align-middle">
             <thead>
               <tr>
@@ -988,36 +930,36 @@ onUnmounted(() => {
             </thead>
             <tbody>
               <tr v-for="a in filteredAmendments" :key="a._id" :class="{ 'table-danger': getAmendmentStatus(a) === 'Rejected' && auth.user?.role !== 'admin' }">
-                <td class="small text-nowrap">
+                <td class="small text-nowrap" data-label="AY / Term">
                   {{ a.academic_year || '-' }}<br/>
                   <span class="text-muted">T{{ a.term || '-' }}</span>
                 </td>
-                <td class="small">
+                <td class="small" data-label="Student">
                   <strong>{{ a.student_no || a.student_id }}</strong><br/>
                   {{ a.student_name }}
                 </td>
-                <td class="small">
+                <td class="small" data-label="Course">
                   <strong>{{ a.course_code }}</strong><br/>
                   <span class="text-muted">{{ a.course_title }}</span>
                 </td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" data-label="Grade">
                   <span class="badge bg-secondary">{{ a.original_grade }}</span>
                   <i class="bi bi-arrow-right mx-1 small"></i>
                   <span class="badge bg-primary">{{ a.new_grade }}</span>
                 </td>
-                <td class="small" style="max-width:180px">
+                <td class="small" style="max-width:180px" data-label="Reason">
                   {{ reasonLabel(a.reason_type) }}
                   <span v-if="a.reason && !a.reason_type" class="text-muted">{{ a.reason }}</span>
                 </td>
-                <td class="small" style="max-width:260px; white-space:normal; word-break:break-word;">
+                <td class="small" style="max-width:260px; white-space:normal; word-break:break-word;" data-label="Details">
                   {{ amendmentDetailsText(a) }}
                 </td>
-                <td class="small text-nowrap">
+                <td class="small text-nowrap" data-label="Instructor">
                   {{ a.instructor_name || '-' }}<br/>
                   <span class="text-muted">{{ a.department || '' }}</span>
                 </td>
-                <td><span class="badge" :class="statusBadge(getAmendmentStatus(a))">{{ getAmendmentStatus(a) }}</span></td>
-                <td>
+                <td data-label="Status"><span class="badge" :class="statusBadge(getAmendmentStatus(a))">{{ getAmendmentStatus(a) }}</span></td>
+                <td class="card-cell-actions" data-label="Actions">
                   <div class="btn-group btn-group-sm">
                     <button v-if="canExportPdf(a)" class="btn btn-outline-secondary" @click="downloadFilledForm(a)" title="Download PDF"><i class="bi bi-file-pdf"></i></button>
                     <button
