@@ -275,7 +275,6 @@ function refreshCaptcha() {
   background: rgba(255,255,255,0.6);
   border: 1px solid rgba(12,142,235,0.18);
   border-radius: 10px;
-  font-size: 0.9rem;
   color: #2c3e50;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;

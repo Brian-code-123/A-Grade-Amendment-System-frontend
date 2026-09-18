@@ -10,7 +10,7 @@ export function useAmendmentFilters(amendments, getAmendmentStatus, options = {}
   const sortOrder = ref('oldest') // 'oldest' or 'newest'
 
   const statusOptions = computed(() => {
-    const statuses = [...new Set(amendments.value.map((a) => getAmendmentStatus(a)).filter(Boolean))].sort()
+    const statuses = [...new Set(amendments.value.map((a) => getAmendmentStatus(a)).filter(Boolean))].sort((a, b) => a.localeCompare(b))
     if (options.role?.value === 'Programme Director') {
       const allowed = ['Pending', 'Rejected', 'Approved']
       return allowed.filter((status) => statuses.includes(status))

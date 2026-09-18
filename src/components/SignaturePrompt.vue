@@ -1,28 +1,13 @@
 <script setup>
-import { computed, watch, ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
 const router = useRouter()
-const forceUpdate = ref(0)
 
-// Force re-evaluation when user changes
 const needsSignature = computed(() => {
-  forceUpdate.value // Trigger reactivity
   return auth.isLoggedIn && auth.user?.role !== 'admin' && !auth.user?.signature
-})
-
-// Watch user object for changes
-watch(() => auth.user?.signature, (newSig) => {
-  if (newSig) {
-    forceUpdate.value++
-  }
-}, { deep: true })
-
-onMounted(() => {
-  // Re-check on mount in case signature was just saved
-  forceUpdate.value++
 })
 
 function goToSignatureSetup() {
