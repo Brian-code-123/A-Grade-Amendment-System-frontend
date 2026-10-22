@@ -87,6 +87,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    // Demo sample data belongs to the demo session, so it goes with the sign-out.
+    localStorage.removeItem('demo_admin_submissions')
+    localStorage.removeItem('demo_pd_submissions')
   }
 
   async function login(email, password) {
@@ -115,11 +118,11 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function register(name, email, password, role) {
+  async function register(name, email, password) {
     const res = await apiFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role })
+      body: JSON.stringify({ name, email, password })
     })
     const contentType = (res.headers.get('content-type') || '').toLowerCase()
     const text = await res.text()

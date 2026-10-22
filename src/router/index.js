@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { demoEnabled } from '@/config/demo'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,16 +14,18 @@ const router = createRouter({
       name: 'login',
       component: () => import('@/views/LoginView.vue')
     },
-    {
-      path: '/demo-login',
-      name: 'demo-login',
-      component: () => import('@/views/DemoLoginView.vue')
-    },
-    {
-      path: '/demo-verify',
-      name: 'demo-verify',
-      component: () => import('@/views/DemoVerifyView.vue')
-    },
+    ...(demoEnabled ? [
+      {
+        path: '/demo-login',
+        name: 'demo-login',
+        component: () => import('@/views/DemoLoginView.vue')
+      },
+      {
+        path: '/demo-verify',
+        name: 'demo-verify',
+        component: () => import('@/views/DemoVerifyView.vue')
+      }
+    ] : []),
     {
       path: '/auth/callback',
       name: 'auth-callback',

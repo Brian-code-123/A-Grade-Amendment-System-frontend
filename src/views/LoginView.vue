@@ -3,27 +3,25 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '@/utils/api'
+import { demoEnabled } from '@/config/demo'
 
 const auth = useAuthStore()
 const router = useRouter()
 
 if (auth.isLoggedIn) router.replace(auth.resolveLandingRoute(auth.user))
 
-const demoSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
-
 const tab = ref('login')
 const loading = ref(false)
 const error = ref('')
 
 const loginForm = ref({ email: '', password: '', verificationCode: '' })
-const regForm = ref({ name: '', email: '', password: '', confirm: '', role: 'Programme Director' })
+const regForm = ref({ name: '', email: '', password: '', confirm: '' })
 const codeSent = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
 
 function demoLogin() {
-  // 跳转到演示登录页面
-  router.push('/demo-login')
+  if (demoEnabled) router.push('/demo-login')
 }
 
 async function sendVerificationCode() {
@@ -93,28 +91,10 @@ async function sendVerificationCode() {
   }
 }
 
-function demoLoginPD() {
-  const demoToken = 'demo_token_pd_' + Date.now()
-  const demoUser = {
-    email: 'martin.choy@hkbu.edu.hk',
-    name: 'Dr. Martin Choy',
-    role: 'Programme Director',
-    signature: demoSignature
-  }
-  auth.setAuth(demoToken, demoUser)
-  router.replace(auth.resolveLandingRoute(demoUser))
-}
-
-function demoLoginHead() {
-  const demoToken = 'demo_token_head_' + Date.now()
-  const demoUser = {
-    email: 'head.dept@hkbu.edu.hk',
-    name: 'Prof. David Wong',
-    role: 'Head',
-    signature: demoSignature
-  }
-  auth.setAuth(demoToken, demoUser)
-  router.replace(auth.resolveLandingRoute(demoUser))
+async function demoLoginAs(kind) {
+  if (!demoEnabled) return
+  const { startDemoSession } = await import('@/utils/demoSession')
+  startDemoSession(kind, auth, router)
 }
 
 async function handleLogin() {
@@ -163,13 +143,13 @@ async function handleRegister() {
     error.value = 'Passwords do not match.'
     return
   }
-  if (regForm.value.password.length < 6) {
-    error.value = 'Password must be at least 6 characters.'
+  if (regForm.value.password.length < 10) {
+    error.value = 'Password must be at least 10 characters.'
     return
   }
   loading.value = true
   try {
-    await auth.register(regForm.value.name, regForm.value.email, regForm.value.password, regForm.value.role)
+    await auth.register(regForm.value.name, regForm.value.email, regForm.value.password)
     router.replace(auth.resolveLandingRoute(auth.user))
   } catch (e) {
     error.value = e.message
@@ -213,7 +193,7 @@ async function handleRegister() {
         </div>
 
         <!-- Demo Access -->
-        <div class="lp-demo-section anim-in-d1">
+        <div v-if="demoEnabled" class="lp-demo-section anim-in-d1">
           <p class="lp-section-label">Quick demo access</p>
           <div class="lp-demo-grid">
             <button class="lp-demo-btn lp-demo-admin" @click="demoLogin">
@@ -224,7 +204,7 @@ async function handleRegister() {
               </span>
               <i class="bi bi-arrow-right lp-demo-arrow"></i>
             </button>
-            <button class="lp-demo-btn lp-demo-pd" @click="demoLoginPD">
+            <button class="lp-demo-btn lp-demo-pd" @click="demoLoginAs('pd')">
               <span class="lp-demo-icon"><i class="bi bi-person-badge-fill"></i></span>
               <span class="lp-demo-text">
                 <strong>Teacher</strong>
@@ -232,7 +212,7 @@ async function handleRegister() {
               </span>
               <i class="bi bi-arrow-right lp-demo-arrow"></i>
             </button>
-            <button class="lp-demo-btn lp-demo-head" @click="demoLoginHead">
+            <button class="lp-demo-btn lp-demo-head" @click="demoLoginAs('head')">
               <span class="lp-demo-icon"><i class="bi bi-person-check-fill"></i></span>
               <span class="lp-demo-text">
                 <strong>Programme Director</strong>
@@ -244,7 +224,7 @@ async function handleRegister() {
         </div>
 
         <!-- Divider -->
-        <div class="lp-divider anim-in-d2">
+        <div v-if="demoEnabled" class="lp-divider anim-in-d2">
           <span>or sign in with credentials</span>
         </div>
 
@@ -313,21 +293,10 @@ async function handleRegister() {
             </div>
           </div>
           <div class="lp-field">
-            <label>Role</label>
-            <div class="lp-input-wrap">
-              <i class="bi bi-person-gear lp-field-icon"></i>
-              <select v-model="regForm.role">
-                <option value="Programme Director">Teacher</option>
-                <option value="Head">Programme Director</option>
-                <option>admin</option>
-              </select>
-            </div>
-          </div>
-          <div class="lp-field">
             <label>Password</label>
             <div class="lp-input-wrap">
               <i class="bi bi-lock lp-field-icon"></i>
-              <input v-model="regForm.password" type="password" placeholder="Min. 6 characters" required />
+              <input v-model="regForm.password" type="password" placeholder="Min. 10 characters" required />
             </div>
           </div>
           <div class="lp-field">

@@ -17,6 +17,24 @@ describe('authStore', () => {
     setActivePinia(createPinia())
   })
 
+  it('clearAuth removes credentials and demo data but keeps preferences and archive data', () => {
+    const auth = useAuthStore()
+    auth.setAuth('abc123', { name: 'Teacher', email: 't@example.com', role: 'Programme Director' })
+    localStorage.setItem('demo_admin_submissions', '[]')
+    localStorage.setItem('demo_pd_submissions', '[]')
+    localStorage.setItem('theme', 'dark')
+    localStorage.setItem('archive_semesters', '["2025"]')
+
+    auth.clearAuth()
+
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(localStorage.getItem('user')).toBeNull()
+    expect(localStorage.getItem('demo_admin_submissions')).toBeNull()
+    expect(localStorage.getItem('demo_pd_submissions')).toBeNull()
+    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(localStorage.getItem('archive_semesters')).toBe('["2025"]')
+  })
+
   it('setAuth stores the token and user in state and localStorage', () => {
     const auth = useAuthStore()
     auth.setAuth('abc123', { name: 'Teacher', email: 't@example.com', role: 'Programme Director' })
