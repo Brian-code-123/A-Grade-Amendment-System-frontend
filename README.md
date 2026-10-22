@@ -95,8 +95,23 @@ The system replaces paper-based handoffs with a structured digital workflow so t
 ## Security
 
 - Session tokens issued by the backend are short-lived and rejected once expired or revoked, so a stolen or leaked token stops working on its own.
-- Roles (Instructor, Programme Director, Head, admin) are assigned by the backend and cannot be chosen or changed from the sign-up form.
+- Roles (Teacher, Programme Director, Head, admin) are assigned by the backend and cannot be chosen or changed from the sign-up form; the form no longer offers a role choice.
 - Every case status change is written to an append-only audit log on the backend, independent of the editable case record, so a rejection reason can never be silently lost on resubmission.
+- **Trust boundary**: all authorization is enforced by the backend. Route guards and role checks in this app only shape what the interface shows.
+- **Passwords**: the sign-up form asks for at least 10 characters, matching the backend rule.
+- **Session storage**: the session token is kept in browser storage and sent as a Bearer token on API calls, including email notifications. The app avoids unsafe HTML rendering (no `v-html` or `eval`) and tokens expire after 24 hours. Signing out clears the token, the user and any demo data.
+- **Demo mode**: the demo sign-in buttons and demo routes exist for development and demonstrations only and are hidden in production builds. Set `VITE_ENABLE_DEMO=true` at build time to show them. The backend does not accept demo tokens.
+- **Browser security headers**: the static web app sends HSTS, `Permissions-Policy`, `X-Content-Type-Options`, `X-Frame-Options` and a Content-Security-Policy in report-only mode. A test keeps the CSP hash for the inline script in `index.html` in sync.
+- **Supply chain**: Dependabot proposes dependency updates, CI runs lint and tests before every deploy, and the deploy installs from the lockfile (`npm ci`).
+
+### Trade-offs and limitations
+
+- The session token lives in browser storage rather than an HttpOnly cookie, because the app and the API run on different origins. A cross-site scripting flaw would therefore expose it.
+- The Content-Security-Policy is report-only for now. It is meant to be enforced after it has run in production without violations.
+- Sample data for demo mode is still part of the application bundle; only the demo sign-in is hidden.
+- The client-side role guard is cosmetic and can be bypassed in the browser; the backend rejects unauthorized requests regardless.
+
+Server-side decisions, the threat and control table, the permission table and further limits are in the backend README, section 7 (Security).
 
 ## Deployment
 
