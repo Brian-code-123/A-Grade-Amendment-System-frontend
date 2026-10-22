@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './authStore'
 import { apiFetch } from '@/utils/api'
+import { sendSubmissionEmail } from '@/services/emailService'
 
 const DEMO_ADMIN_SUBMISSIONS_STORAGE_KEY = 'demo_admin_submissions'
 const DEMO_PD_SUBMISSIONS_STORAGE_KEY = 'demo_pd_submissions'
@@ -427,7 +428,7 @@ export const useSubmissionStore = defineStore('submission', () => {
     return result
   }
 
-  async function resubmitSubmission(id) {
+  async function resubmitSubmission(id, options = {}) {
     if (isDemoUser()) {
       const auth = useAuthStore()
       const s = submissions.value.find(s => s._id === id)
@@ -449,6 +450,14 @@ export const useSubmissionStore = defineStore('submission', () => {
     const result = await res.json()
     if (!res.ok) throw new Error(result.message || 'Resubmit failed')
     await fetchSubmissions()
+
+    // The case is back in the Programme Director's queue; tell them. A mail
+    // failure must not undo the resubmission.
+    try {
+      await sendSubmissionEmail(result, options.amendment ? [options.amendment] : [], auth.user)
+    } catch {
+      // Ignore: the case is already visible in the approval queue.
+    }
 
     const updated = submissions.value.find(s => s._id === id)
     if (updated) {

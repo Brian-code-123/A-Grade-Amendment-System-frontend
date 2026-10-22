@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from './authStore'
 import { useSubmissionStore } from './submissionStore'
 import { apiFetch } from '@/utils/api'
+import { sendSubmissionEmail } from '@/services/emailService'
 
 async function parseJsonResponse(res, fallbackMessage) {
   const contentType = (res.headers.get('content-type') || '').toLowerCase()
@@ -674,6 +675,13 @@ export const useAmendmentStore = defineStore('amendment', () => {
         if (linkRes.ok) {
           const linked = await linkRes.json()
           Object.assign(result, linked)
+        }
+        // Tell the Programme Director a new case is waiting. A mail failure must
+        // not undo the submission, the case is already in their queue.
+        try {
+          await sendSubmissionEmail(submitted, [result], auth.user)
+        } catch {
+          // Ignore: staff can still see the case in the approval queue.
         }
       } catch (syncError) {
         try {
