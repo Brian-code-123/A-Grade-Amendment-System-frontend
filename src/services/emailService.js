@@ -1,11 +1,20 @@
 import { apiFetch } from '@/utils/api'
+import { useAuthStore } from '@/stores/authStore'
 
 const API_PATH = '/api/send-email'
+
+// The backend only sends mail for signed-in users, so the token goes with every call.
+function authHeaders() {
+  const auth = useAuthStore()
+  const headers = { 'Content-Type': 'application/json' }
+  if (auth.token) headers.Authorization = 'Bearer ' + auth.token
+  return headers
+}
 
 async function send(payload) {
   const res = await apiFetch(API_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   })
 
