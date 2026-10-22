@@ -2,6 +2,7 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSubmissionStore } from '@/stores/submissionStore'
+import { rejectionNote } from '@/utils/rejectionNote'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
@@ -965,7 +966,7 @@ onMounted(() => {
             <p><strong>Status:</strong> <span class="badge" :class="statusBadge(detailSubmission.status, detailSubmission.printed)">{{ displayStatus(detailSubmission.status, detailSubmission.printed) }}</span></p>
             <p><strong>Submitted by:</strong> {{ detailSubmission.submitted_by_name }}</p>
             <p><strong>Description:</strong> {{ detailSubmission.description || 'N/A' }}</p>
-            <p v-if="detailSubmission.rejection_reason"><strong>Rejection Reason:</strong> <span class="text-danger">{{ detailSubmission.rejection_reason }}</span></p>
+            <p v-if="rejectionNote(detailSubmission)"><strong>{{ rejectionNote(detailSubmission).label }}:</strong> <span class="text-danger">{{ rejectionNote(detailSubmission).text }}</span></p>
             <h6 class="fw-bold mt-3">Amendments ({{ detailAmendments.length }})</h6>
             <div class="table-responsive">
               <table class="table table-sm">
