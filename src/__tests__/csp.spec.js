@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(__dirname, '../..')
-const config = JSON.parse(readFileSync(resolve(root, 'staticwebapp.config.json'), 'utf8'))
+// The deploy uploads dist/ only, so the config must live in public/ to be copied there.
+const config = JSON.parse(readFileSync(resolve(root, 'public/staticwebapp.config.json'), 'utf8'))
 const html = readFileSync(resolve(root, 'index.html'), 'utf8')
 
 function inlineScripts() {
@@ -12,6 +13,11 @@ function inlineScripts() {
 }
 
 describe('static web app CSP', () => {
+  it('ships the config inside the build output (public/)', () => {
+    expect(existsSync(resolve(root, 'public/staticwebapp.config.json'))).toBe(true)
+    expect(existsSync(resolve(root, 'staticwebapp.config.json'))).toBe(false)
+  })
+
   const csp = config.globalHeaders['Content-Security-Policy']
     || config.globalHeaders['Content-Security-Policy-Report-Only']
 
