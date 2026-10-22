@@ -4,8 +4,11 @@
  * Reference: /Grade Amendments.pdf
  */
 import { jsPDF } from 'jspdf'
+import { buildPdfData } from './amendmentPdfData'
 import { useAuthStore } from '@/stores/authStore'
+import { useSubmissionStore } from '@/stores/submissionStore'
 import { PDFDocument } from 'pdf-lib'
+import { wrapText } from '@/utils/wrapText'
 
 // Template PDF used as the base for coordinate-based filling.
 const ACTIVE_TEMPLATE_PDF_PATH = '/mood.pdf'
@@ -688,42 +691,16 @@ export function generateGradeAmendmentPDF(data = {}) {
 export async function downloadFilledForm(amendment) {
   const auth = useAuthStore()
 
-  // Process signature to remove white background
-  const rawSig = auth.user?.signature || null
-  const cleanSig = rawSig ? await removeSignatureBackground(rawSig) : null
-
-  const data = {
-    academicYear: amendment.academic_year || '',
-    term: amendment.term || '',
-    studentNo: amendment.student_no || amendment.student_id || '',
-    studentName: amendment.student_name || '',
-    courseCode: amendment.course_code || '',
-    courseTitle: amendment.course_title || '',
-    originalGrade: amendment.original_grade || '',
-    newGrade: amendment.new_grade || '',
-    reasonType: amendment.reason_type || '',
-    reasonDetails: amendment.reason_details || '',
-    appealGrounds: amendment.appeal_grounds || '',
-    appealDetails: amendment.appeal_details || '',
-    instructorName: amendment.instructor_name || auth.user?.name || '',
-    instructorSignature: cleanSig,
-    instructorDate: amendment.submitted_at
-      ? new Date(amendment.submitted_at).toLocaleDateString()
-      : new Date().toLocaleDateString(),
-    department: amendment.department || '',
-    // Endorsement box (Programme Director)
-    endorsementSignature: cleanSig,
-    endorserName: auth.user?.name || '',
-    endorsementDate: new Date().toLocaleDateString(),
-    // Final year student warning checkbox (Page 1)
-    finalYearStudent: amendment.final_year_student || false,
-    // Page 2 — AAR Approval section (filled by Academic Registry)
-    approved: amendment.approved === true ? true : undefined,
-    notApproved: amendment.approved === false ? true : undefined,
-    registrarSignature: amendment.registrar_signature || null,
-    registrarDate: amendment.registrar_date || '',
-    registrarRemarks: amendment.registrar_remarks || ''
+  // Everything on the form comes from what the server stored (submitter, endorser, dates).
+  // Only a legacy amendment with no stored instructor signature falls back to the exporting
+  // user's own signature, and only when that user is its owner.
+  const submission = useSubmissionStore().submissions?.find?.(s => s._id === amendment.submission_id)
+  const data = buildPdfData(amendment, submission)
+  const isOwner = String(amendment.submitted_by_email || '').toLowerCase() === String(auth.user?.email || '').toLowerCase()
+  if (!data.instructorSignature && isOwner && auth.user?.signature) {
+    data.instructorSignature = await removeSignatureBackground(auth.user.signature)
   }
+  if (!data.instructorName && isOwner) data.instructorName = auth.user?.name || ''
 
   const filename = `Grade Amendments - ${amendment.student_id || amendment.student_no || 'Form'}.pdf`
 
@@ -751,7 +728,7 @@ export async function downloadFilledForm(amendment) {
  * Fills in data at exact coordinates provided
  */
 export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
-  const { rgb } = await import('pdf-lib')
+  const { rgb, StandardFonts, LineCapStyle } = await import('pdf-lib')
   
   // Load the template PDF
   const { bytes: templateBytes } = await loadTemplatePdfBytes()
@@ -774,6 +751,21 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
 
     const map = (x, y) => ({ x: x * scaleX + offsetX, y: y * scaleY + offsetY })
 
+    // Reason details sit in the left column; wrap them to its width so long text
+    // cannot run into the appeal column on the right. The template gives each
+    // option two ruled lines about 15pt apart, so use two lines at that spacing.
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const drawWrapped = (text, x, y, size, maxWidth, maxLines, lineHeight) => {
+      const measureAt = (pt) => (t) => helvetica.widthOfTextAtSize(t, pt * Math.min(scaleX, scaleY)) / scaleX
+      // Shrink the font a little before cutting text, so the printed form keeps as much as possible.
+      const sizes = [size, size - 1, size - 2]
+      const fit = sizes.find((pt) => wrapText(text, maxWidth, measureAt(pt), Infinity).length <= maxLines)
+      const pt = fit || sizes[sizes.length - 1]
+      wrapText(text, maxWidth, measureAt(pt), maxLines).forEach((line, i) => {
+        drawField(line, x, y - i * lineHeight, pt)
+      })
+    }
+
     // Helper to draw text at exact coordinates (mapped to actual page size)
     const drawField = (text, x, y, size = 10) => {
       if (text === null || text === undefined || text === '') return
@@ -790,16 +782,16 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
       }
     }
 
-    // Helper to draw checkmark/tick at checkbox
+    // Helper to draw a check mark inside a template checkbox. (x, y) is the lower-left of the
+    // box (about 6.5pt square); a vector mark stays inside the box where a "V" glyph overflowed.
     const drawTick = (x, y) => {
       try {
-        const m = map(x, y)
-        page1.drawText('V', {
-          x: m.x,
-          y: m.y,
-          size: 11 * Math.min(scaleX, scaleY),
-          color: rgb(0, 0, 0),
-        })
+        const a = map(x + 1.3, y + 3.6)
+        const b = map(x + 2.9, y + 1.6)
+        const c = map(x + 5.9, y + 6.0)
+        const opts = { thickness: 1.1 * Math.min(scaleX, scaleY), color: rgb(0, 0, 0), lineCap: LineCapStyle.Round }
+        page1.drawLine({ start: a, end: b, ...opts })
+        page1.drawLine({ start: b, end: c, ...opts })
       } catch {
         // skip tick on draw failure
       }
@@ -826,66 +818,67 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // ═══════════════════════════════════════════════════════════════
     // STUDENT INFORMATION (appears on both sides)
     // ═══════════════════════════════════════════════════════════════
-    drawField(data.studentNo, 128, 705, 10)
-    drawField(data.studentName, 423, 704, 10)
+    // Baselines below are measured from the template (pdftotext -bbox): each value sits just
+    // above the ruled line of its label (line bottom in top-down coordinates -> 842 - bottom + 3).
+    drawField(data.studentNo, 128, 699.6, 10)
+    drawField(data.studentName, 380, 699.6, 10)
     if (data.courseCode || data.courseTitle) {
       const courseText = data.courseCode && data.courseTitle 
         ? `${data.courseCode} - ${data.courseTitle}`
         : data.courseCode || ''
       const truncated = courseText.length > 50 ? courseText.substring(0, 47) + '...' : courseText
-      drawField(truncated, 196, 686, 9)
+      drawField(truncated, 145, 681.6, 9)
     }
-    drawField(data.originalGrade, 178, 667, 10)
-    drawField(data.newGrade, 415, 667, 10)
+    drawField(data.originalGrade, 118, 663.6, 10)
+    drawField(data.newGrade, 389, 663.6, 10)
 
     // ═══════════════════════════════════════════════════════════════
     // ACADEMIC YEAR & TERM (Page 1)
     // ═══════════════════════════════════════════════════════════════
     if (data.academicYear) {
       const p = data.academicYear.split('-')
-      if (p[0]) drawField(p[0].slice(-2), 338, 722, 10)
-      if (p[1]) drawField(p[1].slice(-2), 382, 722, 10)
+      if (p[0]) drawField(p[0].slice(-2), 338, 717.6, 10)
+      if (p[1]) drawField(p[1].slice(-2), 382, 717.6, 10)
     }
-    if (data.term) drawField(String(data.term), 484, 722, 10)
+    if (data.term) drawField(String(data.term), 484, 717.6, 10)
 
     // ═══════════════════════════════════════════════════════════════
     // FINAL YEAR STUDENT CHECKBOX (Page 1) — "*If the grade..."
     // ═══════════════════════════════════════════════════════════════
-    if (data.finalYearStudent) drawTick(46, 650)
+    if (data.finalYearStudent) drawTick(42.3, 645.4)
 
     // ═══════════════════════════════════════════════════════════════
     // LEFT SIDE - NON-APPEAL REASONS
     // ═══════════════════════════════════════════════════════════════
     if (data.reasonType !== 'appeal') {
-      // Reason checkboxes
+      // Tick positions centre the V glyph in each template checkbox (measured with pdftotext -bbox)
       if (data.reasonType === 'conversion') {
-        drawTick(29, 539)
+        drawTick(27.8, 536.5)
       } else if (data.reasonType === 'makeup') {
-        drawTick(29, 522)
-        drawField(data.reasonDetails, 35, 510, 9)
+        drawTick(27.8, 518.5)
+        drawWrapped(data.reasonDetails, 31, 502.4, 9, 236, 2, 16.8)
       } else if (data.reasonType === 'supplementary') {
-        drawTick(29, 468)
-        drawField(data.reasonDetails, 35, 453, 9)
+        drawTick(27.8, 464.6)
+        drawWrapped(data.reasonDetails, 31, 448.4, 9, 236, 2, 16.8)
       } else if (data.reasonType === 'review') {
-        drawTick(29, 412)
-        drawField(data.reasonDetails, 35, 382, 9)
+        drawTick(27.8, 410.5)
+        drawWrapped(data.reasonDetails, 31, 376.4, 9, 236, 2, 16.8)
       } else if (data.reasonType === 'others') {
-        drawTick(29, 344)
-        drawField(data.reasonDetails, 35, 330, 9)
+        drawTick(27.8, 338.5)
+        drawWrapped(data.reasonDetails, 31, 322.4, 9, 236, 2, 16.8)
       }
 
       // Course Instructor Section (left side)
-      drawField(data.instructorName, 150, 291, 10)
-      drawField(data.department, 116, 275, 10)
-      // Signature @ 109,256
-      await addSignature(data.instructorSignature, 109, 256, 45, 18)
-      drawField(data.instructorDate, 111, 239, 10)
+      drawField(data.instructorName, 137, 285.7, 10)
+      drawField(data.department, 82, 267.7, 10)
+      // Signature sits on its line; the row pitch is 18pt, so keep it under 16pt tall
+      await addSignature(data.instructorSignature, 76, 249.9, 40, 15)
+      drawField(data.instructorDate, 54, 231.7, 10)
 
-      // Programme Director Section (left side)
-      drawField(data.endorserName, 75, 184, 10)
-      // Signature @ 180, 183
-      await addSignature(data.endorsementSignature, 180, 183, 45, 18)
-      drawField(data.endorsementDate, 110, 148, 10)
+      // Programme Director Section (left side): name and signature share the first line
+      drawField(data.endorserName, 66, 177, 10)
+      await addSignature(data.endorsementSignature, 160, 177.2, 40, 14)
+      drawField(data.endorsementDate, 100, 141.1, 10)
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -893,30 +886,28 @@ export async function generateGradeAmendmentPDFWithTemplate(data = {}) {
     // ═══════════════════════════════════════════════════════════════
     if (data.reasonType === 'appeal') {
       // Appeal checkbox
-      drawTick(305, 539)
+      drawTick(304.5, 536.5)
 
       // Appeal grounds checkboxes
       if (data.appealGrounds === 'Technical errors') {
-        drawTick(305, 504)
+        drawTick(304.5, 500.6)
       } else if (data.appealGrounds === 'Procedural faults') {
-        drawTick(380, 505)
+        drawTick(378.5, 500.6)
       }
 
       // Appeal details
-      drawField(data.appealDetails, 306, 472, 9)
+      drawWrapped(data.appealDetails, 306, 466.4, 9, 258, 2, 16.8)
 
       // Course Instructor Section (right side)
-      drawField(data.instructorName, 441, 420, 10)
-      drawField(data.department, 389, 401, 10)
-      // Signature @ 376,369
-      await addSignature(data.instructorSignature, 376, 369, 45, 18)
-      drawField(data.instructorDate, 375, 344, 10)
+      drawField(data.instructorName, 425, 411.7, 10)
+      drawField(data.department, 365, 393.7, 10)
+      await addSignature(data.instructorSignature, 355, 357.9, 40, 15)
+      drawField(data.instructorDate, 334, 339.7, 10)
 
       // Programme Director Section (right side)
-      drawField(data.endorserName, 320, 292, 10)
-      // Signature @ 477, 292
-      await addSignature(data.endorsementSignature, 477, 292, 45, 18)
-      drawField(data.endorsementDate, 356, 254, 10)
+      drawField(data.endorserName, 313, 285.2, 10)
+      await addSignature(data.endorsementSignature, 440, 285.4, 40, 14)
+      drawField(data.endorsementDate, 400, 249.2, 10)
     }
 
     // ═══════════════════════════════════════════════════════════════
