@@ -116,6 +116,7 @@
               ref="directTextInput"
               v-model="textContent" 
               @keyup.enter="addText"
+              @blur="addText"
               @keyup.esc="cancelTextInput"
               type="text" 
               placeholder="Type text..."
@@ -174,29 +175,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
-import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useThemeStore } from '@/stores/themeStore'
 import * as pdfjsLib from 'pdfjs-dist'
 
-const route = useRoute()
-const amendmentStore = useAmendmentStore()
 const themeStore = useThemeStore()
 
 // Form data passed from submission/amendment
-const formData = ref(null)
-const currentAmendment = ref(null)
-
-// Form data inputs for page 2 approval info
-// approved: true = Approved checkbox, false = Not Approved checkbox, null = blank
-const formDataInputs = reactive({
-  academicYear: '',
-  term: '',
-  newGrade: '',
-  approved: null,
-  approvalDate: '',
-  approvalRemarks: ''
-})
 
 // Set worker - try local file first, then fallback to CDN
 // Start with local file path (served from /public)
@@ -246,6 +230,7 @@ const isDarkTheme = () => document.documentElement.getAttribute('data-bs-theme')
 const pdfCanvasRef = ref(null)
 const annotationCanvasRef = ref(null)
 let pdfDoc = null
+let pdfBytes = null // original file bytes, used for the vector PDF export
 let pdfCtx, annotCtx
 let isDrawing = false
 let currentStroke = null
@@ -374,6 +359,9 @@ watch(activeTool, (newTool) => {
   } else if (newTool === 'rect') {
     penWidth.value = 2
     penColor.value = '#000000'
+  } else if (newTool === 'text') {
+    // the text tool has no colour picker, so never inherit e.g. the highlighter's yellow
+    penColor.value = '#000000'
   }
 })
 
@@ -403,6 +391,7 @@ const loadPDF = async (file) => {
     successMsg.value = 'Loading PDF...'
     
     const arrayBuffer = await file.arrayBuffer()
+    pdfBytes = arrayBuffer.slice(0) // pdf.js takes ownership of the buffer it is given
 
     pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise
 
@@ -455,7 +444,16 @@ const initializeCanvases = () => {
 }
 
 // Render page
-const renderPage = async () => {
+// A canvas can only host one pdf.js render at a time, so renders run one after another,
+// and a request that is already superseded by a newer one is skipped (fast zoom clicks).
+let renderChain = Promise.resolve()
+let renderRequestId = 0
+const renderPage = () => {
+  const id = ++renderRequestId
+  renderChain = renderChain.then(() => (id === renderRequestId ? renderPageNow() : undefined))
+  return renderChain
+}
+const renderPageNow = async () => {
   if (!pdfDoc) {
     return
   }
@@ -812,20 +810,41 @@ const nextPage = () => {
 }
 
 // Zoom
-const zoomIn = () => {
-  zoomLevel.value = Math.min(zoomLevel.value + 10, 300)
+// Annotations are stored in canvas pixels, so they must follow the zoom or they drift off the PDF
+const scaleAnnotation = (a, k) => {
+  if (a.type === 'path') {
+    a.points.forEach(pt => { pt.x *= k; pt.y *= k })
+    a.width *= k
+  } else if (a.type === 'rect') {
+    a.x *= k; a.y *= k; a.w *= k; a.h *= k; a.width *= k
+  } else if (a.type === 'text') {
+    a.x *= k; a.y *= k
+    a.fontSize = (a.fontSize || TEXT_FONT_SIZE) * k
+  }
+}
+
+const setZoom = (next) => {
+  const prev = zoomLevel.value
+  if (next === prev) return
+  const k = next / prev
+  for (const store of [pageAnnotations, redoHistory]) {
+    Object.values(store).forEach(list => (Array.isArray(list) ? list : []).forEach(a => scaleAnnotation(a, k)))
+  }
+  zoomLevel.value = next
   renderPage()
 }
 
-const zoomOut = () => {
-  zoomLevel.value = Math.max(zoomLevel.value - 10, 50)
-  renderPage()
-}
+const zoomIn = () => setZoom(Math.min(zoomLevel.value + 10, 300))
+
+const zoomOut = () => setZoom(Math.max(zoomLevel.value - 10, 50))
 
 // Helper: render a given page number to an offscreen canvas with annotations composited on top
-const renderPageToCanvas = async (pageNum, includeFormData = false) => {
+// Exports render at a fixed 2x of the PDF's own size so output quality does not depend on the zoom
+const EXPORT_SCALE = 2
+const renderPageToCanvas = async (pageNum) => {
   const page = await pdfDoc.getPage(pageNum)
-  const scale = zoomLevel.value / 100
+  const scale = EXPORT_SCALE
+  const k = EXPORT_SCALE / (zoomLevel.value / 100)
   const viewport = page.getViewport({ scale })
 
   // Offscreen PDF canvas
@@ -839,7 +858,10 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
   composite.width = viewport.width
   composite.height = viewport.height
   const ctx = composite.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, composite.width, composite.height)
   ctx.drawImage(pdfC, 0, 0)
+  ctx.scale(k, k)
 
   // Replay annotations stored for this page
   const annotations = pageAnnotations[pageNum] || []
@@ -871,111 +893,19 @@ const renderPageToCanvas = async (pageNum, includeFormData = false) => {
     }
   })
 
-  // Add form data if available and requested
-  if (includeFormData) {
-    // Check if there's any form data to add
-    const hasFormData = formDataInputs.academicYear || formDataInputs.term || formDataInputs.newGrade
-    // approved === null means no decision yet; true/false both count as "has data"
-    const hasApprovalData = formDataInputs.approved !== null || formDataInputs.approvalDate || formDataInputs.approvalRemarks
-
-    if (hasFormData && pageNum === 1) {
-      addFormDataToCanvas(ctx, 1, scale)
-    }
-    if (hasApprovalData && pageNum === 2) {
-      addFormDataToCanvas(ctx, 2, scale)
-    }
-  }
-
   return composite
-}
-
-// Helper: add form data text to canvas at specified coordinates
-// coords are in PDF user-units (at scale=1); multiply by scale for the actual canvas pixel position
-const addFormDataToCanvas = (ctx, pageNum, scale = 1) => {
-  const s = scale
-  ctx.fillStyle = '#000000'
-  ctx.textBaseline = 'top'
-
-  if (pageNum === 1) {
-    ctx.font = `bold ${12 * s}px Arial`
-
-    // AY first number (338, 722)
-    if (formDataInputs.academicYear) {
-      const ayNum = String(formDataInputs.academicYear).padStart(2, '0')
-      ctx.fillText(ayNum, 338 * s, 722 * s)
-    }
-
-    // AY second number (382, 722)
-    if (formDataInputs.academicYear) {
-      const nextYear = String(parseInt(formDataInputs.academicYear) + 1).padStart(2, '0')
-      ctx.fillText(nextYear, 382 * s, 722 * s)
-    }
-
-    // Term (484, 722)
-    if (formDataInputs.term) {
-      ctx.fillText(String(formDataInputs.term), 484 * s, 722 * s)
-    }
-
-    // Grade (46, 650)
-    if (formDataInputs.newGrade) {
-      ctx.fillText(String(formDataInputs.newGrade), 46 * s, 650 * s)
-    }
-  } else if (pageNum === 2) {
-    ctx.font = `bold ${13 * s}px Arial`
-
-    // Debug: draw a bright red marker so we can confirm the canvas is being written to
-    ctx.fillStyle = '#FF0000'
-    ctx.fillText('● PAGE2 OVERLAY ACTIVE', 10 * s, 10 * s)
-    ctx.fillStyle = '#000000'
-
-    // Approved checkbox (44, 746)
-    if (formDataInputs.approved === true) {
-      ctx.fillText('V', 44 * s, 746 * s)
-    }
-
-    // Not Approved checkbox (97, 746)
-    if (formDataInputs.approved === false) {
-      ctx.fillText('V', 97 * s, 746 * s)
-    }
-
-    ctx.font = `${11 * s}px Arial`
-
-    // Date (77, 712)
-    if (formDataInputs.approved !== null && formDataInputs.approvalDate) {
-      ctx.fillText(String(formDataInputs.approvalDate), 77 * s, 712 * s)
-    }
-
-    // Remarks (94, 678)
-    if (formDataInputs.approved !== null && formDataInputs.approvalRemarks) {
-      const maxWidth = 150 * s
-      const lineHeight = 12 * s
-      const words = String(formDataInputs.approvalRemarks).split(' ')
-      let line = ''
-      let y = 678 * s
-      for (const word of words) {
-        const testLine = line + word + ' '
-        if (ctx.measureText(testLine).width > maxWidth) {
-          ctx.fillText(line.trim(), 94 * s, y)
-          line = word + ' '
-          y += lineHeight
-        } else {
-          line = testLine
-        }
-      }
-      if (line.trim()) ctx.fillText(line.trim(), 94 * s, y)
-    }
-  }
 }
 
 // Export functions
 const exportAsPNG = async () => {
   try {
+    if (showTextInput.value) addText() // do not lose text that is still being typed
     const baseName = fileName.value.replace(/\.pdf$/i, '')
     successMsg.value = 'Exporting PNG…'
 
     const pageCanvases = []
     for (let p = 1; p <= pageCount.value; p++) {
-      pageCanvases.push(await renderPageToCanvas(p, true))
+      pageCanvases.push(await renderPageToCanvas(p))
     }
 
     const PAGE_GAP = 16
@@ -1009,30 +939,94 @@ const exportAsPNG = async () => {
   }
 }
 
+// Vector export: keeps the original pages (selectable text, small file) and draws the
+// annotations on top. Returns null when it cannot do that faithfully (rotated or offset
+// pages, text outside the Latin-1 range) so the caller can fall back to the raster export.
+const buildVectorPDF = async () => {
+  const { PDFDocument, StandardFonts, rgb, LineCapStyle } = await import('pdf-lib')
+  const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const z = zoomLevel.value / 100
+  const toColor = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))
+    const n = m ? parseInt(m[1], 16) : 0
+    return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255)
+  }
+
+  const pages = doc.getPages()
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i]
+    const box = page.getMediaBox()
+    if (page.getRotation().angle !== 0 || box.x !== 0 || box.y !== 0) return null
+    const H = box.height
+    for (const a of pageAnnotations[i + 1] || []) {
+      if (a.type === 'path' && a.points.length > 0) {
+        const d = a.points.map((pt, n) => `${n === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')
+        page.drawSvgPath(a.points.length === 1 ? d + ' l 0.01 0' : d, {
+          x: 0, y: H, scale: 1 / z,
+          borderColor: toColor(a.color), borderWidth: a.width / z,
+          borderOpacity: a.opacity ?? 1, borderLineCap: LineCapStyle.Round
+        })
+      } else if (a.type === 'rect') {
+        page.drawRectangle({
+          x: Math.min(a.x, a.x + a.w) / z, y: H - Math.max(a.y, a.y + a.h) / z,
+          width: Math.abs(a.w) / z, height: Math.abs(a.h) / z,
+          borderColor: toColor(a.color), borderWidth: a.width / z
+        })
+      } else if (a.type === 'text' && !a.isDraft && a.text) {
+        try { font.widthOfTextAtSize(a.text, 1) } catch { return null }
+        const size = (a.fontSize || TEXT_FONT_SIZE) / z
+        // canvas text is drawn from the top of the line box, pdf-lib from the baseline
+        page.drawText(a.text, { x: a.x / z, y: H - a.y / z - size * 0.8, size, font, color: toColor(a.color) })
+      }
+    }
+  }
+  return doc.save()
+}
+
+const saveBlob = (bytes, name) => {
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 const exportAsPDF = async () => {
   try {
     const { jsPDF } = await import('jspdf')
     const baseName = fileName.value.replace(/\.pdf$/i, '')
     successMsg.value = 'Exporting PDF…'
 
+    if (showTextInput.value) addText() // do not lose text that is still being typed
+    const vector = pdfBytes ? await buildVectorPDF() : null
+    if (vector) {
+      saveBlob(vector, `${baseName}_annotated.pdf`)
+      successMsg.value = `Exported ${pageCount.value} page(s) as PDF!`
+      setTimeout(() => successMsg.value = '', 3000)
+      return
+    }
+
     let pdf = null
     for (let p = 1; p <= pageCount.value; p++) {
-      const canvas = await renderPageToCanvas(p, true)
-      const imgData = canvas.toDataURL('image/png')
-      const w = canvas.width
-      const h = canvas.height
+      const canvas = await renderPageToCanvas(p)
+      // JPEG q0.95 at 2x keeps text crisp at ~1/10 of the PNG file size
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      // jsPDF pt = original PDF size, so the export prints at the same size as the source
+      const w = canvas.width / EXPORT_SCALE
+      const h = canvas.height / EXPORT_SCALE
 
       if (!pdf) {
         pdf = new jsPDF({
           orientation: w > h ? 'l' : 'p',
-          unit: 'px',
-          format: [w, h],
-          hotfixes: ['px_scaling']
+          unit: 'pt',
+          format: [w, h]
         })
       } else {
         pdf.addPage([w, h], w > h ? 'l' : 'p')
       }
-      pdf.addImage(imgData, 'PNG', 0, 0, w, h)
+      pdf.addImage(imgData, 'JPEG', 0, 0, w, h)
     }
 
     if (pdf) {
@@ -1082,61 +1076,12 @@ const redoAction = () => {
   }
 }
 
-// Auto-populate form data based on amendment status
-const populateFormFromAmendment = () => {
-  if (!currentAmendment.value) return
-  
-  const amendment = currentAmendment.value
-  
-  // Populate basic fields
-  if (amendment.academic_year) {
-    // Extract the first 2 digits (e.g., "2025-2026" -> "25")
-    const year = String(amendment.academic_year).split('-')[0]
-    formDataInputs.academicYear = year.slice(-2)
-  }
-  
-  if (amendment.term) {
-    formDataInputs.term = String(amendment.term)
-  }
-  
-  if (amendment.new_grade || amendment.newGrade) {
-    formDataInputs.newGrade = amendment.new_grade || amendment.newGrade
-  }
-  
-  // Set approval status based on amendment status
-  if (amendment.status === 'Approved') {
-    formDataInputs.approved = true
-  } else if (amendment.status === 'Rejected') {
-    formDataInputs.approved = false
-  } else {
-    formDataInputs.approved = null
-  }
-}
-
 onMounted(() => {
   // Setup worker fallback after component is mounted
   setupWorkerFallback().catch(() => {})
 
-  // Capture form data from route state if available
-  if (route.state?.formData) {
-    formData.value = route.state.formData
-  }
-
   window.addEventListener('keydown', handleGlobalKeydown)
   
-  // Try to get current amendment from store and auto-populate form
-  if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
-    currentAmendment.value = amendmentStore.amendments[0]
-    populateFormFromAmendment()
-  } else {
-    // Load amendments if not already loaded
-    amendmentStore.fetchAmendments().then(() => {
-      if (amendmentStore.amendments && amendmentStore.amendments.length > 0) {
-        currentAmendment.value = amendmentStore.amendments[0]
-        populateFormFromAmendment()
-      }
-    }).catch(() => {})
-  }
 })
 
 watch(() => themeStore.theme, async () => {
@@ -1144,14 +1089,6 @@ watch(() => themeStore.theme, async () => {
   await nextTick()
   redrawAnnotations()
 })
-
-// Watch for amendment changes and update form
-watch(() => amendmentStore.amendments, () => {
-  if (amendmentStore.amendments && amendmentStore.amendments.length > 0 && !currentAmendment.value) {
-    currentAmendment.value = amendmentStore.amendments[0]
-    populateFormFromAmendment()
-  }
-}, { deep: true })
 
 onUnmounted(() => {
   const annotationCanvas = document.getElementById('annotation-canvas')
