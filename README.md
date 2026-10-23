@@ -101,13 +101,13 @@ The system replaces paper-based handoffs with a structured digital workflow so t
 - **Passwords**: the sign-up form asks for at least 10 characters, matching the backend rule.
 - **Session storage**: the session token is kept in browser storage and sent as a Bearer token on API calls, including email notifications. The app avoids unsafe HTML rendering (no `v-html` or `eval`) and tokens expire after 24 hours. Signing out clears the token, the user and any demo data.
 - **Demo mode**: the demo sign-in buttons and demo routes exist for development and demonstrations only and are hidden in production builds. Set `VITE_ENABLE_DEMO=true` at build time to show them. The backend does not accept demo tokens.
-- **Browser security headers**: the static web app sends HSTS, `Permissions-Policy`, `X-Content-Type-Options`, `X-Frame-Options` and a Content-Security-Policy in report-only mode. A test keeps the CSP hash for the inline script in `index.html` in sync.
+- **Browser security headers**: the static web app sends HSTS, `Permissions-Policy`, `X-Content-Type-Options`, `X-Frame-Options` and an enforced Content-Security-Policy (scripts only from this site plus one hashed inline script, no `eval`, API calls only to the backend host). A test keeps the CSP hash for the inline script in `index.html` in sync.
 - **Supply chain**: Dependabot proposes dependency updates, CI runs lint and tests before every deploy, and the deploy installs from the lockfile (`npm ci`).
 
 ### Trade-offs and limitations
 
 - The session token lives in browser storage rather than an HttpOnly cookie, because the app and the API run on different origins. A cross-site scripting flaw would therefore expose it.
-- The Content-Security-Policy is report-only for now. It is meant to be enforced after it has run in production without violations.
+- The Content-Security-Policy still allows inline styles (`style-src 'unsafe-inline'`) because the UI libraries set them at runtime; scripts are locked down. It was enforced after a build served with the same header was exercised as each role (sign-in, lists, PDF export, the PDF editor and its worker, admin pages) with no violations. To roll back, rename the header to `Content-Security-Policy-Report-Only` in `public/staticwebapp.config.json`.
 - Sample data for demo mode is still part of the application bundle; only the demo sign-in is hidden.
 - The client-side role guard is cosmetic and can be bypassed in the browser; the backend rejects unauthorized requests regardless.
 
