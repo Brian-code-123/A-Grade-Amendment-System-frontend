@@ -69,7 +69,7 @@ describe('authStore', () => {
     })
   })
 
-  it('login stores the returned token and user on success', async () => {
+  it('loginWithCode stores the returned token and user on success', async () => {
     const auth = useAuthStore()
     globalThis.fetch = vi.fn()
       // /api/auth/login
@@ -77,17 +77,17 @@ describe('authStore', () => {
       // fetchMe() called after login
       .mockResolvedValueOnce(jsonResponse({ name: 'Teacher', email: 't@example.com', role: 'Programme Director' }))
 
-    await auth.login('t@example.com', 'password123')
+    await auth.loginWithCode('t@example.com', 'password123', '123456')
 
     expect(auth.token).toBe('server-token')
     expect(auth.user.email).toBe('t@example.com')
   })
 
-  it('login throws when the server does not return a token', async () => {
+  it('loginWithCode throws when the server does not return a token', async () => {
     const auth = useAuthStore()
     globalThis.fetch = vi.fn().mockResolvedValueOnce(jsonResponse({ message: 'Invalid credentials.' }, 401))
 
-    await expect(auth.login('t@example.com', 'wrong-password')).rejects.toThrow()
+    await expect(auth.loginWithCode('t@example.com', 'wrong-password', '123456')).rejects.toThrow()
     expect(auth.token).toBe('')
   })
 })

@@ -92,19 +92,6 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('demo_pd_submissions')
   }
 
-  async function login(email, password) {
-    const res = await apiFetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    })
-    const data = await parseJsonResponse(res, 'Login failed')
-    if (!data.token) throw new Error('Login response is missing token.')
-    setAuth(data.token, data.user || data)
-    await fetchMe()
-    return data
-  }
-
   async function loginWithCode(email, password, verificationCode) {
     const res = await apiFetch('/api/auth/login', {
       method: 'POST',
@@ -242,5 +229,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, login, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth, saveSignature, resolveLandingRoute }
+  return { token, user, isLoggedIn, isAdmin, isPD, isHead, userName, setAuth, loginWithCode, register, logout, fetchMe, authHeaders, clearAuth, saveSignature, resolveLandingRoute }
 })

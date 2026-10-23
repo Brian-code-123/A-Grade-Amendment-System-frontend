@@ -103,24 +103,18 @@ async function handleLogin() {
     error.value = 'Please enter your email and password.'
     return
   }
+  // The emailed code is always required; the server rejects a sign-in without it.
+  if (!loginForm.value.verificationCode) {
+    error.value = 'Enter the 6-digit verification code we emailed you. Use "Send Code" to get one.'
+    return
+  }
   loading.value = true
   try {
-    if (loginForm.value.verificationCode) {
-      try {
-        await auth.loginWithCode(
-          loginForm.value.email,
-          loginForm.value.password,
-          loginForm.value.verificationCode
-        )
-      } catch (codeErr) {
-        const msg = String(codeErr?.message || '')
-        const canFallback = msg.includes('Verification code expired') || msg.includes('Invalid verification code') || msg.includes('Email and password are required')
-        if (!canFallback) throw codeErr
-        await auth.login(loginForm.value.email, loginForm.value.password)
-      }
-    } else {
-      await auth.login(loginForm.value.email, loginForm.value.password)
-    }
+    await auth.loginWithCode(
+      loginForm.value.email,
+      loginForm.value.password,
+      loginForm.value.verificationCode
+    )
     router.replace(auth.resolveLandingRoute(auth.user))
   } catch (e) {
     error.value = e.message
@@ -260,7 +254,7 @@ async function handleRegister() {
             <div class="lp-code-row">
               <div class="lp-input-wrap lp-code-input">
                 <i class="bi bi-shield-lock lp-field-icon"></i>
-                <input v-model="loginForm.verificationCode" type="text" placeholder="6-digit code" maxlength="6" :required="codeSent" />
+                <input v-model="loginForm.verificationCode" type="text" placeholder="6-digit code" maxlength="6" required />
               </div>
               <button type="button" class="lp-send-btn" @click="sendVerificationCode" :disabled="sendingCode || countdown > 0">
                 <span v-if="sendingCode" class="spinner-border spinner-border-sm"></span>
