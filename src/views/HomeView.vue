@@ -5,11 +5,13 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useSubmissionStore } from '@/stores/submissionStore'
 import { useAmendmentStore } from '@/stores/amendmentStore'
+import { useAnnouncementStore } from '@/stores/announcementStore'
 
 const auth = useAuthStore()
 const notif = useNotificationStore()
 const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
+const announcementStore = useAnnouncementStore()
 const router = useRouter()
 
 const currentMonth = ref(new Date().getMonth())
@@ -169,69 +171,10 @@ const headStats = computed(() => {
   }
 })
 
-// System Announcements/Messages grouped by category
-const systemAnnouncements = ref([
-  {
-    id: 1,
-    category: 'System Announcements/Messages',
-    type: 'info',
-    icon: 'bi-megaphone',
-    title: 'System Update',
-    message: 'Grade Amendment System has been updated with new features and improvements.',
-    date: '2026-03-10'
-  },
-  {
-    id: 4,
-    category: 'System Announcements/Messages',
-    type: 'info',
-    icon: 'bi-info-circle',
-    title: 'New Feature Available',
-    message: 'You can now track amendments in real-time with email notifications.',
-    date: '2026-03-08'
-  }
-])
-
-const policyUpdates = ref([
-  {
-    id: 2,
-    category: 'Latest Policy Updates',
-    type: 'warning',
-    icon: 'bi-file-earmark-text',
-    title: 'Grade Amendment Policy Update',
-    message: 'New deadline for grade amendments: 30 days from course end date.',
-    date: '2026-03-07'
-  },
-  {
-    id: 5,
-    category: 'Latest Policy Updates',
-    type: 'warning',
-    icon: 'bi-pencil-square',
-    title: 'Documentation Requirements',
-    message: 'Please provide supporting documents with your amendment requests.',
-    date: '2026-03-05'
-  }
-])
-
-const maintenanceNotifications = ref([
-  {
-    id: 3,
-    category: 'System Maintenance Notification',
-    type: 'danger',
-    icon: 'bi-exclamation-triangle',
-    title: 'Scheduled Maintenance',
-    message: 'System maintenance every Sunday 23:00-24:00 (HKT). Please plan accordingly.',
-    date: '2026-03-10'
-  },
-  {
-    id: 6,
-    category: 'System Maintenance Notification',
-    type: 'danger',
-    icon: 'bi-tools',
-    title: 'Database Migration',
-    message: 'Database upgrade scheduled for 2026-03-15. Expected downtime: 2 hours.',
-    date: '2026-03-09'
-  }
-])
+// Announcements come from the server, grouped by category
+const systemAnnouncements = computed(() => announcementStore.byCategory('System Announcements/Messages'))
+const policyUpdates = computed(() => announcementStore.byCategory('Latest Policy Updates'))
+const maintenanceNotifications = computed(() => announcementStore.byCategory('System Maintenance Notification'))
 
 function prevMonth() {
   if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value-- }
@@ -253,6 +196,7 @@ const eventTypeBadge = (type) => {
 }
 
 onMounted(() => {
+  announcementStore.load()
   if (auth.isLoggedIn) {
     subStore.fetchSubmissions()
     notif.fetchNotifications()
@@ -378,6 +322,9 @@ onMounted(() => {
             <span class="fw-semibold small">System Announcements</span>
           </div>
           <div class="announcement-content">
+            <div v-if="!systemAnnouncements.length && !policyUpdates.length && !maintenanceNotifications.length" class="text-muted small text-center py-2">
+              No announcements right now.
+            </div>
             
             <!-- System Announcements/Messages -->
             <div v-if="systemAnnouncements.length > 0" class="announce-section">
@@ -385,7 +332,7 @@ onMounted(() => {
                 <i class="bi bi-chat-dots text-secondary me-1" style="font-size:0.78rem"></i>
                 <span class="text-muted announce-label">System Announcements/Messages</span>
               </div>
-              <div v-for="ann in systemAnnouncements.slice(0, 1)" :key="ann.id" class="ann-row border-start border-info ps-2 mb-1">
+              <div v-for="ann in systemAnnouncements.slice(0, 1)" :key="ann._id" class="ann-row border-start border-info ps-2 mb-1">
                 <div class="d-flex justify-content-between align-items-start gap-1">
                   <div class="small fw-semibold">{{ ann.title }}</div>
                   <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>
@@ -400,7 +347,7 @@ onMounted(() => {
                 <i class="bi bi-file-earmark-text text-secondary me-1" style="font-size:0.78rem"></i>
                 <span class="text-muted announce-label">Latest Policy Updates</span>
               </div>
-              <div v-for="ann in policyUpdates.slice(0, 1)" :key="ann.id" class="ann-row border-start border-warning ps-2 mb-1">
+              <div v-for="ann in policyUpdates.slice(0, 1)" :key="ann._id" class="ann-row border-start border-warning ps-2 mb-1">
                 <div class="d-flex justify-content-between align-items-start gap-1">
                   <div class="small fw-semibold">{{ ann.title }}</div>
                   <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>
@@ -415,7 +362,7 @@ onMounted(() => {
                 <i class="bi bi-tools text-secondary me-1" style="font-size:0.78rem"></i>
                 <span class="text-muted announce-label">System Maintenance</span>
               </div>
-              <div v-for="ann in maintenanceNotifications.slice(0, 1)" :key="ann.id" class="ann-row border-start border-danger ps-2 mb-1">
+              <div v-for="ann in maintenanceNotifications.slice(0, 1)" :key="ann._id" class="ann-row border-start border-danger ps-2 mb-1">
                 <div class="d-flex justify-content-between align-items-start gap-1">
                   <div class="small fw-semibold">{{ ann.title }}</div>
                   <small class="text-muted flex-shrink-0" style="font-size:0.65rem">{{ ann.date }}</small>

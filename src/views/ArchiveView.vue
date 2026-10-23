@@ -12,15 +12,20 @@ const amStore = useAmendmentStore()
 
 const selectedSemester = ref('')
 const successMsg = ref('')
+const errorMsg = ref('')
 
 const archivedSubmissions = computed(() => {
   return archiveStore.getArchivedSubmissions(subStore.submissions, selectedSemester.value || undefined)
 })
 
-function unarchiveSelected(ids) {
+async function unarchiveSelected(ids) {
   if (!confirm(`Unarchive ${ids.length} submission(s)? They will return to the main submissions list.`)) return
-  archiveStore.unarchive(ids)
-  successMsg.value = `${ids.length} submission(s) unarchived`
+  try {
+    await archiveStore.unarchive(ids)
+    successMsg.value = `${ids.length} submission(s) unarchived`
+  } catch (e) {
+    errorMsg.value = e.message
+  }
 }
 
 function unarchiveSingle(id) {
@@ -38,9 +43,14 @@ const displayStatus = (status, printed = false) => {
   return status === 'Submitted' ? 'Pending' : status
 }
 
-onMounted(() => {
+onMounted(async () => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  try {
+    await archiveStore.load()
+  } catch (e) {
+    errorMsg.value = 'Could not load the archive: ' + e.message
+  }
 })
 </script>
 
@@ -60,6 +70,10 @@ onMounted(() => {
     <!-- Alert -->
     <div v-if="successMsg" class="alert alert-success alert-dismissible fade show">
       <i class="bi bi-check-circle me-2"></i>{{ successMsg }}<button class="btn-close" @click="successMsg = ''"></button>
+    </div>
+
+    <div v-if="errorMsg" class="alert alert-danger alert-dismissible fade show">
+      <i class="bi bi-exclamation-triangle me-2"></i>{{ errorMsg }}<button class="btn-close" @click="errorMsg = ''"></button>
     </div>
 
     <!-- Semester Filter -->

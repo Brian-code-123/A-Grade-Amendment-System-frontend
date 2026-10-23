@@ -6,6 +6,7 @@ import { rejectionNote } from '@/utils/rejectionNote'
 import { useAmendmentStore } from '@/stores/amendmentStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveStore } from '@/stores/archiveStore'
+import { useAnnouncementStore } from '@/stores/announcementStore'
 import { generateGradeAmendmentPDF, generateGradeAmendmentPDFWithTemplate, getTemplatePdfBlob } from '@/services/pdfTemplate'
 import { sendApprovalEmail, sendRejectionEmail } from '@/services/emailService'
 import { buildPdfData } from '@/services/amendmentPdfData'
@@ -15,6 +16,7 @@ const subStore = useSubmissionStore()
 const amStore = useAmendmentStore()
 const auth = useAuthStore()
 const archiveStore = useArchiveStore()
+const announcementStore = useAnnouncementStore()
 const canApproveSubmissions = computed(() => auth.user?.role !== 'admin')
 const canRejectSubmissions = computed(() => auth.user?.role !== 'admin')
 
@@ -39,39 +41,48 @@ const showSemesterSetup = ref(false)
 const semForm = ref({ name: '', startDate: '', endDate: '' })
 const archiveSemId = ref('')
 
-function addSemester() {
+async function addSemester() {
   if (!semForm.value.name || !semForm.value.startDate || !semForm.value.endDate) {
     errorMsg.value = 'Please fill in semester name, start date & end date'
     return
   }
-  archiveStore.addSemester(semForm.value.name, semForm.value.startDate, semForm.value.endDate)
-  successMsg.value = `Semester "${semForm.value.name}" created`
-  semForm.value = { name: '', startDate: '', endDate: '' }
+  try {
+    await archiveStore.addSemester(semForm.value.name, semForm.value.startDate, semForm.value.endDate)
+    successMsg.value = `Semester "${semForm.value.name}" created`
+    semForm.value = { name: '', startDate: '', endDate: '' }
+  } catch (e) {
+    errorMsg.value = e.message
+  }
 }
 
-function deleteSemester(id) {
+async function deleteSemester(id) {
   const sem = archiveStore.semesters.find(s => s.id === id)
   if (!confirm(`Delete semester "${sem?.name}"? Archived records under this semester will be unarchived.`)) return
-  archiveStore.removeSemester(id)
-  successMsg.value = 'Semester deleted'
-}
-
-function archiveSelectedSemester() {
-  if (!archiveSemId.value) { errorMsg.value = 'Please select a semester to archive'; return }
-  const count = archiveStore.archiveBySemester(archiveSemId.value, subStore.submissions)
-  if (count === 0) {
-    errorMsg.value = 'No matching submissions found in that semester date range (or already archived)'
-  } else {
-    successMsg.value = `${count} submission(s) archived`
+  try {
+    await archiveStore.removeSemester(id)
+    successMsg.value = 'Semester deleted'
+  } catch (e) {
+    errorMsg.value = e.message
   }
-  archiveSemId.value = ''
 }
 
-const announcements = ref([
-  { id: 1, category: 'System Announcements/Messages', type: 'info', title: 'System Update', message: 'Grade Amendment System has been updated with new features and improvements.', date: '2026-03-10' },
-  { id: 2, category: 'Latest Policy Updates', type: 'warning', title: 'Grade Amendment Policy Update', message: 'New deadline for grade amendments: 30 days from course end date.', date: '2026-03-07' },
-  { id: 3, category: 'System Maintenance Notification', type: 'danger', title: 'Scheduled Maintenance', message: 'System maintenance every Sunday 23:00-24:00 (HKT). Please plan accordingly.', date: '2026-03-10' }
-])
+async function archiveSelectedSemester() {
+  if (!archiveSemId.value) { errorMsg.value = 'Please select a semester to archive'; return }
+  try {
+    const count = await archiveStore.archiveBySemester(archiveSemId.value, subStore.submissions)
+    if (count === 0) {
+      errorMsg.value = 'No matching submissions found in that semester date range (or already archived)'
+    } else {
+      successMsg.value = `${count} submission(s) archived`
+      await subStore.fetchSubmissions()
+    }
+    archiveSemId.value = ''
+  } catch (e) {
+    errorMsg.value = e.message
+  }
+}
+
+const announcements = computed(() => announcementStore.items)
 
 const announcementForm = ref({
   category: 'System Announcements/Messages',
@@ -91,30 +102,28 @@ function resetAnnouncementForm() {
   }
 }
 
-function createAnnouncement() {
+async function createAnnouncement() {
   if (!announcementForm.value.title || !announcementForm.value.message) {
     errorMsg.value = 'Please fill in title and message'
     return
   }
-
-  const newAnnouncement = {
-    id: Math.max(...announcements.value.map(a => a.id), 0) + 1,
-    category: announcementForm.value.category,
-    type: announcementForm.value.type,
-    title: announcementForm.value.title,
-    message: announcementForm.value.message,
-    date: new Date().toISOString().split('T')[0]
+  try {
+    await announcementStore.create(announcementForm.value)
+    successMsg.value = 'Announcement created successfully'
+    resetAnnouncementForm()
+  } catch (e) {
+    errorMsg.value = e.message
   }
-
-  announcements.value.unshift(newAnnouncement)
-  successMsg.value = 'Announcement created successfully'
-  resetAnnouncementForm()
 }
 
-function deleteAnnouncement(id) {
+async function deleteAnnouncement(id) {
   if (!confirm('Delete this announcement?')) return
-  announcements.value = announcements.value.filter(a => a.id !== id)
-  successMsg.value = 'Announcement deleted'
+  try {
+    await announcementStore.remove(id)
+    successMsg.value = 'Announcement deleted'
+  } catch (e) {
+    errorMsg.value = e.message
+  }
 }
 
 function getAnnouncementBadgeClass(type) {
@@ -535,9 +544,15 @@ const filterBtnClass = (opt) => {
   return map[opt] || 'btn-dark'
 }
 
-onMounted(() => {
+onMounted(async () => {
   subStore.fetchSubmissions()
   amStore.fetchAmendments()
+  announcementStore.load()
+  try {
+    await archiveStore.load()
+  } catch (e) {
+    errorMsg.value = 'Could not load the semester archive: ' + e.message
+  }
 })
 </script>
 
@@ -927,7 +942,7 @@ onMounted(() => {
               <div v-if="announcements.length === 0" class="text-center text-muted py-4">
                 No announcements yet
               </div>
-              <div v-for="ann in announcements" :key="ann.id" class="mb-3 pb-3 border-bottom">
+              <div v-for="ann in announcements" :key="ann._id" class="mb-3 pb-3 border-bottom">
                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                   <div>
                     <span class="badge" :class="getAnnouncementBadgeClass(ann.type)">{{ ann.category }}</span>
@@ -936,7 +951,7 @@ onMounted(() => {
                   <small class="text-muted flex-shrink-0">{{ ann.date }}</small>
                 </div>
                 <p class="text-muted small mb-2">{{ ann.message }}</p>
-                <button class="btn btn-sm btn-outline-danger" @click="deleteAnnouncement(ann.id)">
+                <button class="btn btn-sm btn-outline-danger" @click="deleteAnnouncement(ann._id)">
                   <i class="bi bi-trash me-1"></i>Delete
                 </button>
               </div>
