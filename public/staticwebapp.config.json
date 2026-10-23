@@ -29,6 +29,6 @@
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
-    "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' 'sha256-NnrgsCgkXviAO7eE1d0VnMn0cWL+jEZrTI+wtQ/OyS0='; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' https://a-grade-amendment-api-20260330.azurewebsites.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'sha256-NnrgsCgkXviAO7eE1d0VnMn0cWL+jEZrTI+wtQ/OyS0='; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' https://a-grade-amendment-api-20260330.azurewebsites.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
   }
 }

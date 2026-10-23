@@ -19,10 +19,10 @@ describe('static web app CSP', () => {
   })
 
   const csp = config.globalHeaders['Content-Security-Policy']
-    || config.globalHeaders['Content-Security-Policy-Report-Only']
 
-  it('defines a policy', () => {
+  it('enforces the policy instead of only reporting violations', () => {
     expect(csp).toBeTruthy()
+    expect(config.globalHeaders['Content-Security-Policy-Report-Only']).toBeUndefined()
   })
 
   it('allows every inline script in index.html by hash', () => {
